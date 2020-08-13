@@ -27,7 +27,7 @@ func main() {
 	if err != nil {
 		z.Fatal("Could not create credentials", zap.Error(err))
 	}
-	s := server.NewServer(ctx, server.AuthProvider{c}, z)
+	s := server.NewServer(ctx, server.NewAuthProvider(c, z), z)
 
 	addr, err := url.Parse("tcp://127.0.0.1:9443")
 	done := s.Startup(addr)

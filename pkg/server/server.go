@@ -17,14 +17,17 @@ type Server struct {
 	grpcServer   *grpc.Server
 	healthServer *health.Server
 	infoServer   *InfoServer
-	auth         AuthProvider
+	auth         *AuthProvider
 	ctx          context.Context
 	logger       *zap.Logger
 }
 
-func NewServer(ctx context.Context, auth AuthProvider, logger *zap.Logger) *Server {
+func NewServer(ctx context.Context, auth *AuthProvider, logger *zap.Logger) *Server {
 	// create gRPC server
-	grpcServer := grpc.NewServer(grpc.Creds(auth.Creds))
+	grpcServer := grpc.NewServer(
+		grpc.Creds(auth.Creds),
+		grpc.UnaryInterceptor(auth.UnaryInterceptor),
+	)
 
 	// create gRPC health server
 	healthServer := health.NewServer()

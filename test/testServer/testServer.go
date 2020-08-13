@@ -32,9 +32,17 @@ func main() {
 	addr, err := url.Parse("tcp://127.0.0.1:9443")
 	done := s.Startup(addr)
 
+	t1 := &info.Trait{
+		Name:       "smartcore.api.device.trait.Brightness",
+		Readable:   false,
+		Writable:   false,
+		Observable: false,
+	}
+
 	s.RegisterDevice(&info.Device{
-		Name:  "/test/device",
-		Title: "Test Device",
+		Name:   "/test/device",
+		Traits: []*info.Trait{t1},
+		Title:  "Test Device",
 	})
 
 	// wait for termination

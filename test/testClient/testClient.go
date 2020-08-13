@@ -27,9 +27,11 @@ func main() {
 
 	// setup TLS creds
 	c, err := credentials.NewClientTLSFromFile("test/certs/service.pem", "")
+	// create a connection to the smart core server
 	con := client.NewClient(u, client.AuthCredentials{Creds: c}, logger)
 
 	ctx := context.Background()
+	// get device list from server
 	dev, err := con.GetDeviceList(ctx)
 	if err != nil {
 		logger.Error("Could not get device list", zap.Error(err))

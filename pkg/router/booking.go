@@ -2,11 +2,11 @@ package router
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"sync"
 
 	"git.vanti.co.uk/smartcore/sc-api/go/device/traits"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -21,6 +21,16 @@ type BookingApiRouter struct {
 
 // compile time check that we implement the interface we need
 var _ traits.BookingApiServer = &BookingApiRouter{}
+
+func NewBookingApiRouter() *BookingApiRouter {
+	return &BookingApiRouter{
+		registry: make(map[string]traits.BookingApiClient),
+	}
+}
+
+func (b *BookingApiRouter) Register(server *grpc.Server) {
+	traits.RegisterBookingApiServer(server, b)
+}
 
 func (b *BookingApiRouter) Add(name string, client traits.BookingApiClient) traits.BookingApiClient {
 	b.mu.Lock()
@@ -50,7 +60,7 @@ func (b *BookingApiRouter) ListBookings(ctx context.Context, request *traits.Lis
 	child, exists := b.registry[request.Name]
 	b.mu.Unlock()
 	if !exists {
-		return nil, status.Error(codes.NotFound, fmt.Sprintf("device: %v", request.Name))
+		return nil, status.Error(codes.NotFound, request.Name)
 	}
 	return child.ListBookings(ctx, request)
 }
@@ -60,7 +70,7 @@ func (b *BookingApiRouter) CheckInBooking(ctx context.Context, request *traits.C
 	child, exists := b.registry[request.Name]
 	b.mu.Unlock()
 	if !exists {
-		return nil, status.Error(codes.NotFound, fmt.Sprintf("device: %v", request.Name))
+		return nil, status.Error(codes.NotFound, request.Name)
 	}
 	return child.CheckInBooking(ctx, request)
 }
@@ -70,7 +80,7 @@ func (b *BookingApiRouter) CheckOutBooking(ctx context.Context, request *traits.
 	child, exists := b.registry[request.Name]
 	b.mu.Unlock()
 	if !exists {
-		return nil, status.Error(codes.NotFound, fmt.Sprintf("device: %v", request.Name))
+		return nil, status.Error(codes.NotFound, request.Name)
 	}
 	return child.CheckOutBooking(ctx, request)
 }
@@ -80,7 +90,7 @@ func (b *BookingApiRouter) CreateBooking(ctx context.Context, request *traits.Cr
 	child, exists := b.registry[request.Name]
 	b.mu.Unlock()
 	if !exists {
-		return nil, status.Error(codes.NotFound, fmt.Sprintf("device: %v", request.Name))
+		return nil, status.Error(codes.NotFound, request.Name)
 	}
 	return child.CreateBooking(ctx, request)
 }
@@ -90,7 +100,7 @@ func (b *BookingApiRouter) UpdateBooking(ctx context.Context, request *traits.Up
 	child, exists := b.registry[request.Name]
 	b.mu.Unlock()
 	if !exists {
-		return nil, status.Error(codes.NotFound, fmt.Sprintf("device: %v", request.Name))
+		return nil, status.Error(codes.NotFound, request.Name)
 	}
 	return child.UpdateBooking(ctx, request)
 }
@@ -100,7 +110,7 @@ func (b *BookingApiRouter) PullBookings(request *traits.ListBookingsRequest, ser
 	child, exists := b.registry[request.Name]
 	b.mu.Unlock()
 	if !exists {
-		return status.Error(codes.NotFound, fmt.Sprintf("device: %v", request.Name))
+		return status.Error(codes.NotFound, request.Name)
 	}
 
 	// so we can cancel our forwarding request if we can't send responses to our caller

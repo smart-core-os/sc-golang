@@ -2,11 +2,11 @@ package router
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"sync"
 
 	"git.vanti.co.uk/smartcore/sc-api/go/device/traits"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -21,6 +21,16 @@ type ThermostatRouter struct {
 
 // compile time check that we implement the interface we need
 var _ traits.ThermostatServer = &ThermostatRouter{}
+
+func NewThermostatRouter() *ThermostatRouter {
+	return &ThermostatRouter{
+		registry: make(map[string]traits.ThermostatClient),
+	}
+}
+
+func (b *ThermostatRouter) Register(server *grpc.Server) {
+	traits.RegisterThermostatServer(server, b)
+}
 
 func (b *ThermostatRouter) Add(name string, client traits.ThermostatClient) traits.ThermostatClient {
 	b.mu.Lock()
@@ -50,7 +60,7 @@ func (b *ThermostatRouter) UpdateState(ctx context.Context, request *traits.Upda
 	child, exists := b.registry[request.Name]
 	b.mu.Unlock()
 	if !exists {
-		return nil, status.Error(codes.NotFound, fmt.Sprintf("device: %v", request.Name))
+		return nil, status.Error(codes.NotFound, request.Name)
 	}
 
 	return child.UpdateState(ctx, request)
@@ -61,7 +71,7 @@ func (b *ThermostatRouter) GetState(ctx context.Context, request *traits.GetTher
 	child, exists := b.registry[request.Name]
 	b.mu.Unlock()
 	if !exists {
-		return nil, status.Error(codes.NotFound, fmt.Sprintf("device: %v", request.Name))
+		return nil, status.Error(codes.NotFound, request.Name)
 	}
 
 	return child.GetState(ctx, request)
@@ -72,7 +82,7 @@ func (b *ThermostatRouter) PullState(request *traits.PullThermostatStateRequest,
 	child, exists := b.registry[request.Name]
 	b.mu.Unlock()
 	if !exists {
-		return status.Error(codes.NotFound, fmt.Sprintf("device: %v", request.Name))
+		return status.Error(codes.NotFound, request.Name)
 	}
 
 	// so we can cancel our forwarding request if we can't send responses to our caller

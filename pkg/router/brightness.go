@@ -2,11 +2,11 @@ package router
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"sync"
 
 	"git.vanti.co.uk/smartcore/sc-api/go/device/traits"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -21,6 +21,16 @@ type BrightnessApiRouter struct {
 
 // compile time check that we implement the interface we need
 var _ traits.BrightnessApiServer = &BrightnessApiRouter{}
+
+func NewBrightnessApiRouter() *BrightnessApiRouter {
+	return &BrightnessApiRouter{
+		registry: make(map[string]traits.BrightnessApiClient),
+	}
+}
+
+func (b *BrightnessApiRouter) Register(server *grpc.Server) {
+	traits.RegisterBrightnessApiServer(server, b)
+}
 
 func (b *BrightnessApiRouter) Add(name string, client traits.BrightnessApiClient) traits.BrightnessApiClient {
 	b.mu.Lock()
@@ -50,7 +60,7 @@ func (b *BrightnessApiRouter) UpdateRangeValue(ctx context.Context, request *tra
 	child, exists := b.registry[request.Name]
 	b.mu.Unlock()
 	if !exists {
-		return nil, status.Error(codes.NotFound, fmt.Sprintf("device: %v", request.Name))
+		return nil, status.Error(codes.NotFound, request.Name)
 	}
 
 	return child.UpdateRangeValue(ctx, request)
@@ -61,7 +71,7 @@ func (b *BrightnessApiRouter) GetBrightness(ctx context.Context, request *traits
 	child, exists := b.registry[request.Name]
 	b.mu.Unlock()
 	if !exists {
-		return nil, status.Error(codes.NotFound, fmt.Sprintf("device: %v", request.Name))
+		return nil, status.Error(codes.NotFound, request.Name)
 	}
 
 	return child.GetBrightness(ctx, request)
@@ -72,7 +82,7 @@ func (b *BrightnessApiRouter) PullBrightness(request *traits.PullBrightnessReque
 	child, exists := b.registry[request.Name]
 	b.mu.Unlock()
 	if !exists {
-		return status.Error(codes.NotFound, fmt.Sprintf("device: %v", request.Name))
+		return status.Error(codes.NotFound, request.Name)
 	}
 
 	// so we can cancel our forwarding request if we can't send responses to our caller

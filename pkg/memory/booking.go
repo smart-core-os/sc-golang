@@ -21,6 +21,7 @@ import (
 )
 
 type BookingApi struct {
+	traits.UnimplementedBookingApiServer
 	bookingsById   map[int32]*traits.Booking
 	bookingsByIdMu sync.RWMutex
 	// emits the "change" event with a single Arg of type *traits.PullBookingsResponse_Change
@@ -28,6 +29,9 @@ type BookingApi struct {
 	// used for generating ids
 	Rng *rand.Rand
 }
+
+// compile time check that we implement the interface we need
+var _ traits.BookingApiServer = &BookingApi{}
 
 func NewBookingApi() *BookingApi {
 	return &BookingApi{

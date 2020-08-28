@@ -58,7 +58,7 @@ func (b *BookingApi) ListBookings(ctx context.Context, request *traits.ListBooki
 }
 
 func (b *BookingApi) CheckInBooking(ctx context.Context, request *traits.CheckInBookingRequest) (*traits.CheckInBookingResponse, error) {
-	_, err := b.applyChange(request.BookingId, func(oldBooking, newBooking *traits.Booking) error {
+	_, err := b.applyChange(request.BookingId, func(newBooking *traits.Booking) error {
 		if newBooking.CheckIn == nil {
 			newBooking.CheckIn = &time.Period{}
 		}
@@ -75,7 +75,7 @@ func (b *BookingApi) CheckInBooking(ctx context.Context, request *traits.CheckIn
 }
 
 func (b *BookingApi) CheckOutBooking(ctx context.Context, request *traits.CheckOutBookingRequest) (*traits.CheckOutBookingResponse, error) {
-	_, err := b.applyChange(request.BookingId, func(oldBooking, newBooking *traits.Booking) error {
+	_, err := b.applyChange(request.BookingId, func(newBooking *traits.Booking) error {
 		if newBooking.CheckIn == nil {
 			newBooking.CheckIn = &time.Period{}
 		}
@@ -162,7 +162,7 @@ func (b *BookingApi) UpdateBooking(ctx context.Context, request *traits.UpdateBo
 		}
 	}
 
-	change, err := b.applyChange(id, func(oldBooking, newBooking *traits.Booking) error {
+	change, err := b.applyChange(id, func(newBooking *traits.Booking) error {
 		if mask != nil {
 			// apply only selected fields
 			return fieldMaskUtils.StructToStruct(mask, request.Booking, newBooking)
@@ -208,7 +208,7 @@ func (b *BookingApi) PullBookings(request *traits.ListBookingsRequest, server tr
 	for {
 		select {
 		case <-server.Context().Done():
-			return nil
+			return status.FromContextError(server.Context().Err()).Err()
 		case event := <-changes:
 			change := event.Args[0].(*traits.PullBookingsResponse_Change)
 			sentChange := bookingChangeForQuery(request, change)
@@ -224,33 +224,32 @@ func (b *BookingApi) PullBookings(request *traits.ListBookingsRequest, server tr
 	}
 }
 
-func (b *BookingApi) applyChange(id string, fn func(oldBooking, newBooking *traits.Booking) error) (*traits.Booking, error) {
-	b.bookingsByIdMu.RLock()
-	booking, exists := b.bookingsById[id]
-	b.bookingsByIdMu.RUnlock()
-	if !exists {
-		return nil, status.Errorf(codes.NotFound, "unknown booking id %v", id)
-	}
+func (b *BookingApi) applyChange(id string, fn func(newBooking *traits.Booking) error) (*traits.Booking, error) {
+	oldValue, newValue, err := applyChange(
+		&b.bookingsByIdMu,
+		func() (proto.Message, bool) {
+			val, exists := b.bookingsById[id]
+			return val, exists
+		},
+		func(message proto.Message) error {
+			return fn(message.(*traits.Booking))
+		},
+		func(message proto.Message) {
+			b.bookingsById[id] = message.(*traits.Booking)
+		})
 
-	newBooking := proto.Clone(booking).(*traits.Booking)
-	if err := fn(booking, newBooking); err != nil {
+	if err != nil {
+		if s, ok := status.FromError(err); ok {
+			return nil, status.Errorf(s.Code(), "%v %v", s.Message(), id)
+		}
 		return nil, err
 	}
-
-	b.bookingsByIdMu.Lock()
-	defer b.bookingsByIdMu.Unlock()
-	bookingAgain := b.bookingsById[id]
-	if booking != bookingAgain {
-		return nil, status.Errorf(codes.Aborted, "concurrent update detected")
-	}
-
-	b.bookingsById[booking.Id] = newBooking
 	b.bus.Emit("change", &traits.PullBookingsResponse_Change{
 		Type:     types.ChangeType_UPDATE,
-		OldValue: booking,
-		NewValue: newBooking,
+		OldValue: oldValue.(*traits.Booking),
+		NewValue: newValue.(*traits.Booking),
 	})
-	return newBooking, nil
+	return newValue.(*traits.Booking), nil
 }
 
 // bookingChangeForQuery converts the given change to be relative to the query.

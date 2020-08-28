@@ -17,8 +17,8 @@ import (
 	"git.vanti.co.uk/smartcore/sc-golang/pkg/masks"
 )
 
-// WritableFields are all fields that can be updated
-var WritableFields = &fieldmaskpb.FieldMask{
+// ThermostatWritableFields are all fields that can be updated
+var ThermostatWritableFields = &fieldmaskpb.FieldMask{
 	Paths: []string{
 		"mode",
 		"temperature_goal",
@@ -61,7 +61,7 @@ func (t *Thermostat) GetState(ctx context.Context, request *traits.GetThermostat
 
 func (t *Thermostat) UpdateState(ctx context.Context, request *traits.UpdateThermostatStateRequest) (*traits.ThermostatState, error) {
 	// make sure they can only write the fields we want
-	mask, err := masks.ValidWritableMask(WritableFields, request.UpdateMask, request.State)
+	mask, err := masks.ValidWritableMask(ThermostatWritableFields, request.UpdateMask, request.State)
 	if err != nil {
 		return nil, err
 	}

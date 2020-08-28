@@ -11,8 +11,8 @@ import (
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
-var randIds = []int32{
-	1298498081,
+var randIds = []string{
+	"5577006791947779410",
 }
 
 func TestBookingApi_CreateBooking(t *testing.T) {
@@ -36,7 +36,7 @@ func TestBookingApi_CreateBooking(t *testing.T) {
 	}
 
 	if res.BookingId != randIds[0] {
-		t.Errorf("expected new id == %v; got %d", randIds[0], res.BookingId)
+		t.Errorf("expected new id == %v; got %s", randIds[0], res.BookingId)
 	}
 }
 
@@ -164,7 +164,7 @@ func TestBookingApi_ListBookings(t *testing.T) {
 	api.Rng.Seed(1)
 	ctx := context.Background()
 	b1 := &traits.Booking{
-		Id:       1,
+		Id:       "1",
 		Bookable: "room1",
 		Title:    "My Bookings",
 		Booked: &scTime.Period{
@@ -173,7 +173,7 @@ func TestBookingApi_ListBookings(t *testing.T) {
 		},
 	}
 	b2 := &traits.Booking{
-		Id:       2,
+		Id:       "2",
 		Bookable: "room1",
 		Title:    "My Bookings",
 		Booked: &scTime.Period{
@@ -182,7 +182,7 @@ func TestBookingApi_ListBookings(t *testing.T) {
 		},
 	}
 	b3 := &traits.Booking{
-		Id:       3,
+		Id:       "3",
 		Bookable: "room1",
 		Title:    "My Bookings",
 		Booked: &scTime.Period{

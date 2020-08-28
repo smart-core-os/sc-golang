@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/rand"
 	"sort"
+	"strconv"
 	"sync"
 
 	"git.vanti.co.uk/smartcore/sc-api/go/device/traits"
@@ -22,7 +23,7 @@ import (
 
 type BookingApi struct {
 	traits.UnimplementedBookingApiServer
-	bookingsById   map[int32]*traits.Booking
+	bookingsById   map[string]*traits.Booking
 	bookingsByIdMu sync.RWMutex
 	// emits the "change" event with a single Arg of type *traits.PullBookingsResponse_Change
 	bus *emitter.Emitter
@@ -35,7 +36,7 @@ var _ traits.BookingApiServer = &BookingApi{}
 
 func NewBookingApi() *BookingApi {
 	return &BookingApi{
-		bookingsById: make(map[int32]*traits.Booking),
+		bookingsById: make(map[string]*traits.Booking),
 		bus:          &emitter.Emitter{},
 		Rng:          rand.New(rand.NewSource(rand.Int63())),
 	}
@@ -95,14 +96,14 @@ func (b *BookingApi) CreateBooking(ctx context.Context, request *traits.CreateBo
 		return nil, status.Error(codes.InvalidArgument, "missing booking")
 	}
 	id := request.Booking.Id
-	idGenerated := id == 0
+	idGenerated := id == ""
 
-	if id == 0 {
+	if id == "" {
 		// try to generate a unique id
 		b.bookingsByIdMu.RLock()
 		for i := 0; i < 10; i++ {
-			idCandidate := b.Rng.Int31()
-			if _, exists := b.bookingsById[idCandidate]; idCandidate != 0 && !exists {
+			idCandidate := strconv.Itoa(b.Rng.Int())
+			if _, exists := b.bookingsById[idCandidate]; idCandidate != "" && !exists {
 				id = idCandidate
 				break
 			}
@@ -110,7 +111,7 @@ func (b *BookingApi) CreateBooking(ctx context.Context, request *traits.CreateBo
 		b.bookingsByIdMu.RUnlock()
 	}
 
-	if id == 0 {
+	if id == "" {
 		// no id can be generated, return an error
 		return nil, status.Error(codes.Aborted, "id generation attempts exhausted")
 	}
@@ -144,7 +145,7 @@ func (b *BookingApi) UpdateBooking(ctx context.Context, request *traits.UpdateBo
 	}
 
 	id := request.Booking.Id
-	if id == 0 {
+	if id == "" {
 		return nil, status.Error(codes.InvalidArgument, "missing booking.id")
 	}
 
@@ -223,7 +224,7 @@ func (b *BookingApi) PullBookings(request *traits.ListBookingsRequest, server tr
 	}
 }
 
-func (b *BookingApi) applyChange(id int32, fn func(oldBooking, newBooking *traits.Booking) error) (*traits.Booking, error) {
+func (b *BookingApi) applyChange(id string, fn func(oldBooking, newBooking *traits.Booking) error) (*traits.Booking, error) {
 	b.bookingsByIdMu.RLock()
 	booking, exists := b.bookingsById[id]
 	b.bookingsByIdMu.RUnlock()

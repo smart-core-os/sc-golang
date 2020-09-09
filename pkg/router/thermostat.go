@@ -28,61 +28,65 @@ func NewThermostatRouter() *ThermostatRouter {
 	}
 }
 
-func (b *ThermostatRouter) Register(server *grpc.Server) {
-	traits.RegisterThermostatServer(server, b)
+func (r *ThermostatRouter) Register(server *grpc.Server) {
+	traits.RegisterThermostatServer(server, r)
 }
 
-func (b *ThermostatRouter) Add(name string, client traits.ThermostatClient) traits.ThermostatClient {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	old := b.registry[name]
-	b.registry[name] = client
+func (r *ThermostatRouter) Add(name string, client traits.ThermostatClient) traits.ThermostatClient {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	old := r.registry[name]
+	r.registry[name] = client
 	return old
 }
 
-func (b *ThermostatRouter) Remove(name string) traits.ThermostatClient {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	old := b.registry[name]
-	delete(b.registry, name)
+func (r *ThermostatRouter) Remove(name string) traits.ThermostatClient {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	old := r.registry[name]
+	delete(r.registry, name)
 	return old
 }
 
-func (b *ThermostatRouter) Has(name string) bool {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	_, exists := b.registry[name]
+func (r *ThermostatRouter) Has(name string) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	_, exists := r.registry[name]
 	return exists
 }
 
-func (b *ThermostatRouter) UpdateState(ctx context.Context, request *traits.UpdateThermostatStateRequest) (*traits.ThermostatState, error) {
-	b.mu.Lock()
-	child, exists := b.registry[request.Name]
-	b.mu.Unlock()
+func (r *ThermostatRouter) Get(name string) (traits.ThermostatClient, error) {
+	r.mu.Lock()
+	child, exists := r.registry[name]
+	r.mu.Unlock()
 	if !exists {
-		return nil, status.Error(codes.NotFound, request.Name)
+		return nil, status.Error(codes.NotFound, name)
+	}
+	return child, nil
+}
+
+func (r *ThermostatRouter) UpdateState(ctx context.Context, request *traits.UpdateThermostatStateRequest) (*traits.ThermostatState, error) {
+	child, err := r.Get(request.Name)
+	if err != nil {
+		return nil, err
 	}
 
 	return child.UpdateState(ctx, request)
 }
 
-func (b *ThermostatRouter) GetState(ctx context.Context, request *traits.GetThermostatStateRequest) (*traits.ThermostatState, error) {
-	b.mu.Lock()
-	child, exists := b.registry[request.Name]
-	b.mu.Unlock()
-	if !exists {
-		return nil, status.Error(codes.NotFound, request.Name)
+func (r *ThermostatRouter) GetState(ctx context.Context, request *traits.GetThermostatStateRequest) (*traits.ThermostatState, error) {
+	child, err := r.Get(request.Name)
+	if err != nil {
+		return nil, err
 	}
 
 	return child.GetState(ctx, request)
 }
 
-func (b *ThermostatRouter) PullState(request *traits.PullThermostatStateRequest, server traits.Thermostat_PullStateServer) error {
-	b.mu.Lock()
-	child, exists := b.registry[request.Name]
-	b.mu.Unlock()
-	if !exists {
-		return status.Error(codes.NotFound, request.Name)
+func (r *ThermostatRouter) PullState(request *traits.PullThermostatStateRequest, server traits.Thermostat_PullStateServer) error {
+	child, err := r.Get(request.Name)
+	if err != nil {
+		return err
 	}
 
 	// so we can cancel our forwarding request if we can't send responses to our caller

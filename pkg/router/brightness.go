@@ -28,61 +28,65 @@ func NewBrightnessApiRouter() *BrightnessApiRouter {
 	}
 }
 
-func (b *BrightnessApiRouter) Register(server *grpc.Server) {
-	traits.RegisterBrightnessApiServer(server, b)
+func (r *BrightnessApiRouter) Register(server *grpc.Server) {
+	traits.RegisterBrightnessApiServer(server, r)
 }
 
-func (b *BrightnessApiRouter) Add(name string, client traits.BrightnessApiClient) traits.BrightnessApiClient {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	old := b.registry[name]
-	b.registry[name] = client
+func (r *BrightnessApiRouter) Add(name string, client traits.BrightnessApiClient) traits.BrightnessApiClient {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	old := r.registry[name]
+	r.registry[name] = client
 	return old
 }
 
-func (b *BrightnessApiRouter) Remove(name string) traits.BrightnessApiClient {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	old := b.registry[name]
-	delete(b.registry, name)
+func (r *BrightnessApiRouter) Remove(name string) traits.BrightnessApiClient {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	old := r.registry[name]
+	delete(r.registry, name)
 	return old
 }
 
-func (b *BrightnessApiRouter) Has(name string) bool {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	_, exists := b.registry[name]
+func (r *BrightnessApiRouter) Has(name string) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	_, exists := r.registry[name]
 	return exists
 }
 
-func (b *BrightnessApiRouter) UpdateRangeValue(ctx context.Context, request *traits.UpdateBrightnessRequest) (*traits.Brightness, error) {
-	b.mu.Lock()
-	child, exists := b.registry[request.Name]
-	b.mu.Unlock()
+func (r *BrightnessApiRouter) Get(name string) (traits.BrightnessApiClient, error) {
+	r.mu.Lock()
+	child, exists := r.registry[name]
+	r.mu.Unlock()
 	if !exists {
-		return nil, status.Error(codes.NotFound, request.Name)
+		return nil, status.Error(codes.NotFound, name)
+	}
+	return child, nil
+}
+
+func (r *BrightnessApiRouter) UpdateRangeValue(ctx context.Context, request *traits.UpdateBrightnessRequest) (*traits.Brightness, error) {
+	child, err := r.Get(request.Name)
+	if err != nil {
+		return nil, err
 	}
 
 	return child.UpdateRangeValue(ctx, request)
 }
 
-func (b *BrightnessApiRouter) GetBrightness(ctx context.Context, request *traits.GetBrightnessRequest) (*traits.Brightness, error) {
-	b.mu.Lock()
-	child, exists := b.registry[request.Name]
-	b.mu.Unlock()
-	if !exists {
-		return nil, status.Error(codes.NotFound, request.Name)
+func (r *BrightnessApiRouter) GetBrightness(ctx context.Context, request *traits.GetBrightnessRequest) (*traits.Brightness, error) {
+	child, err := r.Get(request.Name)
+	if err != nil {
+		return nil, err
 	}
 
 	return child.GetBrightness(ctx, request)
 }
 
-func (b *BrightnessApiRouter) PullBrightness(request *traits.PullBrightnessRequest, server traits.BrightnessApi_PullBrightnessServer) error {
-	b.mu.Lock()
-	child, exists := b.registry[request.Name]
-	b.mu.Unlock()
-	if !exists {
-		return status.Error(codes.NotFound, request.Name)
+func (r *BrightnessApiRouter) PullBrightness(request *traits.PullBrightnessRequest, server traits.BrightnessApi_PullBrightnessServer) error {
+	child, err := r.Get(request.Name)
+	if err != nil {
+		return err
 	}
 
 	// so we can cancel our forwarding request if we can't send responses to our caller

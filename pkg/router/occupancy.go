@@ -56,23 +56,29 @@ func (r *OccupancyApiRouter) Has(name string) bool {
 	return exists
 }
 
-func (r *OccupancyApiRouter) GetOccupancy(ctx context.Context, request *traits.GetOccupancyRequest) (*traits.Occupancy, error) {
+func (r *OccupancyApiRouter) Get(name string) (traits.OccupancyApiClient, error) {
 	r.mu.Lock()
-	child, exists := r.registry[request.Name]
+	child, exists := r.registry[name]
 	r.mu.Unlock()
 	if !exists {
-		return nil, status.Error(codes.NotFound, request.Name)
+		return nil, status.Error(codes.NotFound, name)
+	}
+	return child, nil
+}
+
+func (r *OccupancyApiRouter) GetOccupancy(ctx context.Context, request *traits.GetOccupancyRequest) (*traits.Occupancy, error) {
+	child, err := r.Get(request.Name)
+	if err != nil {
+		return nil, err
 	}
 
 	return child.GetOccupancy(ctx, request)
 }
 
 func (r *OccupancyApiRouter) PullOccupancy(request *traits.PullOccupancyRequest, server traits.OccupancyApi_PullOccupancyServer) error {
-	r.mu.Lock()
-	child, exists := r.registry[request.Name]
-	r.mu.Unlock()
-	if !exists {
-		return status.Error(codes.NotFound, request.Name)
+	child, err := r.Get(request.Name)
+	if err != nil {
+		return err
 	}
 
 	// so we can cancel our forwarding request if we can't send responses to our caller
@@ -129,55 +135,45 @@ func (r *OccupancyApiRouter) PullOccupancy(request *traits.PullOccupancyRequest,
 }
 
 func (r *OccupancyApiRouter) CreateOccupancyOverride(ctx context.Context, request *traits.CreateOccupancyOverrideRequest) (*traits.OccupancyOverride, error) {
-	r.mu.Lock()
-	child, exists := r.registry[request.Name]
-	r.mu.Unlock()
-	if !exists {
-		return nil, status.Error(codes.NotFound, request.Name)
+	child, err := r.Get(request.Name)
+	if err != nil {
+		return nil, err
 	}
 
 	return child.CreateOccupancyOverride(ctx, request)
 }
 
 func (r *OccupancyApiRouter) UpdateOccupancyOverride(ctx context.Context, request *traits.UpdateOccupancyOverrideRequest) (*traits.OccupancyOverride, error) {
-	r.mu.Lock()
-	child, exists := r.registry[request.Name]
-	r.mu.Unlock()
-	if !exists {
-		return nil, status.Error(codes.NotFound, request.Name)
+	child, err := r.Get(request.Name)
+	if err != nil {
+		return nil, err
 	}
 
 	return child.UpdateOccupancyOverride(ctx, request)
 }
 
 func (r *OccupancyApiRouter) DeleteOccupancyOverride(ctx context.Context, request *traits.DeleteOccupancyOverrideRequest) (*empty.Empty, error) {
-	r.mu.Lock()
-	child, exists := r.registry[request.DeviceName]
-	r.mu.Unlock()
-	if !exists {
-		return nil, status.Error(codes.NotFound, request.DeviceName)
+	child, err := r.Get(request.DeviceName)
+	if err != nil {
+		return nil, err
 	}
 
 	return child.DeleteOccupancyOverride(ctx, request)
 }
 
 func (r *OccupancyApiRouter) GetOccupancyOverride(ctx context.Context, request *traits.GetOccupancyOverrideRequest) (*traits.OccupancyOverride, error) {
-	r.mu.Lock()
-	child, exists := r.registry[request.DeviceName]
-	r.mu.Unlock()
-	if !exists {
-		return nil, status.Error(codes.NotFound, request.DeviceName)
+	child, err := r.Get(request.DeviceName)
+	if err != nil {
+		return nil, err
 	}
 
 	return child.GetOccupancyOverride(ctx, request)
 }
 
 func (r *OccupancyApiRouter) ListOccupancyOverrides(ctx context.Context, request *traits.ListOccupancyOverridesRequest) (*traits.ListOccupancyOverridesResponse, error) {
-	r.mu.Lock()
-	child, exists := r.registry[request.Name]
-	r.mu.Unlock()
-	if !exists {
-		return nil, status.Error(codes.NotFound, request.Name)
+	child, err := r.Get(request.Name)
+	if err != nil {
+		return nil, err
 	}
 
 	return child.ListOccupancyOverrides(ctx, request)

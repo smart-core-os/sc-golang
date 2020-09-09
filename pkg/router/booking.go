@@ -28,89 +28,87 @@ func NewBookingApiRouter() *BookingApiRouter {
 	}
 }
 
-func (b *BookingApiRouter) Register(server *grpc.Server) {
-	traits.RegisterBookingApiServer(server, b)
+func (r *BookingApiRouter) Register(server *grpc.Server) {
+	traits.RegisterBookingApiServer(server, r)
 }
 
-func (b *BookingApiRouter) Add(name string, client traits.BookingApiClient) traits.BookingApiClient {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	old := b.registry[name]
-	b.registry[name] = client
+func (r *BookingApiRouter) Add(name string, client traits.BookingApiClient) traits.BookingApiClient {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	old := r.registry[name]
+	r.registry[name] = client
 	return old
 }
 
-func (b *BookingApiRouter) Remove(name string) traits.BookingApiClient {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	old := b.registry[name]
-	delete(b.registry, name)
+func (r *BookingApiRouter) Remove(name string) traits.BookingApiClient {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	old := r.registry[name]
+	delete(r.registry, name)
 	return old
 }
 
-func (b *BookingApiRouter) Has(name string) bool {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	_, exists := b.registry[name]
+func (r *BookingApiRouter) Has(name string) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	_, exists := r.registry[name]
 	return exists
 }
 
-func (b *BookingApiRouter) ListBookings(ctx context.Context, request *traits.ListBookingsRequest) (*traits.ListBookingsResponse, error) {
-	b.mu.Lock()
-	child, exists := b.registry[request.Name]
-	b.mu.Unlock()
+func (r *BookingApiRouter) Get(name string) (traits.BookingApiClient, error) {
+	r.mu.Lock()
+	child, exists := r.registry[name]
+	r.mu.Unlock()
 	if !exists {
-		return nil, status.Error(codes.NotFound, request.Name)
+		return nil, status.Error(codes.NotFound, name)
+	}
+	return child, nil
+}
+
+func (r *BookingApiRouter) ListBookings(ctx context.Context, request *traits.ListBookingsRequest) (*traits.ListBookingsResponse, error) {
+	child, err := r.Get(request.Name)
+	if err != nil {
+		return nil, err
 	}
 	return child.ListBookings(ctx, request)
 }
 
-func (b *BookingApiRouter) CheckInBooking(ctx context.Context, request *traits.CheckInBookingRequest) (*traits.CheckInBookingResponse, error) {
-	b.mu.Lock()
-	child, exists := b.registry[request.Name]
-	b.mu.Unlock()
-	if !exists {
-		return nil, status.Error(codes.NotFound, request.Name)
+func (r *BookingApiRouter) CheckInBooking(ctx context.Context, request *traits.CheckInBookingRequest) (*traits.CheckInBookingResponse, error) {
+	child, err := r.Get(request.Name)
+	if err != nil {
+		return nil, err
 	}
 	return child.CheckInBooking(ctx, request)
 }
 
-func (b *BookingApiRouter) CheckOutBooking(ctx context.Context, request *traits.CheckOutBookingRequest) (*traits.CheckOutBookingResponse, error) {
-	b.mu.Lock()
-	child, exists := b.registry[request.Name]
-	b.mu.Unlock()
-	if !exists {
-		return nil, status.Error(codes.NotFound, request.Name)
+func (r *BookingApiRouter) CheckOutBooking(ctx context.Context, request *traits.CheckOutBookingRequest) (*traits.CheckOutBookingResponse, error) {
+	child, err := r.Get(request.Name)
+	if err != nil {
+		return nil, err
 	}
 	return child.CheckOutBooking(ctx, request)
 }
 
-func (b *BookingApiRouter) CreateBooking(ctx context.Context, request *traits.CreateBookingRequest) (*traits.CreateBookingResponse, error) {
-	b.mu.Lock()
-	child, exists := b.registry[request.Name]
-	b.mu.Unlock()
-	if !exists {
-		return nil, status.Error(codes.NotFound, request.Name)
+func (r *BookingApiRouter) CreateBooking(ctx context.Context, request *traits.CreateBookingRequest) (*traits.CreateBookingResponse, error) {
+	child, err := r.Get(request.Name)
+	if err != nil {
+		return nil, err
 	}
 	return child.CreateBooking(ctx, request)
 }
 
-func (b *BookingApiRouter) UpdateBooking(ctx context.Context, request *traits.UpdateBookingRequest) (*traits.UpdateBookingResponse, error) {
-	b.mu.Lock()
-	child, exists := b.registry[request.Name]
-	b.mu.Unlock()
-	if !exists {
-		return nil, status.Error(codes.NotFound, request.Name)
+func (r *BookingApiRouter) UpdateBooking(ctx context.Context, request *traits.UpdateBookingRequest) (*traits.UpdateBookingResponse, error) {
+	child, err := r.Get(request.Name)
+	if err != nil {
+		return nil, err
 	}
 	return child.UpdateBooking(ctx, request)
 }
 
-func (b *BookingApiRouter) PullBookings(request *traits.ListBookingsRequest, server traits.BookingApi_PullBookingsServer) error {
-	b.mu.Lock()
-	child, exists := b.registry[request.Name]
-	b.mu.Unlock()
-	if !exists {
-		return status.Error(codes.NotFound, request.Name)
+func (r *BookingApiRouter) PullBookings(request *traits.ListBookingsRequest, server traits.BookingApi_PullBookingsServer) error {
+	child, err := r.Get(request.Name)
+	if err != nil {
+		return err
 	}
 
 	// so we can cancel our forwarding request if we can't send responses to our caller

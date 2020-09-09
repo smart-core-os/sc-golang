@@ -49,16 +49,6 @@ func (o *OccupancyApi) PullOccupancy(request *traits.PullOccupancyRequest, serve
 	defer o.bus.Off("change:occupancy", changes)
 
 	name := request.Name
-	occupancy, err := o.GetOccupancy(server.Context(), &traits.GetOccupancyRequest{Name: name})
-	if err != nil {
-		return err
-	}
-	if err := server.Send(&traits.PullOccupancyResponse{Changes: []*traits.OccupancyChange{
-		{Name: name, Occupancy: occupancy, CreateTime: timestamppb.Now()},
-	}}); err != nil {
-		return err
-	}
-
 	for {
 		select {
 		case <-server.Context().Done():

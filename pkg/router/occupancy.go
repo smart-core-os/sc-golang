@@ -18,6 +18,8 @@ type OccupancyApiRouter struct {
 
 	mu       sync.Mutex
 	registry map[string]traits.OccupancyApiClient
+	// Factory can be used to dynamically create api clients if requests come in for devices we haven't seen.
+	Factory func(string) (traits.OccupancyApiClient, error)
 }
 
 // compile time check that we implement the interface we need
@@ -59,8 +61,16 @@ func (r *OccupancyApiRouter) Has(name string) bool {
 func (r *OccupancyApiRouter) Get(name string) (traits.OccupancyApiClient, error) {
 	r.mu.Lock()
 	child, exists := r.registry[name]
-	r.mu.Unlock()
+	defer r.mu.Unlock()
 	if !exists {
+		if r.Factory != nil {
+			child, err := r.Factory(name)
+			if err != nil {
+				return nil, err
+			}
+			r.registry[name] = child
+			return child, nil
+		}
 		return nil, status.Error(codes.NotFound, name)
 	}
 	return child, nil

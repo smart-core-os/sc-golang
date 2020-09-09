@@ -17,6 +17,8 @@ type BrightnessApiRouter struct {
 
 	mu       sync.Mutex
 	registry map[string]traits.BrightnessApiClient
+	// Factory can be used to dynamically create api clients if requests come in for devices we haven't seen.
+	Factory func(string) (traits.BrightnessApiClient, error)
 }
 
 // compile time check that we implement the interface we need
@@ -58,8 +60,16 @@ func (r *BrightnessApiRouter) Has(name string) bool {
 func (r *BrightnessApiRouter) Get(name string) (traits.BrightnessApiClient, error) {
 	r.mu.Lock()
 	child, exists := r.registry[name]
-	r.mu.Unlock()
+	defer r.mu.Unlock()
 	if !exists {
+		if r.Factory != nil {
+			child, err := r.Factory(name)
+			if err != nil {
+				return nil, err
+			}
+			r.registry[name] = child
+			return child, nil
+		}
 		return nil, status.Error(codes.NotFound, name)
 	}
 	return child, nil

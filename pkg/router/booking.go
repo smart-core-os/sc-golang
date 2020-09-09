@@ -17,6 +17,9 @@ type BookingApiRouter struct {
 
 	mu       sync.Mutex
 	registry map[string]traits.BookingApiClient
+
+	// Factory can be used to dynamically create api clients if requests come in for devices we haven't seen.
+	Factory func(string) (traits.BookingApiClient, error)
 }
 
 // compile time check that we implement the interface we need
@@ -58,8 +61,16 @@ func (r *BookingApiRouter) Has(name string) bool {
 func (r *BookingApiRouter) Get(name string) (traits.BookingApiClient, error) {
 	r.mu.Lock()
 	child, exists := r.registry[name]
-	r.mu.Unlock()
+	defer r.mu.Unlock()
 	if !exists {
+		if r.Factory != nil {
+			child, err := r.Factory(name)
+			if err != nil {
+				return nil, err
+			}
+			r.registry[name] = child
+			return child, nil
+		}
 		return nil, status.Error(codes.NotFound, name)
 	}
 	return child, nil

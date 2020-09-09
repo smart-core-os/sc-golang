@@ -67,9 +67,9 @@ func (o *OccupancyApi) PullOccupancy(request *traits.PullOccupancyRequest, serve
 			if !ok {
 				return nil
 			}
-			occupancyChange := change.Args[0].(*traits.OccupancyChange)
+			occupancy := change.Args[0].(*traits.Occupancy)
 			if err := server.Send(&traits.PullOccupancyResponse{Changes: []*traits.OccupancyChange{
-				occupancyChange,
+				{Name: name, Occupancy: occupancy, CreateTime: timestamppb.Now()},
 			}}); err != nil {
 				return err
 			}

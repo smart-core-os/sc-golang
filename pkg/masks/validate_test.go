@@ -27,6 +27,7 @@ func TestValidWritableMask(t *testing.T) {
 		{name: "no mask with writable", args: args{writableFields: fm(), message: ts()}, want: nil},
 		{name: "all writable", args: args{mask: fm("seconds"), message: ts()}, want: m("Seconds")},
 		{name: "none writable", args: args{writableFields: fm(), mask: fm("seconds"), message: ts()}, wantErr: true},
+		{name: "empty writable", args: args{writableFields: fm(""), mask: fm("seconds"), message: ts()}, wantErr: true},
 		{name: "some writable", args: args{writableFields: fm("seconds"), mask: fm("seconds"), message: ts()}, want: m("Seconds")},
 		{name: "not writable", args: args{writableFields: fm("seconds"), mask: fm("nanos"), message: ts()}, wantErr: true},
 		{name: "some not writable", args: args{writableFields: fm("seconds"), mask: fm("seconds", "nanos"), message: ts()}, wantErr: true},

@@ -17,7 +17,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	time2 "git.vanti.co.uk/smartcore/sc-golang/pkg/time"
 )
@@ -65,7 +64,7 @@ func (b *BookingApi) CheckInBooking(ctx context.Context, request *traits.CheckIn
 		}
 		newBooking.CheckIn.StartTime = request.Time
 		if newBooking.CheckIn.StartTime == nil {
-			newBooking.CheckIn.StartTime = timestamppb.Now()
+			newBooking.CheckIn.StartTime = serverTimestamp()
 		}
 		log.Printf("CheckInBooking %v at %v", request.Name, newBooking.CheckIn.StartTime.AsTime())
 		return nil
@@ -83,7 +82,7 @@ func (b *BookingApi) CheckOutBooking(ctx context.Context, request *traits.CheckO
 		}
 		newBooking.CheckIn.EndTime = request.Time
 		if newBooking.CheckIn.EndTime == nil {
-			newBooking.CheckIn.EndTime = timestamppb.Now()
+			newBooking.CheckIn.EndTime = serverTimestamp()
 		}
 		log.Printf("CheckOutBooking %v at %v", request.Name, newBooking.CheckIn.EndTime.AsTime())
 		return nil

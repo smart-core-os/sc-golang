@@ -8,7 +8,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func applyChange(mu *sync.RWMutex, get func() (proto.Message, bool), update func(proto.Message) error, set func(message proto.Message)) (oldValue proto.Message, newValue proto.Message, err error) {
+// applyChange is the equivalent to a getAndSet operation that handles absent properties.
+func applyChange(mu *sync.RWMutex, get func() (item proto.Message, exists bool), update func(proto.Message) error, set func(message proto.Message)) (oldValue proto.Message, newValue proto.Message, err error) {
 	mu.RLock()
 	oldValue, exists := get()
 	mu.RUnlock()

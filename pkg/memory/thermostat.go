@@ -12,7 +12,6 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"git.vanti.co.uk/smartcore/sc-golang/pkg/masks"
 )
@@ -34,13 +33,13 @@ type Thermostat struct {
 
 func NewThermostat() *Thermostat {
 	return &Thermostat{
-		state: InitialState(),
+		state: InitialThermostatState(),
 
 		bus: &emitter.Emitter{},
 	}
 }
 
-func InitialState() *traits.ThermostatState {
+func InitialThermostatState() *traits.ThermostatState {
 	return &traits.ThermostatState{
 		AmbientTemperature: &types.Temperature{ValueCelsius: 22},
 		TemperatureGoal: &traits.ThermostatState_TemperatureSetPoint{
@@ -94,7 +93,7 @@ func (t *Thermostat) UpdateState(ctx context.Context, request *traits.UpdateTher
 	t.bus.Emit("change", &traits.ThermostatStateChange{
 		Name:       request.Name,
 		State:      newValue.(*traits.ThermostatState),
-		CreateTime: timestamppb.Now(),
+		CreateTime: serverTimestamp(),
 	})
 
 	return newValue.(*traits.ThermostatState), err

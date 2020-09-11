@@ -8,7 +8,6 @@ import (
 	"github.com/olebedev/emitter"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type OccupancyApi struct {
@@ -59,7 +58,7 @@ func (o *OccupancyApi) PullOccupancy(request *traits.PullOccupancyRequest, serve
 			}
 			occupancy := change.Args[0].(*traits.Occupancy)
 			if err := server.Send(&traits.PullOccupancyResponse{Changes: []*traits.OccupancyChange{
-				{Name: name, Occupancy: occupancy, CreateTime: timestamppb.Now()},
+				{Name: name, Occupancy: occupancy, CreateTime: serverTimestamp()},
 			}}); err != nil {
 				return err
 			}

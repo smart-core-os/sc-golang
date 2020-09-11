@@ -18,7 +18,7 @@ func TestThermostat_GetState_Initial(t *testing.T) {
 	if err != nil {
 		t.Errorf("error not expected %v", err)
 	}
-	if diff := cmp.Diff(InitialState(), state, protocmp.Transform()); diff != "" {
+	if diff := cmp.Diff(InitialThermostatState(), state, protocmp.Transform()); diff != "" {
 		t.Errorf("unexpected initial value (-want,+got)\n%v", diff)
 	}
 }

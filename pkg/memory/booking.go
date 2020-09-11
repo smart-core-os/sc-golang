@@ -67,7 +67,7 @@ func (b *BookingApi) CheckInBooking(ctx context.Context, request *traits.CheckIn
 		if newBooking.CheckIn.StartTime == nil {
 			newBooking.CheckIn.StartTime = timestamppb.Now()
 		}
-		log.Printf("CheckInBooking %v at %v", request.Name, newBooking.CheckIn.StartTime)
+		log.Printf("CheckInBooking %v at %v", request.Name, newBooking.CheckIn.StartTime.AsTime())
 		return nil
 	})
 	if err != nil {
@@ -85,7 +85,7 @@ func (b *BookingApi) CheckOutBooking(ctx context.Context, request *traits.CheckO
 		if newBooking.CheckIn.EndTime == nil {
 			newBooking.CheckIn.EndTime = timestamppb.Now()
 		}
-		log.Printf("CheckOutBooking %v at %v", request.Name, newBooking.CheckIn.StartTime)
+		log.Printf("CheckOutBooking %v at %v", request.Name, newBooking.CheckIn.EndTime.AsTime())
 		return nil
 	})
 	if err != nil {

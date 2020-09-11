@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"log"
 	"math/rand"
 	"sort"
 	"strconv"
@@ -66,6 +67,7 @@ func (b *BookingApi) CheckInBooking(ctx context.Context, request *traits.CheckIn
 		if newBooking.CheckIn.StartTime == nil {
 			newBooking.CheckIn.StartTime = timestamppb.Now()
 		}
+		log.Printf("CheckInBooking %v at %v", request.Name, newBooking.CheckIn.StartTime)
 		return nil
 	})
 	if err != nil {
@@ -83,6 +85,7 @@ func (b *BookingApi) CheckOutBooking(ctx context.Context, request *traits.CheckO
 		if newBooking.CheckIn.EndTime == nil {
 			newBooking.CheckIn.EndTime = timestamppb.Now()
 		}
+		log.Printf("CheckOutBooking %v at %v", request.Name, newBooking.CheckIn.StartTime)
 		return nil
 	})
 	if err != nil {
@@ -131,6 +134,7 @@ func (b *BookingApi) CreateBooking(ctx context.Context, request *traits.CreateBo
 
 	request.Booking.Id = id
 	b.bookingsById[id] = request.Booking
+	log.Printf("CreateBooking %v %v", request.Name, request.Booking)
 	b.bus.Emit("change", &traits.PullBookingsResponse_Change{
 		Type:     types.ChangeType_ADD,
 		NewValue: request.Booking,
@@ -171,6 +175,8 @@ func (b *BookingApi) UpdateBooking(ctx context.Context, request *traits.UpdateBo
 
 			proto.Reset(newBooking)
 			proto.Merge(newBooking, request.Booking)
+
+			log.Printf("UpdateBooking %v %v", request.Name, newBooking)
 			return nil
 		}
 	})

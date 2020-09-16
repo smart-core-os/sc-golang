@@ -10,6 +10,13 @@ import (
 
 // applyChange is the equivalent to a getAndSet operation that handles absent properties.
 func applyChange(mu *sync.RWMutex, get func() (item proto.Message, exists bool), update func(proto.Message) error, set func(message proto.Message)) (oldValue proto.Message, newValue proto.Message, err error) {
+	return applyChangeOld(mu, get, func(_, new proto.Message) error {
+		return update(new)
+	}, set)
+}
+
+// applyChangeOld is the equivalent to a getAndSet operation that handles absent properties.
+func applyChangeOld(mu *sync.RWMutex, get func() (item proto.Message, exists bool), update func(old, new proto.Message) error, set func(message proto.Message)) (oldValue proto.Message, newValue proto.Message, err error) {
 	mu.RLock()
 	oldValue, exists := get()
 	mu.RUnlock()
@@ -18,7 +25,7 @@ func applyChange(mu *sync.RWMutex, get func() (item proto.Message, exists bool),
 	}
 
 	newValue = proto.Clone(oldValue)
-	if err := update(newValue); err != nil {
+	if err := update(oldValue, newValue); err != nil {
 		return oldValue, newValue, err
 	}
 

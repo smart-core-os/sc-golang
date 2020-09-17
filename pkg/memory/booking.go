@@ -17,6 +17,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
 	time2 "git.vanti.co.uk/smartcore/sc-golang/pkg/time"
 )
@@ -58,16 +59,20 @@ func (b *BookingApi) ListBookings(ctx context.Context, request *traits.ListBooki
 }
 
 func (b *BookingApi) CheckInBooking(ctx context.Context, request *traits.CheckInBookingRequest) (*traits.CheckInBookingResponse, error) {
-	_, err := b.applyChange(request.BookingId, func(newBooking *traits.Booking) error {
-		if newBooking.CheckIn == nil {
-			newBooking.CheckIn = &time.Period{}
-		}
-		newBooking.CheckIn.StartTime = request.Time
-		if newBooking.CheckIn.StartTime == nil {
-			newBooking.CheckIn.StartTime = serverTimestamp()
-		}
-		log.Printf("CheckInBooking %v at %v", request.Name, newBooking.CheckIn.StartTime.AsTime())
-		return nil
+	if request.Time == nil {
+		request.Time = serverTimestamp()
+	}
+	_, err := b.UpdateBooking(ctx, &traits.UpdateBookingRequest{
+		Name: request.Name,
+		Booking: &traits.Booking{
+			Id: request.BookingId,
+			CheckIn: &time.Period{
+				StartTime: request.Time,
+			},
+		},
+		UpdateMask: &fieldmaskpb.FieldMask{
+			Paths: []string{"check_in.start_time"},
+		},
 	})
 	if err != nil {
 		return nil, err
@@ -76,16 +81,20 @@ func (b *BookingApi) CheckInBooking(ctx context.Context, request *traits.CheckIn
 }
 
 func (b *BookingApi) CheckOutBooking(ctx context.Context, request *traits.CheckOutBookingRequest) (*traits.CheckOutBookingResponse, error) {
-	_, err := b.applyChange(request.BookingId, func(newBooking *traits.Booking) error {
-		if newBooking.CheckIn == nil {
-			newBooking.CheckIn = &time.Period{}
-		}
-		newBooking.CheckIn.EndTime = request.Time
-		if newBooking.CheckIn.EndTime == nil {
-			newBooking.CheckIn.EndTime = serverTimestamp()
-		}
-		log.Printf("CheckOutBooking %v at %v", request.Name, newBooking.CheckIn.EndTime.AsTime())
-		return nil
+	if request.Time == nil {
+		request.Time = serverTimestamp()
+	}
+	_, err := b.UpdateBooking(ctx, &traits.UpdateBookingRequest{
+		Name: request.Name,
+		Booking: &traits.Booking{
+			Id: request.BookingId,
+			CheckIn: &time.Period{
+				EndTime: request.Time,
+			},
+		},
+		UpdateMask: &fieldmaskpb.FieldMask{
+			Paths: []string{"check_in.end_time"},
+		},
 	})
 	if err != nil {
 		return nil, err
@@ -153,7 +162,7 @@ func (b *BookingApi) UpdateBooking(ctx context.Context, request *traits.UpdateBo
 	}
 
 	var mask fieldMaskUtils.Mask
-	if request.UpdateMask != nil && len(request.UpdateMask.Paths) > 0 {
+	if len(request.UpdateMask.GetPaths()) > 0 {
 		if !request.UpdateMask.IsValid(request.Booking) {
 			return nil, status.Error(codes.InvalidArgument, "invalid field_mask")
 		}
@@ -168,16 +177,19 @@ func (b *BookingApi) UpdateBooking(ctx context.Context, request *traits.UpdateBo
 	change, err := b.applyChange(id, func(newBooking *traits.Booking) error {
 		if mask != nil {
 			// apply only selected fields
-			return fieldMaskUtils.StructToStruct(mask, request.Booking, newBooking)
+			err := fieldMaskUtils.StructToStruct(mask, request.Booking, newBooking)
+			if err != nil {
+				return err
+			}
 		} else {
 			// replace the booking data
 
 			proto.Reset(newBooking)
 			proto.Merge(newBooking, request.Booking)
 
-			log.Printf("UpdateBooking %v %v", request.Name, newBooking)
-			return nil
 		}
+		log.Printf("UpdateBooking %v %v (mask:%v)", request.Name, newBooking, mask)
+		return nil
 	})
 	if err != nil {
 		return nil, err

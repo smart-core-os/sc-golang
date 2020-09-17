@@ -8,6 +8,8 @@ import (
 	"git.vanti.co.uk/smartcore/sc-api/go/device/traits"
 	scTime "git.vanti.co.uk/smartcore/sc-api/go/types/time"
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
@@ -154,8 +156,8 @@ func TestBookingApi_UpdateBooking(t *testing.T) {
 		},
 	}
 
-	if !reflect.DeepEqual(res.Booking, expected) {
-		t.Errorf("expected %v == %v", res.Booking, expected)
+	if diff := cmp.Diff(expected, res.Booking, protocmp.Transform()); diff != "" {
+		t.Errorf("response mismatch (-want, +got)\n%v", diff)
 	}
 }
 

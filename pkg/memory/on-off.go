@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"log"
 	"sync"
 
 	"git.vanti.co.uk/smartcore/sc-api/go/device/traits"
@@ -37,6 +38,7 @@ func (o *OnOff) On(ctx context.Context, request *traits.OnRequest) (*traits.OnRe
 		o.lastKnownState = types.OnOffState_ON
 		o.bus.Emit("change:on-off", o.lastKnownState)
 	}
+	log.Printf("[%v] OnOff.On", request.Name)
 	return &traits.OnReply{}, nil
 }
 
@@ -47,6 +49,7 @@ func (o *OnOff) Off(ctx context.Context, request *traits.OffRequest) (*traits.Of
 		o.lastKnownState = types.OnOffState_OFF
 		o.bus.Emit("change:on-off", o.lastKnownState)
 	}
+	log.Printf("[%v] OnOff.Off", request.Name)
 	return &traits.OffReply{}, nil
 }
 

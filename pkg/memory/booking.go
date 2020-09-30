@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+	goTime "time"
 
 	"git.vanti.co.uk/smartcore/sc-api/go/device/traits"
 	"git.vanti.co.uk/smartcore/sc-api/go/types"
@@ -21,6 +22,8 @@ import (
 
 	time2 "git.vanti.co.uk/smartcore/sc-golang/pkg/time"
 )
+
+const listBookingsOnPull = false
 
 type BookingApi struct {
 	traits.UnimplementedBookingApiServer
@@ -55,6 +58,7 @@ func (b *BookingApi) ListBookings(ctx context.Context, request *traits.ListBooki
 	sort.Slice(response.Bookings, func(i, j int) bool {
 		return response.Bookings[i].Id < response.Bookings[j].Id
 	})
+	log.Printf("ListBookings %v (%d returned)", request, len(response.Bookings))
 	return response, nil
 }
 
@@ -202,22 +206,32 @@ func (b *BookingApi) UpdateBooking(ctx context.Context, request *traits.UpdateBo
 func (b *BookingApi) PullBookings(request *traits.ListBookingsRequest, server traits.BookingApi_PullBookingsServer) error {
 	changes := b.bus.On("change")
 	defer b.bus.Off("change", changes)
+	id := rand.Int()
+	t0 := goTime.Now()
+	sentItems := 0
+	defer func() {
+		log.Printf("[%x] PullBookings done in %v: sent %v", id, goTime.Now().Sub(t0), sentItems)
+	}()
+	log.Printf("[%x] PullBookings start %v", id, request)
 
-	// send all the bookings we already know about
-	currentBookings, err := b.ListBookings(server.Context(), request)
-	if err != nil {
-		return err
-	}
-	initialResponse := &traits.PullBookingsResponse{}
-	for _, booking := range currentBookings.Bookings {
-		initialResponse.Changes = append(initialResponse.Changes, &traits.PullBookingsResponse_Change{
-			Type:     types.ChangeType_ADD,
-			NewValue: booking,
-		})
-	}
-	if len(initialResponse.Changes) > 0 {
-		if err := server.Send(initialResponse); err != nil {
+	if listBookingsOnPull {
+		// send all the bookings we already know about
+		currentBookings, err := b.ListBookings(server.Context(), request)
+		if err != nil {
 			return err
+		}
+		initialResponse := &traits.PullBookingsResponse{}
+		for _, booking := range currentBookings.Bookings {
+			initialResponse.Changes = append(initialResponse.Changes, &traits.PullBookingsResponse_Change{
+				Type:     types.ChangeType_ADD,
+				NewValue: booking,
+			})
+		}
+		if len(initialResponse.Changes) > 0 {
+			if err := server.Send(initialResponse); err != nil {
+				return err
+			}
+			sentItems += len(initialResponse.Changes)
 		}
 	}
 
@@ -236,6 +250,7 @@ func (b *BookingApi) PullBookings(request *traits.ListBookingsRequest, server tr
 				}}); err != nil {
 					return err
 				}
+				sentItems++
 			}
 		}
 	}

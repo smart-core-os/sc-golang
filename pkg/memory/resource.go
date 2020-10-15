@@ -40,11 +40,23 @@ func (r *Resource) Get() proto.Message {
 	return r.value
 }
 
+// Update applies properties from value to the underlying resource. Only updateMask properties will be changed
 func (r *Resource) Update(value proto.Message, updateMask *fieldmaskpb.FieldMask) (proto.Message, error) {
-	return r.UpdateModified(value, updateMask, func(old, new proto.Message) {})
+	return r.update(value, updateMask, nil, nil)
 }
 
+// UpdateDelta works like Update but the given callback is called with the old value and the change to convert the
+// change into absolute values.
+func (r *Resource) UpdateDelta(value proto.Message, updateMask *fieldmaskpb.FieldMask, convertDelta func(old, change proto.Message)) (proto.Message, error) {
+	return r.update(value, updateMask, convertDelta, nil)
+}
+
+// UpdateModified works like Update but the callback is invoked after the update with the old and new values.
 func (r *Resource) UpdateModified(value proto.Message, updateMask *fieldmaskpb.FieldMask, updateModifier func(old, new proto.Message)) (proto.Message, error) {
+	return r.update(value, updateMask, nil, updateModifier)
+}
+
+func (r *Resource) update(value proto.Message, updateMask *fieldmaskpb.FieldMask, beforeUpdate, afterUpdate func(old, new proto.Message)) (proto.Message, error) {
 	// make sure they can only write the fields we want
 	mask, err := masks.ValidWritableMask(r.writableFields, updateMask, value)
 	if err != nil {
@@ -57,6 +69,10 @@ func (r *Resource) UpdateModified(value proto.Message, updateMask *fieldmaskpb.F
 			return r.value, true
 		},
 		func(old, new proto.Message) error {
+			if beforeUpdate != nil {
+				// convert the value from relative to absolute values
+				beforeUpdate(old, value)
+			}
 			if mask != nil {
 				// apply only selected fields
 				if err := fieldMaskUtils.StructToStruct(mask, value, new); err != nil {
@@ -68,7 +84,10 @@ func (r *Resource) UpdateModified(value proto.Message, updateMask *fieldmaskpb.F
 				proto.Merge(new, value)
 			}
 
-			updateModifier(old, new)
+			if afterUpdate != nil {
+				// apply any after change changes, like setting update times
+				afterUpdate(old, new)
+			}
 			return nil
 		},
 		func(message proto.Message) {
@@ -153,5 +172,12 @@ func WithInitialValue(v proto.Message) ResourceOption {
 func WithWritableFields(fields *fieldmaskpb.FieldMask) ResourceOption {
 	return newFuncResourceOption(func(r *Resource) {
 		r.writableFields = fields
+	})
+}
+
+// WithWritablePaths sets the fields that can be modified via Update calls
+func WithWritablePaths(paths ...string) ResourceOption {
+	return newFuncResourceOption(func(r *Resource) {
+		r.writableFields = &fieldmaskpb.FieldMask{Paths: paths}
 	})
 }

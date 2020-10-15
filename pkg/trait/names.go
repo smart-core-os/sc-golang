@@ -4,6 +4,7 @@ const (
 	Audit             = "smartcore.device.traits.v1.Audit"
 	Booking           = "smartcore.device.traits.v1.Booking"
 	Brightness        = "smartcore.device.traits.v1.Brightness"
+	Count             = "smartcore.device.traits.v1.Count"
 	Emergency         = "smartcore.device.traits.v1.Emergency"
 	ExtendRetract     = "smartcore.device.traits.v1.ExtendRetract"
 	Health            = "smartcore.device.traits.v1.Health"

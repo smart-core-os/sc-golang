@@ -3,7 +3,7 @@ module git.vanti.co.uk/smartcore/sc-golang
 go 1.14
 
 require (
-	git.vanti.co.uk/smartcore/sc-api/go v1.0.0-beta.8
+	git.vanti.co.uk/smartcore/sc-api/go v1.0.0-beta.11
 	github.com/golang/protobuf v1.4.2
 	github.com/google/go-cmp v0.5.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0
@@ -14,5 +14,3 @@ require (
 	google.golang.org/grpc v1.30.0
 	google.golang.org/protobuf v1.25.0
 )
-
-replace git.vanti.co.uk/smartcore/sc-api/go => ../sc-api/go

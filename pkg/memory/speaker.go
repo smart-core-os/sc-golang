@@ -7,6 +7,7 @@ import (
 	"git.vanti.co.uk/smartcore/sc-api/go/types"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 type Speaker struct {
@@ -29,7 +30,15 @@ func (s *Speaker) GetVolume(ctx context.Context, request *traits.GetSpeakerVolum
 }
 
 func (s *Speaker) UpdateVolume(ctx context.Context, request *traits.UpdateSpeakerVolumeRequest) (*types.Volume, error) {
-	newValue, err := s.volume.Update(request.Volume, request.UpdateMask)
+	newValue, err := s.volume.UpdateDelta(request.Volume, request.UpdateMask, func(old, change proto.Message) {
+		if request.Delta {
+			val := old.(*types.Volume)
+			delta := change.(*types.Volume)
+			if val.GetGain().GetValue() != nil && delta.GetGain().GetValue() != nil {
+				delta.Gain.Value.Value += val.Gain.Value.Value
+			}
+		}
+	})
 	if err != nil {
 		return nil, err
 	}

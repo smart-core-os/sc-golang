@@ -120,11 +120,15 @@ func (r *Resource) OnUpdate(ctx context.Context) (updates <-chan *ResourceChange
 				if !ok {
 					return
 				}
-				typedEvents <- event.Args[0].(*ResourceChange)
+				select {
+				case <-ctx.Done():
+					return // give up sending
+				case typedEvents <- event.Args[0].(*ResourceChange):
+				}
 			}
 		}
 	}()
-	return updates, func() {
+	return typedEvents, func() {
 		// note: causes the listener to close, which eventually closes the typedEvents chan too
 		r.bus.Off("update", on)
 	}

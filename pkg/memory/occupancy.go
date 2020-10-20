@@ -2,6 +2,9 @@ package memory
 
 import (
 	"context"
+	"log"
+	"math/rand"
+	goTime "time"
 
 	"git.vanti.co.uk/smartcore/sc-api/go/device/traits"
 	"google.golang.org/grpc"
@@ -33,6 +36,14 @@ func (o *OccupancyApi) GetOccupancy(ctx context.Context, request *traits.GetOccu
 }
 
 func (o *OccupancyApi) PullOccupancy(request *traits.PullOccupancyRequest, server traits.OccupancyApi_PullOccupancyServer) error {
+	id := rand.Int()
+	t0 := goTime.Now()
+	sentItems := 0
+	defer func() {
+		log.Printf("[%x] PullOccupancy done in %v: sent %v", id, goTime.Now().Sub(t0), sentItems)
+	}()
+	log.Printf("[%x] PullOccupancy start %v", id, request)
+
 	changes, done := o.occupancy.OnUpdate(server.Context())
 	defer done()
 
@@ -54,6 +65,7 @@ func (o *OccupancyApi) PullOccupancy(request *traits.PullOccupancyRequest, serve
 			}}); err != nil {
 				return err
 			}
+			sentItems++
 		}
 	}
 }

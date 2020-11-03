@@ -3,12 +3,12 @@ package wrap
 import (
 	"context"
 
-	"git.vanti.co.uk/smartcore/sc-api/go/device/traits"
+	"git.vanti.co.uk/smartcore/sc-api/go/traits"
 	"google.golang.org/grpc"
 )
 
-// EmergencyApiClientFromServer adapts a EmergencyApiServer and presents it as a EmergencyApiClient
-func EmergencyApiClientFromServer(server traits.EmergencyApiServer) traits.EmergencyApiClient {
+// EmergencyApiServer adapts a traits.EmergencyApiServer and presents it as a traits.EmergencyApiClient
+func EmergencyApiServer(server traits.EmergencyApiServer) traits.EmergencyApiClient {
 	return &emergencyApiServerClient{server}
 }
 

@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"time"
 
-	"git.vanti.co.uk/smartcore/sc-api/go/device/info"
+	"git.vanti.co.uk/smartcore/sc-api/go/info"
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"

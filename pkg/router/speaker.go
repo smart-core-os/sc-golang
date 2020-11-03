@@ -5,37 +5,37 @@ import (
 	"io"
 	"sync"
 
-	"git.vanti.co.uk/smartcore/sc-api/go/device/traits"
+	"git.vanti.co.uk/smartcore/sc-api/go/traits"
 	"git.vanti.co.uk/smartcore/sc-api/go/types"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-// SpeakerRouter is a SpeakerServer that allows routing named requests to specific SpeakerClients
-type SpeakerRouter struct {
-	traits.UnimplementedSpeakerServer
+// SpeakerApiRouter is a SpeakerApiServer that allows routing named requests to specific SpeakerApiClients
+type SpeakerApiRouter struct {
+	traits.UnimplementedSpeakerApiServer
 
 	mu       sync.Mutex
-	registry map[string]traits.SpeakerClient
+	registry map[string]traits.SpeakerApiClient
 	// Factory can be used to dynamically create api clients if requests come in for devices we haven't seen.
-	Factory func(string) (traits.SpeakerClient, error)
+	Factory func(string) (traits.SpeakerApiClient, error)
 }
 
 // compile time check that we implement the interface we need
-var _ traits.SpeakerServer = &SpeakerRouter{}
+var _ traits.SpeakerApiServer = &SpeakerApiRouter{}
 
-func NewSpeakerRouter() *SpeakerRouter {
-	return &SpeakerRouter{
-		registry: make(map[string]traits.SpeakerClient),
+func NewSpeakerApiRouter() *SpeakerApiRouter {
+	return &SpeakerApiRouter{
+		registry: make(map[string]traits.SpeakerApiClient),
 	}
 }
 
-func (r *SpeakerRouter) Register(server *grpc.Server) {
-	traits.RegisterSpeakerServer(server, r)
+func (r *SpeakerApiRouter) Register(server *grpc.Server) {
+	traits.RegisterSpeakerApiServer(server, r)
 }
 
-func (r *SpeakerRouter) Add(name string, client traits.SpeakerClient) traits.SpeakerClient {
+func (r *SpeakerApiRouter) Add(name string, client traits.SpeakerApiClient) traits.SpeakerApiClient {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	old := r.registry[name]
@@ -43,7 +43,7 @@ func (r *SpeakerRouter) Add(name string, client traits.SpeakerClient) traits.Spe
 	return old
 }
 
-func (r *SpeakerRouter) Remove(name string) traits.SpeakerClient {
+func (r *SpeakerApiRouter) Remove(name string) traits.SpeakerApiClient {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	old := r.registry[name]
@@ -51,14 +51,14 @@ func (r *SpeakerRouter) Remove(name string) traits.SpeakerClient {
 	return old
 }
 
-func (r *SpeakerRouter) Has(name string) bool {
+func (r *SpeakerApiRouter) Has(name string) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	_, exists := r.registry[name]
 	return exists
 }
 
-func (r *SpeakerRouter) Get(name string) (traits.SpeakerClient, error) {
+func (r *SpeakerApiRouter) Get(name string) (traits.SpeakerApiClient, error) {
 	r.mu.Lock()
 	child, exists := r.registry[name]
 	defer r.mu.Unlock()
@@ -76,7 +76,7 @@ func (r *SpeakerRouter) Get(name string) (traits.SpeakerClient, error) {
 	return child, nil
 }
 
-func (r *SpeakerRouter) GetVolume(ctx context.Context, request *traits.GetSpeakerVolumeRequest) (*types.Volume, error) {
+func (r *SpeakerApiRouter) GetVolume(ctx context.Context, request *traits.GetSpeakerVolumeRequest) (*types.AudioLevel, error) {
 	child, err := r.Get(request.Name)
 	if err != nil {
 		return nil, err
@@ -85,7 +85,7 @@ func (r *SpeakerRouter) GetVolume(ctx context.Context, request *traits.GetSpeake
 	return child.GetVolume(ctx, request)
 }
 
-func (r *SpeakerRouter) UpdateVolume(ctx context.Context, request *traits.UpdateSpeakerVolumeRequest) (*types.Volume, error) {
+func (r *SpeakerApiRouter) UpdateVolume(ctx context.Context, request *traits.UpdateSpeakerVolumeRequest) (*types.AudioLevel, error) {
 	child, err := r.Get(request.Name)
 	if err != nil {
 		return nil, err
@@ -94,7 +94,7 @@ func (r *SpeakerRouter) UpdateVolume(ctx context.Context, request *traits.Update
 	return child.UpdateVolume(ctx, request)
 }
 
-func (r *SpeakerRouter) PullVolume(request *traits.PullSpeakerVolumeRequest, server traits.Speaker_PullVolumeServer) error {
+func (r *SpeakerApiRouter) PullVolume(request *traits.PullSpeakerVolumeRequest, server traits.SpeakerApi_PullVolumeServer) error {
 	child, err := r.Get(request.Name)
 	if err != nil {
 		return err

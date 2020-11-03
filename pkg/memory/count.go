@@ -3,7 +3,7 @@ package memory
 import (
 	"context"
 
-	"git.vanti.co.uk/smartcore/sc-api/go/device/traits"
+	"git.vanti.co.uk/smartcore/sc-api/go/traits"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -33,11 +33,11 @@ func InitialCount() *traits.Count {
 	}
 }
 
-func (t *CountApi) GetCount(ctx context.Context, request *traits.GetCountRequest) (*traits.Count, error) {
+func (t *CountApi) GetCount(_ context.Context, _ *traits.GetCountRequest) (*traits.Count, error) {
 	return t.count.Get().(*traits.Count), nil
 }
 
-func (t *CountApi) ResetCount(ctx context.Context, request *traits.ResetCountRequest) (*traits.Count, error) {
+func (t *CountApi) ResetCount(_ context.Context, request *traits.ResetCountRequest) (*traits.Count, error) {
 	rt := request.ResetTime
 	if rt == nil {
 		rt = timestamppb.Now()
@@ -48,7 +48,7 @@ func (t *CountApi) ResetCount(ctx context.Context, request *traits.ResetCountReq
 	return res.(*traits.Count), err
 }
 
-func (t *CountApi) UpdateCount(ctx context.Context, request *traits.UpdateCountRequest) (*traits.Count, error) {
+func (t *CountApi) UpdateCount(_ context.Context, request *traits.UpdateCountRequest) (*traits.Count, error) {
 	res, err := t.count.UpdateDelta(request.Count, request.UpdateMask, func(old, value proto.Message) {
 		if request.Delta {
 			tOld := old.(*traits.Count)

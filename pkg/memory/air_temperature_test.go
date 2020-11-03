@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"git.vanti.co.uk/smartcore/sc-api/go/device/traits"
+	"git.vanti.co.uk/smartcore/sc-api/go/traits"
 	"git.vanti.co.uk/smartcore/sc-api/go/types"
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -12,31 +12,31 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-func TestThermostat_GetState_Initial(t *testing.T) {
-	api := NewThermostat()
-	state, err := api.GetState(context.Background(), &traits.GetThermostatStateRequest{Name: "test"})
+func TestAirTemperature_GetState_Initial(t *testing.T) {
+	api := NewAirTemperatureApi()
+	state, err := api.GetAirTemperature(context.Background(), &traits.GetAirTemperatureRequest{Name: "test"})
 	if err != nil {
 		t.Errorf("error not expected %v", err)
 	}
-	if diff := cmp.Diff(InitialThermostatState(), state, protocmp.Transform()); diff != "" {
+	if diff := cmp.Diff(InitialAirTemperatureState(), state, protocmp.Transform()); diff != "" {
 		t.Errorf("unexpected initial value (-want,+got)\n%v", diff)
 	}
 }
 
-func TestThermostat_UpdateState(t *testing.T) {
-	api := NewThermostat()
-	initialState, _ := api.GetState(context.Background(), &traits.GetThermostatStateRequest{Name: "test"})
-	newState := &traits.ThermostatState{
+func TestAirTemperature_UpdateAirTemperature(t *testing.T) {
+	api := NewAirTemperatureApi()
+	initialState, _ := api.GetAirTemperature(context.Background(), &traits.GetAirTemperatureRequest{Name: "test"})
+	newState := &traits.AirTemperature{
 		// fields we can edit
-		Mode: traits.ThermostatMode_ECO,
-		TemperatureGoal: &traits.ThermostatState_TemperatureSetPoint{
+		Mode: traits.AirTemperature_ECO,
+		TemperatureGoal: &traits.AirTemperature_TemperatureSetPoint{
 			TemperatureSetPoint: &types.Temperature{ValueCelsius: 30},
 		},
 		// fields we can't edit
 		AmbientTemperature: &types.Temperature{ValueCelsius: -12},
 		AmbientHumidity:    wrapperspb.Float(12.2),
 	}
-	updatedState, err := api.UpdateState(context.Background(), &traits.UpdateThermostatStateRequest{
+	updatedState, err := api.UpdateAirTemperature(context.Background(), &traits.UpdateAirTemperatureRequest{
 		Name:  "test",
 		State: newState,
 	})
@@ -47,34 +47,34 @@ func TestThermostat_UpdateState(t *testing.T) {
 	// check the response is what we expect
 	// writable fields
 	if diff := cmp.Diff(newState.Mode, updatedState.Mode, protocmp.Transform()); diff != "" {
-		t.Errorf("UpdateState() Mode mismatch (-want,+got)\n%v", diff)
+		t.Errorf("UpdateAirTemperature() Mode mismatch (-want,+got)\n%v", diff)
 	}
 	if diff := cmp.Diff(newState.TemperatureGoal, updatedState.TemperatureGoal, protocmp.Transform()); diff != "" {
-		t.Errorf("UpdateState() TemperatureGoal mismatch (-want,+got)\n%v", diff)
+		t.Errorf("UpdateAirTemperature() TemperatureGoal mismatch (-want,+got)\n%v", diff)
 	}
 	// read-only fields
 	if diff := cmp.Diff(initialState.AmbientHumidity, updatedState.AmbientHumidity, protocmp.Transform()); diff != "" {
-		t.Errorf("UpdateState() AmbientHumidity mismatch (-want,+got)\n%v", diff)
+		t.Errorf("UpdateAirTemperature() AmbientHumidity mismatch (-want,+got)\n%v", diff)
 	}
 	if diff := cmp.Diff(initialState.AmbientTemperature, updatedState.AmbientTemperature, protocmp.Transform()); diff != "" {
-		t.Errorf("UpdateState() AmbientTemperature mismatch (-want,+got)\n%v", diff)
+		t.Errorf("UpdateAirTemperature() AmbientTemperature mismatch (-want,+got)\n%v", diff)
 	}
 }
 
-func TestThermostat_UpdateState_Mask(t *testing.T) {
-	api := NewThermostat()
-	initialState, _ := api.GetState(context.Background(), &traits.GetThermostatStateRequest{Name: "test"})
-	newState := &traits.ThermostatState{
+func TestAirTemperature_UpdateAirTemperature_Mask(t *testing.T) {
+	api := NewAirTemperatureApi()
+	initialState, _ := api.GetAirTemperature(context.Background(), &traits.GetAirTemperatureRequest{Name: "test"})
+	newState := &traits.AirTemperature{
 		// fields we can edit
-		Mode: traits.ThermostatMode_ECO,
-		TemperatureGoal: &traits.ThermostatState_TemperatureSetPoint{
+		Mode: traits.AirTemperature_ECO,
+		TemperatureGoal: &traits.AirTemperature_TemperatureSetPoint{
 			TemperatureSetPoint: &types.Temperature{ValueCelsius: 30},
 		},
 		// fields we can't edit
 		AmbientTemperature: &types.Temperature{ValueCelsius: -12},
 		AmbientHumidity:    wrapperspb.Float(12.2),
 	}
-	updatedState, err := api.UpdateState(context.Background(), &traits.UpdateThermostatStateRequest{
+	updatedState, err := api.UpdateAirTemperature(context.Background(), &traits.UpdateAirTemperatureRequest{
 		Name:       "test",
 		State:      newState,
 		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"mode"}},
@@ -86,17 +86,17 @@ func TestThermostat_UpdateState_Mask(t *testing.T) {
 	// check the response is what we expect
 	// writable fields
 	if diff := cmp.Diff(newState.Mode, updatedState.Mode, protocmp.Transform()); diff != "" {
-		t.Errorf("UpdateState() Mode mismatch (-want,+got)\n%v", diff)
+		t.Errorf("UpdateAirTemperature() Mode mismatch (-want,+got)\n%v", diff)
 	}
 	// unedited
 	if diff := cmp.Diff(initialState.TemperatureGoal, updatedState.TemperatureGoal, protocmp.Transform()); diff != "" {
-		t.Errorf("UpdateState() TemperatureGoal mismatch (-want,+got)\n%v", diff)
+		t.Errorf("UpdateAirTemperature() TemperatureGoal mismatch (-want,+got)\n%v", diff)
 	}
 	// read-only fields
 	if diff := cmp.Diff(initialState.AmbientHumidity, updatedState.AmbientHumidity, protocmp.Transform()); diff != "" {
-		t.Errorf("UpdateState() AmbientHumidity mismatch (-want,+got)\n%v", diff)
+		t.Errorf("UpdateAirTemperature() AmbientHumidity mismatch (-want,+got)\n%v", diff)
 	}
 	if diff := cmp.Diff(initialState.AmbientTemperature, updatedState.AmbientTemperature, protocmp.Transform()); diff != "" {
-		t.Errorf("UpdateState() AmbientTemperature mismatch (-want,+got)\n%v", diff)
+		t.Errorf("UpdateAirTemperature() AmbientTemperature mismatch (-want,+got)\n%v", diff)
 	}
 }

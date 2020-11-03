@@ -9,7 +9,7 @@ import (
 	"sync"
 	goTime "time"
 
-	"git.vanti.co.uk/smartcore/sc-api/go/device/traits"
+	"git.vanti.co.uk/smartcore/sc-api/go/traits"
 	"git.vanti.co.uk/smartcore/sc-api/go/types"
 	"git.vanti.co.uk/smartcore/sc-api/go/types/time"
 	"github.com/iancoleman/strcase"
@@ -46,7 +46,7 @@ func NewBookingApi() *BookingApi {
 	}
 }
 
-func (b *BookingApi) ListBookings(ctx context.Context, request *traits.ListBookingsRequest) (*traits.ListBookingsResponse, error) {
+func (b *BookingApi) ListBookings(_ context.Context, request *traits.ListBookingsRequest) (*traits.ListBookingsResponse, error) {
 	response := &traits.ListBookingsResponse{}
 	b.bookingsByIdMu.RLock()
 	for _, booking := range b.bookingsById {
@@ -106,7 +106,7 @@ func (b *BookingApi) CheckOutBooking(ctx context.Context, request *traits.CheckO
 	return &traits.CheckOutBookingResponse{}, nil
 }
 
-func (b *BookingApi) CreateBooking(ctx context.Context, request *traits.CreateBookingRequest) (*traits.CreateBookingResponse, error) {
+func (b *BookingApi) CreateBooking(_ context.Context, request *traits.CreateBookingRequest) (*traits.CreateBookingResponse, error) {
 	if request.Booking == nil {
 		return nil, status.Error(codes.InvalidArgument, "missing booking")
 	}
@@ -155,7 +155,7 @@ func (b *BookingApi) CreateBooking(ctx context.Context, request *traits.CreateBo
 	return &traits.CreateBookingResponse{BookingId: id}, nil
 }
 
-func (b *BookingApi) UpdateBooking(ctx context.Context, request *traits.UpdateBookingRequest) (*traits.UpdateBookingResponse, error) {
+func (b *BookingApi) UpdateBooking(_ context.Context, request *traits.UpdateBookingRequest) (*traits.UpdateBookingResponse, error) {
 	if request.Booking == nil {
 		return nil, status.Error(codes.InvalidArgument, "missing booking")
 	}
@@ -178,7 +178,7 @@ func (b *BookingApi) UpdateBooking(ctx context.Context, request *traits.UpdateBo
 		}
 	}
 
-	change, err := b.applyChange(id, func(newBooking *traits.Booking) error {
+	change, err := b.applyChange(request.Name, id, func(newBooking *traits.Booking) error {
 		if mask != nil {
 			// apply only selected fields
 			err := fieldMaskUtils.StructToStruct(mask, request.Booking, newBooking)
@@ -223,6 +223,7 @@ func (b *BookingApi) PullBookings(request *traits.ListBookingsRequest, server tr
 		initialResponse := &traits.PullBookingsResponse{}
 		for _, booking := range currentBookings.Bookings {
 			initialResponse.Changes = append(initialResponse.Changes, &traits.PullBookingsResponse_Change{
+				Name:     request.Name,
 				Type:     types.ChangeType_ADD,
 				NewValue: booking,
 			})
@@ -256,7 +257,7 @@ func (b *BookingApi) PullBookings(request *traits.ListBookingsRequest, server tr
 	}
 }
 
-func (b *BookingApi) applyChange(id string, fn func(newBooking *traits.Booking) error) (*traits.Booking, error) {
+func (b *BookingApi) applyChange(name string, id string, fn func(newBooking *traits.Booking) error) (*traits.Booking, error) {
 	oldValue, newValue, err := applyChange(
 		&b.bookingsByIdMu,
 		func() (proto.Message, bool) {
@@ -277,6 +278,7 @@ func (b *BookingApi) applyChange(id string, fn func(newBooking *traits.Booking) 
 		return nil, err
 	}
 	b.bus.Emit("change", &traits.PullBookingsResponse_Change{
+		Name:     name,
 		Type:     types.ChangeType_UPDATE,
 		OldValue: oldValue.(*traits.Booking),
 		NewValue: newValue.(*traits.Booking),
@@ -297,12 +299,14 @@ func bookingChangeForQuery(query *traits.ListBookingsRequest, change *traits.Pul
 	if wasIncluded && !isIncluded {
 		// removed from query
 		sentChange = &traits.PullBookingsResponse_Change{
+			Name:     change.Name,
 			Type:     types.ChangeType_REMOVE,
 			OldValue: change.OldValue,
 		}
 	} else if !wasIncluded && isIncluded {
 		// added to query
 		sentChange = &traits.PullBookingsResponse_Change{
+			Name:     change.Name,
 			Type:     types.ChangeType_ADD,
 			NewValue: change.NewValue,
 		}

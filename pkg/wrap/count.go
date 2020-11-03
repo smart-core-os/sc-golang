@@ -3,12 +3,12 @@ package wrap
 import (
 	"context"
 
-	"git.vanti.co.uk/smartcore/sc-api/go/device/traits"
+	"git.vanti.co.uk/smartcore/sc-api/go/traits"
 	"google.golang.org/grpc"
 )
 
-// CountApiClientFromServer adapts a CountApiServer and presents it as a CountApiClient
-func CountApiClientFromServer(server traits.CountApiServer) traits.CountApiClient {
+// CountApiServer adapts a traits.CountApiServer and presents it as a traits.CountApiClient
+func CountApiServer(server traits.CountApiServer) traits.CountApiClient {
 	return &countApiServerClient{server}
 }
 
@@ -19,19 +19,19 @@ type countApiServerClient struct {
 // compile time check that we implement the interface we need
 var _ traits.CountApiClient = &countApiServerClient{}
 
-func (c *countApiServerClient) GetCount(ctx context.Context, in *traits.GetCountRequest, opts ...grpc.CallOption) (*traits.Count, error) {
+func (c *countApiServerClient) GetCount(ctx context.Context, in *traits.GetCountRequest, _ ...grpc.CallOption) (*traits.Count, error) {
 	return c.server.GetCount(ctx, in)
 }
 
-func (c *countApiServerClient) ResetCount(ctx context.Context, in *traits.ResetCountRequest, opts ...grpc.CallOption) (*traits.Count, error) {
+func (c *countApiServerClient) ResetCount(ctx context.Context, in *traits.ResetCountRequest, _ ...grpc.CallOption) (*traits.Count, error) {
 	return c.server.ResetCount(ctx, in)
 }
 
-func (c *countApiServerClient) UpdateCount(ctx context.Context, in *traits.UpdateCountRequest, opts ...grpc.CallOption) (*traits.Count, error) {
+func (c *countApiServerClient) UpdateCount(ctx context.Context, in *traits.UpdateCountRequest, _ ...grpc.CallOption) (*traits.Count, error) {
 	return c.server.UpdateCount(ctx, in)
 }
 
-func (c *countApiServerClient) PullCounts(ctx context.Context, in *traits.PullCountsRequest, opts ...grpc.CallOption) (traits.CountApi_PullCountsClient, error) {
+func (c *countApiServerClient) PullCounts(ctx context.Context, in *traits.PullCountsRequest, _ ...grpc.CallOption) (traits.CountApi_PullCountsClient, error) {
 	stream := newClientServerStream(ctx)
 	server := &countApiPullCountsServer{stream.Server()}
 	client := &countApiPullCountsClient{stream.Client()}

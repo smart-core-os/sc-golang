@@ -3,12 +3,12 @@ package wrap
 import (
 	"context"
 
-	"git.vanti.co.uk/smartcore/sc-api/go/device/traits"
+	"git.vanti.co.uk/smartcore/sc-api/go/traits"
 	"google.golang.org/grpc"
 )
 
-// BookingApiClientFromServer adapts a BookingApiServer and presents it as a BookingApiClient
-func BookingApiClientFromServer(server traits.BookingApiServer) traits.BookingApiClient {
+// BookingApiServer adapts a traits.BookingApiServer and presents it as a traits.BookingApiClient
+func BookingApiServer(server traits.BookingApiServer) traits.BookingApiClient {
 	return &bookingApiServerClient{server}
 }
 

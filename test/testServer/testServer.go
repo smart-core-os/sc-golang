@@ -6,11 +6,12 @@ import (
 	"log"
 	"net/url"
 
-	"git.vanti.co.uk/smartcore/sc-api/go/device/info"
+	"git.vanti.co.uk/smartcore/sc-api/go/info"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/credentials"
 
 	"git.vanti.co.uk/smartcore/sc-golang/pkg/server"
+	"git.vanti.co.uk/smartcore/sc-golang/pkg/trait"
 )
 
 func main() {
@@ -33,10 +34,7 @@ func main() {
 	done := s.Startup(addr)
 
 	t1 := &info.Trait{
-		Name:       "smartcore.api.device.trait.Brightness",
-		Readable:   false,
-		Writable:   false,
-		Observable: false,
+		Name: trait.Light,
 	}
 
 	s.RegisterDevice(&info.Device{

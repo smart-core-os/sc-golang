@@ -6,36 +6,36 @@ import (
 	"math/rand"
 	goTime "time"
 
-	"git.vanti.co.uk/smartcore/sc-api/go/device/traits"
+	"git.vanti.co.uk/smartcore/sc-api/go/traits"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
 )
 
-type OccupancyApi struct {
-	traits.UnimplementedOccupancyApiServer
+type OccupancySensorApi struct {
+	traits.UnimplementedOccupancySensorApiServer
 	occupancy *Resource
 }
 
-func NewOccupancyApi(initialState *traits.Occupancy) *OccupancyApi {
-	return &OccupancyApi{
+func NewOccupancyApi(initialState *traits.Occupancy) *OccupancySensorApi {
+	return &OccupancySensorApi{
 		occupancy: NewResource(WithInitialValue(initialState)),
 	}
 }
 
-func (o *OccupancyApi) Register(server *grpc.Server) {
-	traits.RegisterOccupancyApiServer(server, o)
+func (o *OccupancySensorApi) Register(server *grpc.Server) {
+	traits.RegisterOccupancySensorApiServer(server, o)
 }
 
 // SetOccupancy updates the known occupancy state for this device
-func (o *OccupancyApi) SetOccupancy(ctx context.Context, occupancy *traits.Occupancy) {
+func (o *OccupancySensorApi) SetOccupancy(_ context.Context, occupancy *traits.Occupancy) {
 	_, _ = o.occupancy.Update(occupancy, nil)
 }
 
-func (o *OccupancyApi) GetOccupancy(ctx context.Context, request *traits.GetOccupancyRequest) (*traits.Occupancy, error) {
+func (o *OccupancySensorApi) GetOccupancy(_ context.Context, _ *traits.GetOccupancyRequest) (*traits.Occupancy, error) {
 	return o.occupancy.Get().(*traits.Occupancy), nil
 }
 
-func (o *OccupancyApi) PullOccupancy(request *traits.PullOccupancyRequest, server traits.OccupancyApi_PullOccupancyServer) error {
+func (o *OccupancySensorApi) PullOccupancy(request *traits.PullOccupancyRequest, server traits.OccupancySensorApi_PullOccupancyServer) error {
 	id := rand.Int()
 	t0 := goTime.Now()
 	sentItems := 0
@@ -55,12 +55,12 @@ func (o *OccupancyApi) PullOccupancy(request *traits.PullOccupancyRequest, serve
 			if !ok {
 				return nil
 			}
-			change := &traits.OccupancyChange{
+			change := &traits.PullOccupancyResponse_Change{
 				Name:       request.Name,
 				Occupancy:  event.Value.(*traits.Occupancy),
-				CreateTime: event.ChangeTime,
+				ChangeTime: event.ChangeTime,
 			}
-			if err := server.Send(&traits.PullOccupancyResponse{Changes: []*traits.OccupancyChange{
+			if err := server.Send(&traits.PullOccupancyResponse{Changes: []*traits.PullOccupancyResponse_Change{
 				change,
 			}}); err != nil {
 				return err

@@ -3,7 +3,7 @@ package memory
 import (
 	"context"
 
-	"git.vanti.co.uk/smartcore/sc-api/go/device/traits"
+	"git.vanti.co.uk/smartcore/sc-api/go/traits"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -22,7 +22,7 @@ func NewEmergencyApi() *EmergencyApi {
 
 func InitialEmergency() *traits.Emergency {
 	return &traits.Emergency{
-		Level:           traits.EmergencyLevel_EMERGENCY_LEVEL_OK,
+		Level:           traits.Emergency_OK,
 		LevelChangeTime: serverTimestamp(),
 	}
 }
@@ -31,11 +31,11 @@ func (t *EmergencyApi) Register(server *grpc.Server) {
 	traits.RegisterEmergencyApiServer(server, t)
 }
 
-func (t *EmergencyApi) GetEmergency(ctx context.Context, request *traits.GetEmergencyRequest) (*traits.Emergency, error) {
+func (t *EmergencyApi) GetEmergency(_ context.Context, _ *traits.GetEmergencyRequest) (*traits.Emergency, error) {
 	return t.state.Get().(*traits.Emergency), nil
 }
 
-func (t *EmergencyApi) UpdateEmergency(ctx context.Context, request *traits.UpdateEmergencyRequest) (*traits.Emergency, error) {
+func (t *EmergencyApi) UpdateEmergency(_ context.Context, request *traits.UpdateEmergencyRequest) (*traits.Emergency, error) {
 	update, err := t.state.UpdateModified(request.Emergency, request.UpdateMask, func(old, new proto.Message) {
 		// user server time if the level changed but the change time didn't
 		oldt, newt := old.(*traits.Emergency), new.(*traits.Emergency)
@@ -55,13 +55,13 @@ func (t *EmergencyApi) PullEmergency(request *traits.PullEmergencyRequest, serve
 		case <-server.Context().Done():
 			return status.FromContextError(server.Context().Err()).Err()
 		case event := <-changes:
-			change := &traits.EmergencyChange{
+			change := &traits.PullEmergencyResponse_Change{
 				Name:       request.Name,
 				Emergency:  event.Value.(*traits.Emergency),
-				CreateTime: event.ChangeTime,
+				ChangeTime: event.ChangeTime,
 			}
 			err := server.Send(&traits.PullEmergencyResponse{
-				Changes: []*traits.EmergencyChange{change},
+				Changes: []*traits.PullEmergencyResponse_Change{change},
 			})
 			if err != nil {
 				return err

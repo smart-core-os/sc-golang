@@ -5,37 +5,36 @@ import (
 	"io"
 	"sync"
 
-	"git.vanti.co.uk/smartcore/sc-api/go/device/traits"
-	"github.com/golang/protobuf/ptypes/empty"
+	"git.vanti.co.uk/smartcore/sc-api/go/traits"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-// OccupancyApiRouter is a OccupancyApiServer that allows routing named requests to specific OccupancyApiClients
-type OccupancyApiRouter struct {
-	traits.UnimplementedOccupancyApiServer
+// OccupancySensorApiRouter is a OccupancySensorApiServer that allows routing named requests to specific OccupancySensorApiClients
+type OccupancySensorApiRouter struct {
+	traits.UnimplementedOccupancySensorApiServer
 
 	mu       sync.Mutex
-	registry map[string]traits.OccupancyApiClient
+	registry map[string]traits.OccupancySensorApiClient
 	// Factory can be used to dynamically create api clients if requests come in for devices we haven't seen.
-	Factory func(string) (traits.OccupancyApiClient, error)
+	Factory func(string) (traits.OccupancySensorApiClient, error)
 }
 
 // compile time check that we implement the interface we need
-var _ traits.OccupancyApiServer = &OccupancyApiRouter{}
+var _ traits.OccupancySensorApiServer = &OccupancySensorApiRouter{}
 
-func NewOccupancyApiRouter() *OccupancyApiRouter {
-	return &OccupancyApiRouter{
-		registry: make(map[string]traits.OccupancyApiClient),
+func NewOccupancySensorApiRouter() *OccupancySensorApiRouter {
+	return &OccupancySensorApiRouter{
+		registry: make(map[string]traits.OccupancySensorApiClient),
 	}
 }
 
-func (r *OccupancyApiRouter) Register(server *grpc.Server) {
-	traits.RegisterOccupancyApiServer(server, r)
+func (r *OccupancySensorApiRouter) Register(server *grpc.Server) {
+	traits.RegisterOccupancySensorApiServer(server, r)
 }
 
-func (r *OccupancyApiRouter) Add(name string, client traits.OccupancyApiClient) traits.OccupancyApiClient {
+func (r *OccupancySensorApiRouter) Add(name string, client traits.OccupancySensorApiClient) traits.OccupancySensorApiClient {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	old := r.registry[name]
@@ -43,7 +42,7 @@ func (r *OccupancyApiRouter) Add(name string, client traits.OccupancyApiClient) 
 	return old
 }
 
-func (r *OccupancyApiRouter) Remove(name string) traits.OccupancyApiClient {
+func (r *OccupancySensorApiRouter) Remove(name string) traits.OccupancySensorApiClient {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	old := r.registry[name]
@@ -51,14 +50,14 @@ func (r *OccupancyApiRouter) Remove(name string) traits.OccupancyApiClient {
 	return old
 }
 
-func (r *OccupancyApiRouter) Has(name string) bool {
+func (r *OccupancySensorApiRouter) Has(name string) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	_, exists := r.registry[name]
 	return exists
 }
 
-func (r *OccupancyApiRouter) Get(name string) (traits.OccupancyApiClient, error) {
+func (r *OccupancySensorApiRouter) Get(name string) (traits.OccupancySensorApiClient, error) {
 	r.mu.Lock()
 	child, exists := r.registry[name]
 	defer r.mu.Unlock()
@@ -76,7 +75,7 @@ func (r *OccupancyApiRouter) Get(name string) (traits.OccupancyApiClient, error)
 	return child, nil
 }
 
-func (r *OccupancyApiRouter) GetOccupancy(ctx context.Context, request *traits.GetOccupancyRequest) (*traits.Occupancy, error) {
+func (r *OccupancySensorApiRouter) GetOccupancy(ctx context.Context, request *traits.GetOccupancyRequest) (*traits.Occupancy, error) {
 	child, err := r.Get(request.Name)
 	if err != nil {
 		return nil, err
@@ -85,7 +84,7 @@ func (r *OccupancyApiRouter) GetOccupancy(ctx context.Context, request *traits.G
 	return child.GetOccupancy(ctx, request)
 }
 
-func (r *OccupancyApiRouter) PullOccupancy(request *traits.PullOccupancyRequest, server traits.OccupancyApi_PullOccupancyServer) error {
+func (r *OccupancySensorApiRouter) PullOccupancy(request *traits.PullOccupancyRequest, server traits.OccupancySensorApi_PullOccupancyServer) error {
 	child, err := r.Get(request.Name)
 	if err != nil {
 		return err
@@ -142,49 +141,4 @@ func (r *OccupancyApiRouter) PullOccupancy(request *traits.PullOccupancyRequest,
 		}
 		return err
 	}
-}
-
-func (r *OccupancyApiRouter) CreateOccupancyOverride(ctx context.Context, request *traits.CreateOccupancyOverrideRequest) (*traits.OccupancyOverride, error) {
-	child, err := r.Get(request.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	return child.CreateOccupancyOverride(ctx, request)
-}
-
-func (r *OccupancyApiRouter) UpdateOccupancyOverride(ctx context.Context, request *traits.UpdateOccupancyOverrideRequest) (*traits.OccupancyOverride, error) {
-	child, err := r.Get(request.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	return child.UpdateOccupancyOverride(ctx, request)
-}
-
-func (r *OccupancyApiRouter) DeleteOccupancyOverride(ctx context.Context, request *traits.DeleteOccupancyOverrideRequest) (*empty.Empty, error) {
-	child, err := r.Get(request.DeviceName)
-	if err != nil {
-		return nil, err
-	}
-
-	return child.DeleteOccupancyOverride(ctx, request)
-}
-
-func (r *OccupancyApiRouter) GetOccupancyOverride(ctx context.Context, request *traits.GetOccupancyOverrideRequest) (*traits.OccupancyOverride, error) {
-	child, err := r.Get(request.DeviceName)
-	if err != nil {
-		return nil, err
-	}
-
-	return child.GetOccupancyOverride(ctx, request)
-}
-
-func (r *OccupancyApiRouter) ListOccupancyOverrides(ctx context.Context, request *traits.ListOccupancyOverridesRequest) (*traits.ListOccupancyOverridesResponse, error) {
-	child, err := r.Get(request.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	return child.ListOccupancyOverrides(ctx, request)
 }

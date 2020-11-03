@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"git.vanti.co.uk/smartcore/sc-api/go/device/traits"
+	"git.vanti.co.uk/smartcore/sc-api/go/traits"
 	scTime "git.vanti.co.uk/smartcore/sc-api/go/types/time"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/google/go-cmp/cmp"

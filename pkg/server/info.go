@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"git.vanti.co.uk/smartcore/sc-api/go/device/info"
+	"git.vanti.co.uk/smartcore/sc-api/go/info"
 	"go.uber.org/zap"
 )
 

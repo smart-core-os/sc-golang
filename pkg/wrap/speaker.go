@@ -3,32 +3,32 @@ package wrap
 import (
 	"context"
 
-	"git.vanti.co.uk/smartcore/sc-api/go/device/traits"
+	"git.vanti.co.uk/smartcore/sc-api/go/traits"
 	"git.vanti.co.uk/smartcore/sc-api/go/types"
 	"google.golang.org/grpc"
 )
 
-// SpeakerClientFromServer adapts a SpeakerServer and presents it as a SpeakerClient
-func SpeakerClientFromServer(server traits.SpeakerServer) traits.SpeakerClient {
-	return &speakerServerClient{server}
+// SpeakerApiServer adapts a traits.SpeakerApiServer and presents it as a traits.SpeakerApiClient
+func SpeakerApiServer(server traits.SpeakerApiServer) traits.SpeakerApiClient {
+	return &speakerApiServerClient{server}
 }
 
-type speakerServerClient struct {
-	server traits.SpeakerServer
+type speakerApiServerClient struct {
+	server traits.SpeakerApiServer
 }
 
 // compile time check that we implement the interface we need
-var _ traits.SpeakerClient = &speakerServerClient{}
+var _ traits.SpeakerApiClient = &speakerApiServerClient{}
 
-func (b *speakerServerClient) GetVolume(ctx context.Context, in *traits.GetSpeakerVolumeRequest, opts ...grpc.CallOption) (*types.Volume, error) {
+func (b *speakerApiServerClient) GetVolume(ctx context.Context, in *traits.GetSpeakerVolumeRequest, _ ...grpc.CallOption) (*types.AudioLevel, error) {
 	return b.server.GetVolume(ctx, in)
 }
 
-func (b *speakerServerClient) UpdateVolume(ctx context.Context, in *traits.UpdateSpeakerVolumeRequest, opts ...grpc.CallOption) (*types.Volume, error) {
+func (b *speakerApiServerClient) UpdateVolume(ctx context.Context, in *traits.UpdateSpeakerVolumeRequest, _ ...grpc.CallOption) (*types.AudioLevel, error) {
 	return b.server.UpdateVolume(ctx, in)
 }
 
-func (b *speakerServerClient) PullVolume(ctx context.Context, in *traits.PullSpeakerVolumeRequest, opts ...grpc.CallOption) (traits.Speaker_PullVolumeClient, error) {
+func (b *speakerApiServerClient) PullVolume(ctx context.Context, in *traits.PullSpeakerVolumeRequest, _ ...grpc.CallOption) (traits.SpeakerApi_PullVolumeClient, error) {
 	stream := newClientServerStream(ctx)
 	server := &speakerPullVolumeServer{stream.Server()}
 	client := &speakerPullVolumeClient{stream.Client()}

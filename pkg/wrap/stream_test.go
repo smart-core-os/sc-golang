@@ -5,9 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"git.vanti.co.uk/smartcore/sc-api/go/device/traits"
-	"git.vanti.co.uk/smartcore/sc-api/go/types"
-	"google.golang.org/protobuf/types/known/wrapperspb"
+	"git.vanti.co.uk/smartcore/sc-api/go/traits"
 )
 
 func Test_clientSend(t *testing.T) {
@@ -17,9 +15,7 @@ func Test_clientSend(t *testing.T) {
 	server := clientServer.Server()
 
 	sentMessage := &traits.Brightness{
-		Level: &types.Int32Var{
-			Value: wrapperspb.Int32(12),
-		},
+		LevelPercent: 12,
 	}
 	receivedMessage := &traits.Brightness{}
 
@@ -38,9 +34,7 @@ func Test_serverSend(t *testing.T) {
 	server := clientServer.Server()
 
 	sentMessage := &traits.Brightness{
-		Level: &types.Int32Var{
-			Value: wrapperspb.Int32(12),
-		},
+		LevelPercent: 12,
 	}
 	receivedMessage := &traits.Brightness{}
 

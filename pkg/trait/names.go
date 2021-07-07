@@ -16,6 +16,7 @@ const (
 	OccupancySensor  = "smartcore.traits.OccupancySensor"
 	OnOff            = "smartcore.traits.OnOff"
 	OpenClose        = "smartcore.traits.OpenClose"
+	PowerSupply      = "smartcore.traits.PowerSupply"
 	Ptz              = "smartcore.traits.Ptz"
 	Speaker          = "smartcore.traits.Speaker"
 )

@@ -9,18 +9,18 @@ import (
 	"sync"
 	goTime "time"
 
-	"git.vanti.co.uk/smartcore/sc-api/go/traits"
-	"git.vanti.co.uk/smartcore/sc-api/go/types"
-	"git.vanti.co.uk/smartcore/sc-api/go/types/time"
 	"github.com/iancoleman/strcase"
 	fieldMaskUtils "github.com/mennanov/fieldmask-utils"
 	"github.com/olebedev/emitter"
+	"github.com/smart-core-os/sc-api/go/traits"
+	"github.com/smart-core-os/sc-api/go/types"
+	"github.com/smart-core-os/sc-api/go/types/time"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
-	time2 "git.vanti.co.uk/smartcore/sc-golang/pkg/time"
+	time2 "github.com/smart-core-os/sc-golang/pkg/time"
 )
 
 const listBookingsOnPull = false

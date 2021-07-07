@@ -10,7 +10,7 @@ import (
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"git.vanti.co.uk/smartcore/sc-golang/pkg/masks"
+	"github.com/smart-core-os/sc-golang/pkg/masks"
 )
 
 // Resource represents a simple state field in an object. Think Temperature or Volume or Occupancy. Use a Resource to

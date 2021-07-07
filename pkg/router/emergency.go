@@ -5,7 +5,7 @@ import (
 	"io"
 	"sync"
 
-	"git.vanti.co.uk/smartcore/sc-api/go/traits"
+	"github.com/smart-core-os/sc-api/go/traits"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

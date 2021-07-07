@@ -5,10 +5,10 @@ import (
 	"reflect"
 	"testing"
 
-	"git.vanti.co.uk/smartcore/sc-api/go/traits"
-	scTime "git.vanti.co.uk/smartcore/sc-api/go/types/time"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/google/go-cmp/cmp"
+	"github.com/smart-core-os/sc-api/go/traits"
+	scTime "github.com/smart-core-os/sc-api/go/types/time"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )

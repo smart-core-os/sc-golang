@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc/credentials"
 
-	"git.vanti.co.uk/smartcore/sc-golang/pkg/client"
+	"github.com/smart-core-os/sc-golang/pkg/client"
 )
 
 func main() {

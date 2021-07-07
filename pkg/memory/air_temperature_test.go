@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"git.vanti.co.uk/smartcore/sc-api/go/traits"
-	"git.vanti.co.uk/smartcore/sc-api/go/types"
 	"github.com/google/go-cmp/cmp"
+	"github.com/smart-core-os/sc-api/go/traits"
+	"github.com/smart-core-os/sc-api/go/types"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"

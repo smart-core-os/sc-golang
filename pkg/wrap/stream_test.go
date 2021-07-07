@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"git.vanti.co.uk/smartcore/sc-api/go/traits"
+	"github.com/smart-core-os/sc-api/go/traits"
 )
 
 func Test_clientSend(t *testing.T) {

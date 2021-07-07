@@ -3,7 +3,7 @@ package wrap
 import (
 	"context"
 
-	"git.vanti.co.uk/smartcore/sc-api/go/traits"
+	"github.com/smart-core-os/sc-api/go/traits"
 	"google.golang.org/grpc"
 )
 

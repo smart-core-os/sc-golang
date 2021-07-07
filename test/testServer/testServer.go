@@ -6,12 +6,12 @@ import (
 	"log"
 	"net/url"
 
-	"git.vanti.co.uk/smartcore/sc-api/go/info"
+	"github.com/smart-core-os/sc-api/go/info"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/credentials"
 
-	"git.vanti.co.uk/smartcore/sc-golang/pkg/server"
-	"git.vanti.co.uk/smartcore/sc-golang/pkg/trait"
+	"github.com/smart-core-os/sc-golang/pkg/server"
+	"github.com/smart-core-os/sc-golang/pkg/trait"
 )
 
 func main() {

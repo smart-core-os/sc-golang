@@ -1,15 +1,15 @@
-module git.vanti.co.uk/smartcore/sc-golang
+module github.com/smart-core-os/sc-golang
 
 go 1.14
 
 require (
-	git.vanti.co.uk/smartcore/sc-api/go v1.0.0-beta.21
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.6
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/iancoleman/strcase v0.1.3
 	github.com/mennanov/fieldmask-utils v0.4.0
 	github.com/olebedev/emitter v0.0.0-20190110104742-e8d1457e6aee
+	github.com/smart-core-os/sc-api/go v1.0.0-beta.22
 	go.uber.org/atomic v1.8.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
 	go.uber.org/zap v1.17.0

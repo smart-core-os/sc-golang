@@ -9,7 +9,7 @@ require (
 	github.com/iancoleman/strcase v0.1.3
 	github.com/mennanov/fieldmask-utils v0.4.0
 	github.com/olebedev/emitter v0.0.0-20190110104742-e8d1457e6aee
-	github.com/smart-core-os/sc-api/go v1.0.0-beta.22
+	github.com/smart-core-os/sc-api/go v1.0.0-beta.23
 	go.uber.org/atomic v1.8.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
 	go.uber.org/zap v1.17.0

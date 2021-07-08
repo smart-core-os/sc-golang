@@ -5,7 +5,6 @@ import (
 	"log"
 	"math/rand"
 	"sort"
-	"strconv"
 	"sync"
 	goTime "time"
 
@@ -116,19 +115,16 @@ func (b *BookingApi) CreateBooking(_ context.Context, request *traits.CreateBook
 	if id == "" {
 		// try to generate a unique id
 		b.bookingsByIdMu.RLock()
-		for i := 0; i < 10; i++ {
-			idCandidate := strconv.Itoa(b.Rng.Int())
-			if _, exists := b.bookingsById[idCandidate]; idCandidate != "" && !exists {
-				id = idCandidate
-				break
-			}
-		}
+		var err error
+		id, err = generateUniqueId(b.Rng, func(candidate string) bool {
+			_, ok := b.bookingsById[candidate]
+			return ok
+		})
 		b.bookingsByIdMu.RUnlock()
-	}
-
-	if id == "" {
-		// no id can be generated, return an error
-		return nil, status.Error(codes.Aborted, "id generation attempts exhausted")
+		if err != nil {
+			// no id can be generated, return an error
+			return nil, err
+		}
 	}
 
 	// save the new booking

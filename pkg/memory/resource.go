@@ -29,7 +29,7 @@ func NewResource(opts ...ResourceOption) *Resource {
 		bus: &emitter.Emitter{},
 	}
 	for _, opt := range opts {
-		opt.apply(res)
+		opt(res)
 	}
 	return res
 }
@@ -140,50 +140,27 @@ type ResourceChange struct {
 }
 
 // ResourceOption allows configuration of the resource
-type ResourceOption interface {
-	apply(*Resource)
-}
-
-// EmptyResourceOption does nothing to the Resource but can be used as a nil placeholder.
-type EmptyResourceOption struct{}
-
-func (EmptyResourceOption) apply(*Resource) {}
-
-// funcResourceOption wraps a function that modifies a Resource into an
-// implementation of the ResourceOption interface.
-type funcResourceOption struct {
-	f func(*Resource)
-}
-
-func (fro *funcResourceOption) apply(do *Resource) {
-	fro.f(do)
-}
-
-func newFuncResourceOption(f func(*Resource)) *funcResourceOption {
-	return &funcResourceOption{
-		f: f,
-	}
-}
+type ResourceOption func(resource *Resource)
 
 // WithInitialValue sets the initial value of a Resource
 func WithInitialValue(v proto.Message) ResourceOption {
-	return newFuncResourceOption(func(r *Resource) {
+	return func(r *Resource) {
 		r.value = v
-	})
+	}
 }
 
 // WithWritableFields sets the fields that can be modified via Update calls
 func WithWritableFields(fields *fieldmaskpb.FieldMask) ResourceOption {
-	return newFuncResourceOption(func(r *Resource) {
+	return func(r *Resource) {
 		r.writableFields = fields
-	})
+	}
 }
 
 // WithWritablePaths sets the fields that can be modified via Update calls
 func WithWritablePaths(paths ...string) ResourceOption {
-	return newFuncResourceOption(func(r *Resource) {
+	return func(r *Resource) {
 		r.writableFields = &fieldmaskpb.FieldMask{Paths: paths}
-	})
+	}
 }
 
 type UpdateInterceptor func(old, new proto.Message)

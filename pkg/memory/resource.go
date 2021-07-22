@@ -63,7 +63,7 @@ func (r *Resource) update(value proto.Message, updateMask *fieldmaskpb.FieldMask
 		return nil, err
 	}
 
-	_, newValue, err := applyChangeOld(
+	_, newValue, err := getAndUpdate(
 		&r.mu,
 		func() (proto.Message, bool) {
 			return r.value, true

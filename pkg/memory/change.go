@@ -8,13 +8,21 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// applyChangeOld is the equivalent to a getAndSet operation that handles absent properties.
-// mu is the lock that protects the value in the underlying store.
-// get is a function that retrieves the value from the store, mu will be RLock during the call.
-// Return exists=false if the value does not exist, typically used for collection resources.
-// update is a function that should apply changes to new.
-// set is a function that should write the new value to the underlying store, my will be Lock during the call.
-func applyChangeOld(mu *sync.RWMutex, get func() (item proto.Message, exists bool), update func(old, new proto.Message) error, set func(message proto.Message)) (oldValue proto.Message, newValue proto.Message, err error) {
+// getFn is called to retrieve the message from the external store.
+// Return exists=false if no such item is present
+type getFn func() (item proto.Message, exists bool)
+
+// changeFn is called to apply changes to the new proto.Message.
+type changeFn func(old, new proto.Message) error
+
+// saveFn is called to save the message in the external store.
+type saveFn func(msg proto.Message)
+
+// getAndUpdate applies an atomic get and update operation in the context of proto messages.
+// mu.RLock will be held during the get call.
+// mu.Lock will be held during the save call.
+// No locks will be held during the change call.
+func getAndUpdate(mu *sync.RWMutex, get getFn, change changeFn, save saveFn) (oldValue proto.Message, newValue proto.Message, err error) {
 	mu.RLock()
 	oldValue, exists := get()
 	mu.RUnlock()
@@ -23,7 +31,7 @@ func applyChangeOld(mu *sync.RWMutex, get func() (item proto.Message, exists boo
 	}
 
 	newValue = proto.Clone(oldValue)
-	if err := update(oldValue, newValue); err != nil {
+	if err := change(oldValue, newValue); err != nil {
 		return oldValue, newValue, err
 	}
 
@@ -34,6 +42,6 @@ func applyChangeOld(mu *sync.RWMutex, get func() (item proto.Message, exists boo
 		return oldValue, newValue, status.Errorf(codes.Aborted, "concurrent update detected")
 	}
 
-	set(newValue)
+	save(newValue)
 	return oldValue, newValue, nil
 }

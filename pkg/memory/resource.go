@@ -65,8 +65,8 @@ func (r *Resource) update(value proto.Message, updateMask *fieldmaskpb.FieldMask
 
 	_, newValue, err := getAndUpdate(
 		&r.mu,
-		func() (proto.Message, bool) {
-			return r.value, true
+		func() (proto.Message, error) {
+			return r.value, nil
 		},
 		func(old, new proto.Message) error {
 			if beforeUpdate != nil {

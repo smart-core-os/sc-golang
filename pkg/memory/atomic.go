@@ -9,8 +9,7 @@ import (
 )
 
 // getFn is called to retrieve the message from the external store.
-// Return exists=false if no such item is present
-type getFn func() (item proto.Message, exists bool)
+type getFn func() (item proto.Message, err error)
 
 // changeFn is called to apply changes to the new proto.Message.
 type changeFn func(old, new proto.Message) error
@@ -24,10 +23,10 @@ type saveFn func(msg proto.Message)
 // No locks will be held during the change call.
 func getAndUpdate(mu *sync.RWMutex, get getFn, change changeFn, save saveFn) (oldValue proto.Message, newValue proto.Message, err error) {
 	mu.RLock()
-	oldValue, exists := get()
+	oldValue, err = get()
 	mu.RUnlock()
-	if !exists {
-		return nil, nil, status.Errorf(codes.NotFound, "not found")
+	if err != nil {
+		return nil, nil, err
 	}
 
 	newValue = proto.Clone(oldValue)

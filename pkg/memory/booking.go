@@ -256,9 +256,12 @@ func (b *BookingApi) PullBookings(request *traits.ListBookingsRequest, server tr
 func (b *BookingApi) applyChange(name string, id string, fn func(newBooking *traits.Booking) error) (*traits.Booking, error) {
 	oldValue, newValue, err := getAndUpdate(
 		&b.bookingsByIdMu,
-		func() (proto.Message, bool) {
+		func() (proto.Message, error) {
 			val, exists := b.bookingsById[id]
-			return val, exists
+			if !exists {
+				return nil, status.Errorf(codes.NotFound, "booking id %v not found", id)
+			}
+			return val, nil
 		},
 		func(_, message proto.Message) error {
 			return fn(message.(*traits.Booking))

@@ -254,13 +254,13 @@ func (b *BookingApi) PullBookings(request *traits.ListBookingsRequest, server tr
 }
 
 func (b *BookingApi) applyChange(name string, id string, fn func(newBooking *traits.Booking) error) (*traits.Booking, error) {
-	oldValue, newValue, err := applyChange(
+	oldValue, newValue, err := applyChangeOld(
 		&b.bookingsByIdMu,
 		func() (proto.Message, bool) {
 			val, exists := b.bookingsById[id]
 			return val, exists
 		},
-		func(message proto.Message) error {
+		func(_, message proto.Message) error {
 			return fn(message.(*traits.Booking))
 		},
 		func(message proto.Message) {

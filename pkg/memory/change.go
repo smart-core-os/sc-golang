@@ -8,14 +8,12 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// applyChange is the equivalent to a getAndSet operation that handles absent properties.
-func applyChange(mu *sync.RWMutex, get func() (item proto.Message, exists bool), update func(proto.Message) error, set func(message proto.Message)) (oldValue proto.Message, newValue proto.Message, err error) {
-	return applyChangeOld(mu, get, func(_, new proto.Message) error {
-		return update(new)
-	}, set)
-}
-
 // applyChangeOld is the equivalent to a getAndSet operation that handles absent properties.
+// mu is the lock that protects the value in the underlying store.
+// get is a function that retrieves the value from the store, mu will be RLock during the call.
+// Return exists=false if the value does not exist, typically used for collection resources.
+// update is a function that should apply changes to new.
+// set is a function that should write the new value to the underlying store, my will be Lock during the call.
 func applyChangeOld(mu *sync.RWMutex, get func() (item proto.Message, exists bool), update func(old, new proto.Message) error, set func(message proto.Message)) (oldValue proto.Message, newValue proto.Message, err error) {
 	mu.RLock()
 	oldValue, exists := get()

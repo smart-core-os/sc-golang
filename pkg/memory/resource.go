@@ -34,31 +34,31 @@ func NewResource(opts ...ResourceOption) *Resource {
 	return res
 }
 
+func (r *Resource) defaultUpdateRequest() updateRequest {
+	request := updateRequest{}
+	for _, opt := range DefaultUpdateOptions {
+		opt(&request)
+	}
+	return request
+}
+
 func (r *Resource) Get() proto.Message {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.value
 }
 
-// Update applies properties from value to the underlying resource. Only updateMask properties will be changed
-func (r *Resource) Update(value proto.Message, updateMask *fieldmaskpb.FieldMask) (proto.Message, error) {
-	return r.update(value, updateMask, nil, nil)
+func (r *Resource) Set(value proto.Message, opts ...UpdateOption) (proto.Message, error) {
+	request := r.defaultUpdateRequest()
+	for _, opt := range opts {
+		opt(&request)
+	}
+	return r.set(value, request)
 }
 
-// UpdateDelta works like Update but the given callback is called with the old value and the change to convert the
-// change into absolute values.
-func (r *Resource) UpdateDelta(value proto.Message, updateMask *fieldmaskpb.FieldMask, convertDelta func(old, change proto.Message)) (proto.Message, error) {
-	return r.update(value, updateMask, convertDelta, nil)
-}
-
-// UpdateModified works like Update but the callback is invoked after the update with the old and new values.
-func (r *Resource) UpdateModified(value proto.Message, updateMask *fieldmaskpb.FieldMask, updateModifier func(old, new proto.Message)) (proto.Message, error) {
-	return r.update(value, updateMask, nil, updateModifier)
-}
-
-func (r *Resource) update(value proto.Message, updateMask *fieldmaskpb.FieldMask, beforeUpdate, afterUpdate func(old, new proto.Message)) (proto.Message, error) {
+func (r *Resource) set(value proto.Message, request updateRequest) (proto.Message, error) {
 	// make sure they can only write the fields we want
-	mask, err := masks.ValidWritableMask(r.writableFields, updateMask, value)
+	mask, err := masks.ValidWritableMask(r.writableFields, request.updateMask, value)
 	if err != nil {
 		return nil, err
 	}
@@ -69,9 +69,9 @@ func (r *Resource) update(value proto.Message, updateMask *fieldmaskpb.FieldMask
 			return r.value, nil
 		},
 		func(old, new proto.Message) error {
-			if beforeUpdate != nil {
+			if request.interceptBefore != nil {
 				// convert the value from relative to absolute values
-				beforeUpdate(old, value)
+				request.interceptBefore(old, value)
 			}
 			if mask != nil {
 				// apply only selected fields
@@ -84,9 +84,9 @@ func (r *Resource) update(value proto.Message, updateMask *fieldmaskpb.FieldMask
 				proto.Merge(new, value)
 			}
 
-			if afterUpdate != nil {
+			if request.interceptAfter != nil {
 				// apply any after change changes, like setting update times
-				afterUpdate(old, new)
+				request.interceptAfter(old, new)
 			}
 			return nil
 		},
@@ -105,6 +105,22 @@ func (r *Resource) update(value proto.Message, updateMask *fieldmaskpb.FieldMask
 	})
 
 	return newValue, err
+}
+
+// Update applies properties from value to the underlying resource. Only updateMask properties will be changed
+func (r *Resource) Update(value proto.Message, updateMask *fieldmaskpb.FieldMask) (proto.Message, error) {
+	return r.Set(value, WithUpdateMask(updateMask))
+}
+
+// UpdateDelta works like Update but the given callback is called with the old value and the change to convert the
+// change into absolute values.
+func (r *Resource) UpdateDelta(value proto.Message, updateMask *fieldmaskpb.FieldMask, convertDelta UpdateInterceptor) (proto.Message, error) {
+	return r.Set(value, WithUpdateMask(updateMask), InterceptBefore(convertDelta))
+}
+
+// UpdateModified works like Update but the callback is invoked after the update with the old and new values.
+func (r *Resource) UpdateModified(value proto.Message, updateMask *fieldmaskpb.FieldMask, updateModifier UpdateInterceptor) (proto.Message, error) {
+	return r.Set(value, WithUpdateMask(updateMask), InterceptAfter(updateModifier))
 }
 
 func (r *Resource) OnUpdate(ctx context.Context) (updates <-chan *ResourceChange, done func()) {
@@ -184,4 +200,39 @@ func WithWritablePaths(paths ...string) ResourceOption {
 	return newFuncResourceOption(func(r *Resource) {
 		r.writableFields = &fieldmaskpb.FieldMask{Paths: paths}
 	})
+}
+
+type UpdateInterceptor func(old, new proto.Message)
+
+type updateRequest struct {
+	updateMask      *fieldmaskpb.FieldMask
+	interceptBefore UpdateInterceptor
+	interceptAfter  UpdateInterceptor
+}
+
+type UpdateOption func(request *updateRequest)
+
+// DefaultUpdateOptions defined the options that apply unless overridden by callers
+// when updates are applied to the resource.
+var DefaultUpdateOptions []UpdateOption
+
+// WithUpdateMask configures the update to only apply to these fields.
+// nil will update all writable fields.
+// Fields specified here that aren't in the Resources writable fields will result in an error
+func WithUpdateMask(mask *fieldmaskpb.FieldMask) UpdateOption {
+	return func(request *updateRequest) {
+		request.updateMask = mask
+	}
+}
+
+func InterceptBefore(interceptor UpdateInterceptor) UpdateOption {
+	return func(request *updateRequest) {
+		request.interceptBefore = interceptor
+	}
+}
+
+func InterceptAfter(interceptor UpdateInterceptor) UpdateOption {
+	return func(request *updateRequest) {
+		request.interceptAfter = interceptor
+	}
 }

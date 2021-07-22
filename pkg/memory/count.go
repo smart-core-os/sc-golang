@@ -42,21 +42,21 @@ func (t *CountApi) ResetCount(_ context.Context, request *traits.ResetCountReque
 	if rt == nil {
 		rt = timestamppb.Now()
 	}
-	res, err := t.count.UpdateModified(&traits.Count{Added: 0, Removed: 0}, nil, func(old, new proto.Message) {
+	res, err := t.count.Set(&traits.Count{Added: 0, Removed: 0}, InterceptAfter(func(old, new proto.Message) {
 		new.(*traits.Count).ResetTime = rt
-	})
+	}))
 	return res.(*traits.Count), err
 }
 
 func (t *CountApi) UpdateCount(_ context.Context, request *traits.UpdateCountRequest) (*traits.Count, error) {
-	res, err := t.count.UpdateDelta(request.Count, request.UpdateMask, func(old, value proto.Message) {
+	res, err := t.count.Set(request.Count, WithUpdateMask(request.UpdateMask), InterceptBefore(func(old, value proto.Message) {
 		if request.Delta {
 			tOld := old.(*traits.Count)
 			tValue := value.(*traits.Count)
 			tValue.Added += tOld.Added
 			tValue.Removed += tOld.Removed
 		}
-	})
+	}))
 	return res.(*traits.Count), err
 }
 

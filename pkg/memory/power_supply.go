@@ -12,7 +12,6 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
-	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
 // PowerSupplyApi is an in-memory implementation of PowerSupplyApiServer scoped to a single device.
@@ -55,11 +54,10 @@ func InitialPowerCapacity() *traits.PowerCapacity {
 }
 
 func (s *PowerSupplyApi) SetLoad(load float32) {
-	loadField := &fieldmaskpb.FieldMask{Paths: []string{"load"}}
-	_, _ = s.powerCapacity.UpdateModified(&traits.PowerCapacity{Load: &load}, loadField, func(old, new proto.Message) {
+	_, _ = s.powerCapacity.Set(&traits.PowerCapacity{Load: &load}, WithUpdatePaths("load"), InterceptAfter(func(old, new proto.Message) {
 		newCapacity := new.(*traits.PowerCapacity)
 		adjustPowerCapacityForLoad(newCapacity, s.reserved)
-	})
+	}))
 }
 
 func (s *PowerSupplyApi) GetPowerCapacity(_ context.Context, _ *traits.GetPowerCapacityRequest) (*traits.PowerCapacity, error) {

@@ -47,7 +47,7 @@ func (t *AirTemperatureApi) GetAirTemperature(_ context.Context, _ *traits.GetAi
 }
 
 func (t *AirTemperatureApi) UpdateAirTemperature(_ context.Context, request *traits.UpdateAirTemperatureRequest) (*traits.AirTemperature, error) {
-	update, err := t.airTemperature.Update(request.State, request.UpdateMask)
+	update, err := t.airTemperature.Set(request.State, WithUpdateMask(request.UpdateMask))
 	return update.(*traits.AirTemperature), err
 }
 

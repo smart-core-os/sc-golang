@@ -28,7 +28,7 @@ func (o *OccupancySensorApi) Register(server *grpc.Server) {
 
 // SetOccupancy updates the known occupancy state for this device
 func (o *OccupancySensorApi) SetOccupancy(_ context.Context, occupancy *traits.Occupancy) {
-	_, _ = o.occupancy.Update(occupancy, nil)
+	_, _ = o.occupancy.Set(occupancy)
 }
 
 func (o *OccupancySensorApi) GetOccupancy(_ context.Context, _ *traits.GetOccupancyRequest) (*traits.Occupancy, error) {

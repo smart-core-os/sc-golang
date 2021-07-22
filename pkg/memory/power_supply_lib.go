@@ -8,21 +8,22 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
-	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
 func (s *PowerSupplyApi) setNotified(notified float32) {
-	notifiedField := &fieldmaskpb.FieldMask{Paths: []string{"notified"}}
-	_, _ = s.powerCapacity.Update(&traits.PowerCapacity{Notified: notified}, notifiedField)
+	_, _ = s.powerCapacity.Set(&traits.PowerCapacity{Notified: notified}, WithUpdatePaths("notified"))
 }
 
 func (s *PowerSupplyApi) addNotified(notified float32) {
-	notifiedField := &fieldmaskpb.FieldMask{Paths: []string{"notified"}}
-	_, _ = s.powerCapacity.UpdateDelta(&traits.PowerCapacity{Notified: notified}, notifiedField, func(old, change proto.Message) {
-		val := old.(*traits.PowerCapacity)
-		delta := change.(*traits.PowerCapacity)
-		delta.Notified += val.Notified
-	})
+	_, _ = s.powerCapacity.Set(
+		&traits.PowerCapacity{Notified: notified},
+		WithUpdatePaths("notified"),
+		InterceptBefore(func(old, change proto.Message) {
+			val := old.(*traits.PowerCapacity)
+			delta := change.(*traits.PowerCapacity)
+			delta.Notified += val.Notified
+		}),
+	)
 }
 
 func (s *PowerSupplyApi) normaliseMaxDraw(n *traits.DrawNotification) {

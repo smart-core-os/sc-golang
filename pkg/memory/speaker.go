@@ -30,13 +30,13 @@ func (s *SpeakerApi) GetVolume(_ context.Context, _ *traits.GetSpeakerVolumeRequ
 }
 
 func (s *SpeakerApi) UpdateVolume(_ context.Context, request *traits.UpdateSpeakerVolumeRequest) (*types.AudioLevel, error) {
-	newValue, err := s.volume.UpdateDelta(request.Volume, request.UpdateMask, func(old, change proto.Message) {
+	newValue, err := s.volume.Set(request.Volume, WithUpdateMask(request.UpdateMask), InterceptBefore(func(old, change proto.Message) {
 		if request.Delta {
 			val := old.(*types.AudioLevel)
 			delta := change.(*types.AudioLevel)
 			delta.Gain += val.Gain
 		}
-	})
+	}))
 	if err != nil {
 		return nil, err
 	}

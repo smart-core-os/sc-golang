@@ -107,22 +107,6 @@ func (r *Resource) set(value proto.Message, request updateRequest) (proto.Messag
 	return newValue, err
 }
 
-// Update applies properties from value to the underlying resource. Only updateMask properties will be changed
-func (r *Resource) Update(value proto.Message, updateMask *fieldmaskpb.FieldMask) (proto.Message, error) {
-	return r.Set(value, WithUpdateMask(updateMask))
-}
-
-// UpdateDelta works like Update but the given callback is called with the old value and the change to convert the
-// change into absolute values.
-func (r *Resource) UpdateDelta(value proto.Message, updateMask *fieldmaskpb.FieldMask, convertDelta UpdateInterceptor) (proto.Message, error) {
-	return r.Set(value, WithUpdateMask(updateMask), InterceptBefore(convertDelta))
-}
-
-// UpdateModified works like Update but the callback is invoked after the update with the old and new values.
-func (r *Resource) UpdateModified(value proto.Message, updateMask *fieldmaskpb.FieldMask, updateModifier UpdateInterceptor) (proto.Message, error) {
-	return r.Set(value, WithUpdateMask(updateMask), InterceptAfter(updateModifier))
-}
-
 func (r *Resource) OnUpdate(ctx context.Context) (updates <-chan *ResourceChange, done func()) {
 	on := r.bus.On("update")
 	typedEvents := make(chan *ResourceChange)
@@ -225,12 +209,43 @@ func WithUpdateMask(mask *fieldmaskpb.FieldMask) UpdateOption {
 	}
 }
 
+// WithUpdatePaths is like WithUpdateMask but the FieldMask is made from the given paths.
+func WithUpdatePaths(paths ...string) UpdateOption {
+	return WithUpdateMask(&fieldmaskpb.FieldMask{Paths: paths})
+}
+
+// InterceptBefore registers a function that will be called before the update occurs.
+// The new value will be the passed update value.
+// Do not write to the old value of the callback, this is for information only.
+// This is useful when applying delta update to a value, in this case you can append the old value to the update value
+// to get the sum.
+//
+// Example
+//
+//   r.Set(val, InterceptBefore(func(old, change proto.Message) {
+//     if val.Delta {
+//       // assume casting
+//       change.Quantity += old.Quantity
+//     }
+//   }))
 func InterceptBefore(interceptor UpdateInterceptor) UpdateOption {
 	return func(request *updateRequest) {
 		request.interceptBefore = interceptor
 	}
 }
 
+// InterceptAfter registers a function that will be called after changes have been made but before they are saved.
+// This is useful if there are computed properties in the message that might need setting if an update has occurred,
+// for example a `LastUpdateTime` or similar.
+//
+// Example
+//
+//   r.Set(val, InterceptAfter(func(old, new proto.Message) {
+//     // assume casting
+//     if old.Quantity != new.Quantity {
+//       new.UpdateTime = timestamppb.Now()
+//     }
+//   }))
 func InterceptAfter(interceptor UpdateInterceptor) UpdateOption {
 	return func(request *updateRequest) {
 		request.interceptAfter = interceptor

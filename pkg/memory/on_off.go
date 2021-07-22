@@ -30,7 +30,7 @@ func (t *OnOffApi) GetOnOff(_ context.Context, _ *traits.GetOnOffRequest) (*trai
 }
 
 func (t *OnOffApi) UpdateOnOff(_ context.Context, request *traits.UpdateOnOffRequest) (*traits.OnOff, error) {
-	res, err := t.onOff.Update(request.OnOff, nil)
+	res, err := t.onOff.Set(request.OnOff)
 	return res.(*traits.OnOff), err
 }
 

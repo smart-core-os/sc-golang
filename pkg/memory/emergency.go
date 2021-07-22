@@ -36,13 +36,13 @@ func (t *EmergencyApi) GetEmergency(_ context.Context, _ *traits.GetEmergencyReq
 }
 
 func (t *EmergencyApi) UpdateEmergency(_ context.Context, request *traits.UpdateEmergencyRequest) (*traits.Emergency, error) {
-	update, err := t.state.UpdateModified(request.Emergency, request.UpdateMask, func(old, new proto.Message) {
+	update, err := t.state.Set(request.Emergency, WithUpdateMask(request.UpdateMask), InterceptAfter(func(old, new proto.Message) {
 		// user server time if the level changed but the change time didn't
 		oldt, newt := old.(*traits.Emergency), new.(*traits.Emergency)
 		if newt.Level != oldt.Level && oldt.LevelChangeTime == newt.LevelChangeTime {
 			newt.LevelChangeTime = serverTimestamp()
 		}
-	})
+	}))
 	return update.(*traits.Emergency), err
 }
 

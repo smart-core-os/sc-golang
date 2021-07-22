@@ -42,9 +42,7 @@ func (t *CountApi) ResetCount(_ context.Context, request *traits.ResetCountReque
 	if rt == nil {
 		rt = timestamppb.Now()
 	}
-	res, err := t.count.Set(&traits.Count{Added: 0, Removed: 0}, InterceptAfter(func(old, new proto.Message) {
-		new.(*traits.Count).ResetTime = rt
-	}))
+	res, err := t.count.Set(&traits.Count{Added: 0, Removed: 0, ResetTime: rt}, WithAllFieldsWritable())
 	return res.(*traits.Count), err
 }
 

@@ -58,7 +58,11 @@ func (r *Resource) Set(value proto.Message, opts ...UpdateOption) (proto.Message
 
 func (r *Resource) set(value proto.Message, request updateRequest) (proto.Message, error) {
 	// make sure they can only write the fields we want
-	mask, err := masks.ValidWritableMask(r.writableFields, request.updateMask, value)
+	writableFields := r.writableFields
+	if request.nilWritableFields {
+		writableFields = nil
+	}
+	mask, err := masks.ValidWritableMask(writableFields, request.updateMask, value)
 	if err != nil {
 		return nil, err
 	}
@@ -166,9 +170,10 @@ func WithWritablePaths(paths ...string) ResourceOption {
 type UpdateInterceptor func(old, new proto.Message)
 
 type updateRequest struct {
-	updateMask      *fieldmaskpb.FieldMask
-	interceptBefore UpdateInterceptor
-	interceptAfter  UpdateInterceptor
+	updateMask        *fieldmaskpb.FieldMask
+	interceptBefore   UpdateInterceptor
+	interceptAfter    UpdateInterceptor
+	nilWritableFields bool
 }
 
 type UpdateOption func(request *updateRequest)
@@ -226,5 +231,13 @@ func InterceptBefore(interceptor UpdateInterceptor) UpdateOption {
 func InterceptAfter(interceptor UpdateInterceptor) UpdateOption {
 	return func(request *updateRequest) {
 		request.interceptAfter = interceptor
+	}
+}
+
+// WithAllFieldsWritable instructs the update to ignore the resources configured writable fields.
+// All fields will be writable if using this option.
+func WithAllFieldsWritable() UpdateOption {
+	return func(request *updateRequest) {
+		request.nilWritableFields = true
 	}
 }

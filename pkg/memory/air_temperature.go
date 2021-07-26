@@ -7,7 +7,6 @@ import (
 	"github.com/smart-core-os/sc-api/go/types"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
 type AirTemperatureApi struct {
@@ -19,12 +18,13 @@ func NewAirTemperatureApi() *AirTemperatureApi {
 	return &AirTemperatureApi{
 		airTemperature: NewResource(
 			WithInitialValue(InitialAirTemperatureState()),
-			WithWritableFields(&fieldmaskpb.FieldMask{
-				Paths: []string{
-					"mode",
-					"temperature_goal",
-				},
-			}),
+			WithWritablePaths(&traits.AirTemperature{},
+				"mode",
+				// temperature_goal oneof options
+				"temperature_set_point",
+				"temperature_set_point_delta",
+				"temperature_range",
+			),
 		),
 	}
 }

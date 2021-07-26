@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync"
 
-	fieldMaskUtils "github.com/mennanov/fieldmask-utils"
 	"github.com/olebedev/emitter"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
@@ -57,13 +56,15 @@ func (r *Resource) Set(value proto.Message, opts ...UpdateOption) (proto.Message
 }
 
 func (r *Resource) set(value proto.Message, request updateRequest) (proto.Message, error) {
-	// make sure they can only write the fields we want
-	writableFields := r.writableFields
-	if request.nilWritableFields {
-		writableFields = nil
+	var writerOpts []masks.FieldUpdaterOption
+	if request.updateMask != nil {
+		writerOpts = append(writerOpts, masks.WithUpdateMask(request.updateMask))
 	}
-	mask, err := masks.ValidWritableMask(writableFields, request.updateMask, value)
-	if err != nil {
+	if r.writableFields != nil {
+		writerOpts = append(writerOpts, masks.WithWritableFields(r.writableFields))
+	}
+	writer := masks.NewFieldUpdater(writerOpts...)
+	if err := writer.Validate(value); err != nil {
 		return nil, err
 	}
 
@@ -77,16 +78,8 @@ func (r *Resource) set(value proto.Message, request updateRequest) (proto.Messag
 				// convert the value from relative to absolute values
 				request.interceptBefore(old, value)
 			}
-			if mask != nil {
-				// apply only selected fields
-				if err := fieldMaskUtils.StructToStruct(mask, value, new); err != nil {
-					return err
-				}
-			} else {
-				// replace the booking data
-				proto.Reset(new)
-				proto.Merge(new, value)
-			}
+
+			writer.Merge(new, value)
 
 			if request.interceptAfter != nil {
 				// apply any after change changes, like setting update times
@@ -153,17 +146,15 @@ func WithInitialValue(v proto.Message) ResourceOption {
 	}
 }
 
-// WithWritableFields sets the fields that can be modified via Update calls
-func WithWritableFields(fields *fieldmaskpb.FieldMask) ResourceOption {
-	return func(r *Resource) {
-		r.writableFields = fields
+// WithWritablePaths sets the fields that can be modified via Update calls.
+// Will panic if paths are not valid according to the message type.
+func WithWritablePaths(m proto.Message, paths ...string) ResourceOption {
+	mask, err := fieldmaskpb.New(m, paths...)
+	if err != nil {
+		panic(err)
 	}
-}
-
-// WithWritablePaths sets the fields that can be modified via Update calls
-func WithWritablePaths(paths ...string) ResourceOption {
 	return func(r *Resource) {
-		r.writableFields = &fieldmaskpb.FieldMask{Paths: paths}
+		r.writableFields = mask
 	}
 }
 

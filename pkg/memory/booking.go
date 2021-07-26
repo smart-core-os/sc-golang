@@ -8,12 +8,11 @@ import (
 	"sync"
 	goTime "time"
 
-	"github.com/iancoleman/strcase"
-	fieldMaskUtils "github.com/mennanov/fieldmask-utils"
 	"github.com/olebedev/emitter"
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-api/go/types"
 	"github.com/smart-core-os/sc-api/go/types/time"
+	"github.com/smart-core-os/sc-golang/pkg/masks"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -161,34 +160,18 @@ func (b *BookingApi) UpdateBooking(_ context.Context, request *traits.UpdateBook
 		return nil, status.Error(codes.InvalidArgument, "missing booking.id")
 	}
 
-	var mask fieldMaskUtils.Mask
-	if len(request.UpdateMask.GetPaths()) > 0 {
-		if !request.UpdateMask.IsValid(request.Booking) {
-			return nil, status.Error(codes.InvalidArgument, "invalid field_mask")
-		}
-
-		var err error
-		mask, err = fieldMaskUtils.MaskFromPaths(request.UpdateMask.Paths, strcase.ToCamel)
-		if err != nil {
-			return nil, err
-		}
+	var opts []masks.FieldUpdaterOption
+	if request.UpdateMask != nil {
+		opts = append(opts, masks.WithUpdateMask(request.UpdateMask))
+	}
+	updater := masks.NewFieldUpdater(opts...)
+	if err := updater.Validate(request.Booking); err != nil {
+		return nil, err
 	}
 
 	change, err := b.applyChange(request.Name, id, func(newBooking *traits.Booking) error {
-		if mask != nil {
-			// apply only selected fields
-			err := fieldMaskUtils.StructToStruct(mask, request.Booking, newBooking)
-			if err != nil {
-				return err
-			}
-		} else {
-			// replace the booking data
-
-			proto.Reset(newBooking)
-			proto.Merge(newBooking, request.Booking)
-
-		}
-		log.Printf("UpdateBooking %v %v (mask:%v)", request.Name, newBooking, mask)
+		updater.Merge(newBooking, request.Booking)
+		log.Printf("UpdateBooking %v %v", request.Name, newBooking)
 		return nil
 	})
 	if err != nil {

@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"log"
 
 	"github.com/smart-core-os/sc-api/go/traits"
 	"google.golang.org/grpc/codes"
@@ -15,6 +16,7 @@ func (s *PowerSupplyApi) setNotified(notified float32) {
 }
 
 func (s *PowerSupplyApi) addNotified(notified float32) {
+	log.Printf("addNotified(%v)", notified)
 	_, _ = s.powerCapacity.Set(
 		&traits.PowerCapacity{Notified: notified},
 		WithUpdatePaths("notified"),
@@ -79,6 +81,7 @@ func (s *PowerSupplyApi) setDrawNotification(n *traits.DrawNotification) (*trait
 	go func() {
 		select {
 		case <-ctx.Done():
+			log.Printf("reset after CreateDrawNotification")
 			// clean up state changes
 			s.addNotified(-notifiedValue)
 			// clean up the entry in the map
@@ -88,6 +91,7 @@ func (s *PowerSupplyApi) setDrawNotification(n *traits.DrawNotification) (*trait
 				delete(s.notificationsById, id)
 			}
 		case <-abort:
+			log.Printf("abort after CreateDrawNotification")
 			stop() // clean up timers tracking the timeout
 		}
 	}()

@@ -22,7 +22,7 @@ func NewCountApi() *CountApi {
 	return &CountApi{
 		count: NewResource(
 			WithInitialValue(InitialCount()),
-			WithWritablePaths("added", "removed"),
+			WithWritablePaths(&traits.Count{}, "added", "removed"),
 		),
 	}
 }

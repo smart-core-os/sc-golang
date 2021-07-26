@@ -3,6 +3,7 @@ package memory
 import (
 	"context"
 	"fmt"
+	"log"
 	"math/rand"
 	"sync"
 	"time"
@@ -93,6 +94,7 @@ func (s *PowerSupplyApi) CreateDrawNotification(_ context.Context, request *trai
 		return nil, err
 	}
 
+	log.Printf("CreateDrawNotification")
 	n := request.DrawNotification
 	s.normaliseMaxDraw(n)
 	s.normaliseRampDuration(n)

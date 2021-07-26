@@ -71,7 +71,7 @@ func (s *OnOffApi) PullOnOff(request *traits.PullOnOffRequest, server traits.OnO
 	// NB we dont connect response headers or trailers for the members with the passed server.
 	// If we did we'd be in a situation where one member who didn't send headers could cause
 	// the entire subscription to be blocked. Either that or we'd be introducing timeouts and latency.
-	memberValues := make(chan memberMsg)
+	memberValues := make(chan pullOnOffResponse)
 
 	actions := s.pullOnOffActions(request, memberValues)
 
@@ -124,7 +124,7 @@ func (s *OnOffApi) PullOnOff(request *traits.PullOnOffRequest, server traits.OnO
 	}
 }
 
-func (s *OnOffApi) pullOnOffActions(request *traits.PullOnOffRequest, memberValues chan<- memberMsg) []Member {
+func (s *OnOffApi) pullOnOffActions(request *traits.PullOnOffRequest, memberValues chan<- pullOnOffResponse) []Member {
 	actions := make([]Member, len(s.members))
 	for i, member := range s.members {
 		i := i
@@ -146,7 +146,7 @@ func (s *OnOffApi) pullOnOffActions(request *traits.PullOnOffRequest, memberValu
 					break
 				}
 				select {
-				case memberValues <- memberMsg{i, response}:
+				case memberValues <- pullOnOffResponse{i, response}:
 				case <-ctx.Done():
 					err = ctx.Err()
 					return
@@ -204,7 +204,7 @@ func (s *OnOffApi) reduceOnOff(acc, v *traits.OnOff) *traits.OnOff {
 	return acc
 }
 
-type memberMsg struct {
+type pullOnOffResponse struct {
 	i int
 	m *traits.PullOnOffResponse
 }

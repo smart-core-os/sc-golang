@@ -56,14 +56,7 @@ func (r *Resource) Set(value proto.Message, opts ...UpdateOption) (proto.Message
 }
 
 func (r *Resource) set(value proto.Message, request updateRequest) (proto.Message, error) {
-	var writerOpts []masks.FieldUpdaterOption
-	if request.updateMask != nil {
-		writerOpts = append(writerOpts, masks.WithUpdateMask(request.updateMask))
-	}
-	if r.writableFields != nil {
-		writerOpts = append(writerOpts, masks.WithWritableFields(r.writableFields))
-	}
-	writer := masks.NewFieldUpdater(writerOpts...)
+	writer := masks.NewFieldUpdater(masks.WithWritableFields(r.writableFields), masks.WithUpdateMask(request.updateMask))
 	if err := writer.Validate(value); err != nil {
 		return nil, err
 	}

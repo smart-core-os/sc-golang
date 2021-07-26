@@ -117,13 +117,23 @@ var DefaultFieldUpdateOptions = []FieldUpdaterOption{
 	WithUpdateMaskFieldName("update_mask"),
 }
 
+// emptyFieldUpdaterOption is used when existing options decide they don't have anything to do
+var emptyFieldUpdaterOption FieldUpdaterOption = func(_ *FieldUpdater) {
+}
+
 func WithWritableFields(writableFields *fieldmaskpb.FieldMask) FieldUpdaterOption {
+	if writableFields == nil {
+		return emptyFieldUpdaterOption
+	}
 	return func(updater *FieldUpdater) {
 		updater.writableFields = writableFields
 	}
 }
 
 func WithUpdateMask(updateMask *fieldmaskpb.FieldMask) FieldUpdaterOption {
+	if updateMask == nil {
+		return emptyFieldUpdaterOption
+	}
 	return func(updater *FieldUpdater) {
 		updater.updateMask = updateMask
 	}

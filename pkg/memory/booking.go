@@ -160,11 +160,7 @@ func (b *BookingApi) UpdateBooking(_ context.Context, request *traits.UpdateBook
 		return nil, status.Error(codes.InvalidArgument, "missing booking.id")
 	}
 
-	var opts []masks.FieldUpdaterOption
-	if request.UpdateMask != nil {
-		opts = append(opts, masks.WithUpdateMask(request.UpdateMask))
-	}
-	updater := masks.NewFieldUpdater(opts...)
+	updater := masks.NewFieldUpdater(masks.WithUpdateMask(request.UpdateMask))
 	if err := updater.Validate(request.Booking); err != nil {
 		return nil, err
 	}

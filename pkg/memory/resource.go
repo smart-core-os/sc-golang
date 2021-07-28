@@ -5,6 +5,8 @@ import (
 	"sync"
 
 	"github.com/olebedev/emitter"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -33,22 +35,31 @@ func NewResource(opts ...ResourceOption) *Resource {
 	return res
 }
 
-func (r *Resource) defaultUpdateRequest() updateRequest {
+func (r *Resource) Get(opts ...GetOption) proto.Message {
+	req := &getRequest{}
+	for _, opt := range opts {
+		opt(req)
+	}
+	return r.get(req)
+}
+
+func (r *Resource) get(req *getRequest) proto.Message {
+	filter := masks.NewResponseFilter(masks.WithFieldMask(req.fields))
+	// todo: if err := filter.Validate(); err != nil { return nil, err }
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return filter.FilterClone(r.value)
+}
+
+// Set updates the current value of this Resource with the given value.
+// Returns the new value.
+// Provide UpdateOption to control masks and other variables during the update.
+func (r *Resource) Set(value proto.Message, opts ...UpdateOption) (proto.Message, error) {
 	request := updateRequest{}
 	for _, opt := range DefaultUpdateOptions {
 		opt(&request)
 	}
-	return request
-}
-
-func (r *Resource) Get() proto.Message {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	return r.value
-}
-
-func (r *Resource) Set(value proto.Message, opts ...UpdateOption) (proto.Message, error) {
-	request := r.defaultUpdateRequest()
 	for _, opt := range opts {
 		opt(&request)
 	}
@@ -56,7 +67,20 @@ func (r *Resource) Set(value proto.Message, opts ...UpdateOption) (proto.Message
 }
 
 func (r *Resource) set(value proto.Message, request updateRequest) (proto.Message, error) {
-	writer := masks.NewFieldUpdater(masks.WithWritableFields(r.writableFields), masks.WithUpdateMask(request.updateMask))
+	opts := []masks.FieldUpdaterOption{
+		masks.WithUpdateMask(request.updateMask),
+		masks.WithResetMask(request.resetMask),
+	}
+	if !request.nilWritableFields {
+		// A nil writable fields means all fields are writable, no point merging in this case.
+		// If we blindly merged r.writableFields with request.moreWritableFields we could end up with
+		// an empty FieldMask when both are nil resulting in no writable fields instead of all writable.
+		if r.writableFields != nil {
+			fields := fieldmaskpb.Union(r.writableFields, request.moreWritableFields)
+			opts = append(opts, masks.WithWritableFields(fields))
+		}
+	}
+	writer := masks.NewFieldUpdater(opts...)
 	if err := writer.Validate(value); err != nil {
 		return nil, err
 	}
@@ -67,6 +91,12 @@ func (r *Resource) set(value proto.Message, request updateRequest) (proto.Messag
 			return r.value, nil
 		},
 		func(old, new proto.Message) error {
+			if request.expectedValue != nil {
+				if !proto.Equal(old, request.expectedValue) {
+					return ExpectedValuePreconditionFailed
+				}
+			}
+
 			if request.interceptBefore != nil {
 				// convert the value from relative to absolute values
 				request.interceptBefore(old, value)
@@ -151,13 +181,29 @@ func WithWritablePaths(m proto.Message, paths ...string) ResourceOption {
 	}
 }
 
+type getRequest struct {
+	fields *fieldmaskpb.FieldMask
+}
+type GetOption func(*getRequest)
+
+func WithGetMask(m *fieldmaskpb.FieldMask) GetOption {
+	return func(request *getRequest) {
+		request.fields = m
+	}
+}
+
 type UpdateInterceptor func(old, new proto.Message)
 
 type updateRequest struct {
-	updateMask        *fieldmaskpb.FieldMask
-	interceptBefore   UpdateInterceptor
-	interceptAfter    UpdateInterceptor
-	nilWritableFields bool
+	updateMask    *fieldmaskpb.FieldMask
+	resetMask     *fieldmaskpb.FieldMask
+	expectedValue proto.Message
+
+	interceptBefore UpdateInterceptor
+	interceptAfter  UpdateInterceptor
+
+	nilWritableFields  bool
+	moreWritableFields *fieldmaskpb.FieldMask
 }
 
 type UpdateOption func(request *updateRequest)
@@ -178,6 +224,20 @@ func WithUpdateMask(mask *fieldmaskpb.FieldMask) UpdateOption {
 // WithUpdatePaths is like WithUpdateMask but the FieldMask is made from the given paths.
 func WithUpdatePaths(paths ...string) UpdateOption {
 	return WithUpdateMask(&fieldmaskpb.FieldMask{Paths: paths})
+}
+
+// WithResetMask configures the update to clear these fields from the final value.
+// This will happen after InterceptBefore, but before InterceptAfter.
+// WithWritableFields does not affect this.
+func WithResetMask(mask *fieldmaskpb.FieldMask) UpdateOption {
+	return func(request *updateRequest) {
+		request.resetMask = mask
+	}
+}
+
+// WithResetPaths is like WithResetMask but the FieldMask is made from the given paths.
+func WithResetPaths(paths ...string) UpdateOption {
+	return WithResetMask(&fieldmaskpb.FieldMask{Paths: paths})
 }
 
 // InterceptBefore registers a function that will be called before the update occurs.
@@ -220,8 +280,34 @@ func InterceptAfter(interceptor UpdateInterceptor) UpdateOption {
 
 // WithAllFieldsWritable instructs the update to ignore the resources configured writable fields.
 // All fields will be writable if using this option.
+// Prefer WithMoreWritableFields if possible.
 func WithAllFieldsWritable() UpdateOption {
 	return func(request *updateRequest) {
 		request.nilWritableFields = true
+	}
+}
+
+// WithMoreWritableFields adds the given fields to the resources configured writable fields before validating the update.
+// Prefer this over WithAllFieldsWritable.
+func WithMoreWritableFields(writableFields *fieldmaskpb.FieldMask) UpdateOption {
+	return func(request *updateRequest) {
+		request.moreWritableFields = fieldmaskpb.Union(request.moreWritableFields, writableFields)
+	}
+}
+
+// WithMoreWritablePaths is like WithMoreWritableFields but with paths instead.
+func WithMoreWritablePaths(writablePaths ...string) UpdateOption {
+	return WithMoreWritableFields(&fieldmaskpb.FieldMask{Paths: writablePaths})
+}
+
+// ExpectedValuePreconditionFailed is returned when an update configured WithExpectedValue fails its comparison.
+var ExpectedValuePreconditionFailed = status.Errorf(codes.FailedPrecondition, "current value is not as expected")
+
+// WithExpectedValue instructs the update to only proceed if the current value is equal to expectedValue.
+// If the precondition fails the update will return the error ExpectedValuePreconditionFailed.
+// The precondition will be checked _before_ InterceptBefore.
+func WithExpectedValue(expectedValue proto.Message) UpdateOption {
+	return func(request *updateRequest) {
+		request.expectedValue = expectedValue
 	}
 }

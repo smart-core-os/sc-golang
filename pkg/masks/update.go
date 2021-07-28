@@ -13,6 +13,7 @@ type FieldUpdater struct {
 	writableFields      *fieldmaskpb.FieldMask
 	updateMask          *fieldmaskpb.FieldMask
 	updateMaskFieldName string
+	resetMask           *fieldmaskpb.FieldMask
 
 	intersectionMask *fieldmaskpb.FieldMask
 }
@@ -43,16 +44,39 @@ func (f *FieldUpdater) Validate(m proto.Message) error {
 			}
 		}
 	}
+	if f.resetMask != nil {
+		if !f.resetMask.IsValid(m) {
+			return status.Errorf(codes.Internal, "resetMask mentions unknown fields %v", f.resetMask)
+		}
+	}
 
 	return nil
 }
 
 // Merge copies the values in src into dst based on the configured field masks.
 func (f *FieldUpdater) Merge(dst, src proto.Message) {
-	mask := f.fullMask()
+	if f.writableFields != nil && len(f.writableFields.Paths) == 0 {
+		return // nothing is writable
+	}
+
+	var writableMask fmutils.NestedMask
+	if f.writableFields != nil {
+		writableMask = fmutils.NestedMaskFromPaths(f.writableFields.Paths)
+	}
+
+	// only allow writing writable fields by resetting non-writable fields in src
+	writableMask.Filter(src)
+
+	mask := f.updateMask
 	if mask == nil {
-		// no mask, make dst look like src exactly
-		proto.Reset(dst)
+		// no mask, make dst look like src
+		if writableMask == nil {
+			// if all fields are writable then reset all fields
+			proto.Reset(dst)
+		} else {
+			// if only some fields are writable then reset only those
+			writableMask.Prune(dst)
+		}
 	} else if len(mask.GetPaths()) == 0 {
 		// non-nil mask with no paths => no changes
 		return
@@ -64,6 +88,10 @@ func (f *FieldUpdater) Merge(dst, src proto.Message) {
 
 	// if a field mentioned by the mask is nil, we should clear it
 	pruneEmpty(dst, src, nestedMask)
+
+	if f.resetMask != nil {
+		fmutils.Prune(dst, f.resetMask.Paths)
+	}
 
 	return
 }
@@ -143,4 +171,14 @@ func WithUpdateMaskFieldName(name string) FieldUpdaterOption {
 	return func(updater *FieldUpdater) {
 		updater.updateMaskFieldName = name
 	}
+}
+
+func WithResetMask(resetMask *fieldmaskpb.FieldMask) FieldUpdaterOption {
+	return func(updater *FieldUpdater) {
+		updater.resetMask = resetMask
+	}
+}
+
+func WithResetPaths(paths ...string) FieldUpdaterOption {
+	return WithResetMask(&fieldmaskpb.FieldMask{Paths: paths})
 }

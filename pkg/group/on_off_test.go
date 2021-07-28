@@ -3,7 +3,6 @@ package group
 import (
 	"context"
 	"fmt"
-	"net"
 	"strings"
 	"sync"
 	"testing"
@@ -18,9 +17,6 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/testing/protocmp"
 )
-
-var ctx = context.Background()
-var streamTimout = 500 * time.Millisecond
 
 // todo: test one, some, all failures for get, update, pull
 
@@ -71,20 +67,6 @@ func TestOnOffApi_PullOnOff(t *testing.T) {
 	// message on subsequent change
 	tester.prepare(traits.OnOff_OFF, "A", "B")
 	tester.assertPull(traits.OnOff_OFF)
-}
-
-func checkErr(t *testing.T, err error, msg string) {
-	t.Helper()
-	if err != nil {
-		t.Fatalf("%v returned an error: %v", msg, err)
-	}
-}
-
-func dial(lis *bufconn.Listener) (*grpc.ClientConn, error) {
-	dialler := func(ctx context.Context, s string) (net.Conn, error) {
-		return lis.Dial()
-	}
-	return grpc.DialContext(ctx, "test", grpc.WithContextDialer(dialler), grpc.WithInsecure())
 }
 
 type onOffTester struct {

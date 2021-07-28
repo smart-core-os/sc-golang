@@ -80,9 +80,10 @@ func (s *LightApi) UpdateBrightness(ctx context.Context, request *traits.UpdateB
 				playTime := now.Sub(startTime)
 				newValue, finished := tween.Set(float32(playTime.Milliseconds()))
 				if finished {
+					// the tween has completed, reset the tween data
 					_, err := s.brightness.Set(&traits.Brightness{LevelPercent: newValue},
-						WithUpdatePaths("level_percent", "brightness_tween", "target_level_percent"),
-						WithMoreWritablePaths("brightness_tween", "target_level_percent"),
+						WithUpdatePaths("level_percent"),
+						WithResetPaths("target_level_percent", "brightness_tween"),
 						WithExpectedValue(lastObj),
 					)
 					if err != nil && err != ExpectedValuePreconditionFailed {
@@ -91,7 +92,7 @@ func (s *LightApi) UpdateBrightness(ctx context.Context, request *traits.UpdateB
 					return
 				}
 
-				// calculate using time, not value, which leave room for easing (and is mentioned in the spec)
+				// calculate using time, not value, which leave room for easing (and is mentioned in the tween spec)
 				progress := 100 * float32(playTime.Milliseconds()) / float32(duration.Milliseconds())
 				lastObj, err = s.brightness.Set(&traits.Brightness{LevelPercent: newValue, BrightnessTween: &types.Tween{Progress: progress}},
 					WithUpdatePaths("level_percent", "brightness_tween.progress"),
@@ -100,7 +101,7 @@ func (s *LightApi) UpdateBrightness(ctx context.Context, request *traits.UpdateB
 				)
 				switch {
 				case err == ExpectedValuePreconditionFailed:
-					// somebody else changed the value
+					// somebody else changed the value, tweening is done
 					return
 				case err != nil:
 					panic(err) // programmer error
@@ -113,6 +114,7 @@ func (s *LightApi) UpdateBrightness(ctx context.Context, request *traits.UpdateB
 
 	res, err := s.brightness.Set(
 		request.Brightness,
+		// if there's a tween in progress, clear the tween props
 		WithResetPaths("target_level_percent", "brightness_tween"),
 		InterceptBefore(func(old, change proto.Message) {
 			if request.Delta {

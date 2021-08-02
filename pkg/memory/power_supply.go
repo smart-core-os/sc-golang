@@ -12,18 +12,17 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 // PowerSupplyApi is an in-memory implementation of PowerSupplyApiServer scoped to a single device.
 type PowerSupplyApi struct {
 	traits.UnimplementedPowerSupplyApiServer
+	UnimplementedMemoryPowerSupplySettingsApiServer
 
-	powerCapacity *Resource
-
-	reserved            float32       // the difference between capacity and free
-	maxRampDuration     time.Duration // caps write requests
-	defaultRampDuration time.Duration // applies when writes don't include the value
+	powerCapacity *Resource // of *traits.PowerCapacity
+	settings      *Resource // of *MemoryPowerSupplySettings
 
 	notificationsById   map[string]*drawNotification
 	notificationsByIdMu sync.RWMutex
@@ -32,13 +31,20 @@ type PowerSupplyApi struct {
 }
 
 func NewPowerSupplyApi() *PowerSupplyApi {
+	initialPowerCapacity := InitialPowerCapacity()
 	return &PowerSupplyApi{
-		reserved:            0,
-		maxRampDuration:     10 * time.Minute,
-		defaultRampDuration: 30 * time.Second,
-
 		powerCapacity: NewResource(
-			WithInitialValue(InitialPowerCapacity()),
+			WithInitialValue(initialPowerCapacity),
+		),
+		settings: NewResource(
+			WithInitialValue(&MemoryPowerSupplySettings{
+				Rating:              initialPowerCapacity.Rating,
+				Load:                *initialPowerCapacity.Load,
+				Voltage:             initialPowerCapacity.Voltage,
+				Reserved:            0,
+				MaxRampDuration:     durationpb.New(10 * time.Minute),
+				DefaultRampDuration: durationpb.New(30 * time.Second),
+			}),
 		),
 		notificationsById: make(map[string]*drawNotification),
 		Rng:               rand.New(rand.NewSource(rand.Int63())),
@@ -49,15 +55,17 @@ func InitialPowerCapacity() *traits.PowerCapacity {
 	c := &traits.PowerCapacity{
 		Rating:  60,
 		Voltage: 240,
+		Load:    new(float32),
 	}
 	adjustPowerCapacityForLoad(c, 0)
 	return c
 }
 
 func (s *PowerSupplyApi) SetLoad(load float32) {
+	reserved := s.readSettings().Reserved
 	_, _ = s.powerCapacity.Set(&traits.PowerCapacity{Load: &load}, WithUpdatePaths("load"), InterceptAfter(func(old, new proto.Message) {
 		newCapacity := new.(*traits.PowerCapacity)
-		adjustPowerCapacityForLoad(newCapacity, s.reserved)
+		adjustPowerCapacityForLoad(newCapacity, reserved)
 	}))
 }
 

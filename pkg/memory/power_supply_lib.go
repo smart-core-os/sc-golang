@@ -8,7 +8,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 func (s *PowerSupplyApi) setNotified(notified float32) {
@@ -44,11 +43,12 @@ func (s *PowerSupplyApi) normaliseMaxDraw(n *traits.DrawNotification) {
 }
 
 func (s *PowerSupplyApi) normaliseRampDuration(n *traits.DrawNotification) {
+	settings := s.readSettings()
 	if n.RampDuration == nil {
-		n.RampDuration = durationpb.New(s.defaultRampDuration)
+		n.RampDuration = settings.DefaultRampDuration
 	}
-	if n.RampDuration.AsDuration() > s.maxRampDuration {
-		n.RampDuration = durationpb.New(s.maxRampDuration)
+	if n.RampDuration.AsDuration() > settings.MaxRampDuration.AsDuration() {
+		n.RampDuration = settings.MaxRampDuration
 	}
 }
 
@@ -111,11 +111,7 @@ func (s *PowerSupplyApi) setDrawNotification(n *traits.DrawNotification) (*trait
 }
 
 func adjustPowerCapacityForLoad(c *traits.PowerCapacity, headroom float32) {
-	load := float32(0)
-	if c.Load != nil {
-		load = *c.Load
-	}
-	capacity := c.Rating - load
+	capacity := c.Rating - *c.Load
 	free := capacity - headroom
 	c.Capacity = &capacity
 	c.Free = free

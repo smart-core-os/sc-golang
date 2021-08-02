@@ -31,6 +31,9 @@ func (r *ResponseFilter) Validate(msg proto.Message) error {
 	return nil
 }
 
+// Filter resets all fields in msg that are not requested via the WithFieldMask option.
+// If no field mask is configured, will not modify the msg.
+// This changes the original message.
 func (r *ResponseFilter) Filter(msg proto.Message) {
 	if r.fields == nil {
 		return
@@ -42,6 +45,7 @@ func (r *ResponseFilter) Filter(msg proto.Message) {
 	fmutils.Filter(msg, r.fields.GetPaths())
 }
 
+// FilterClone is like Filter but clones and returns a new msg instead of modifying the original.
 func (r *ResponseFilter) FilterClone(msg proto.Message) proto.Message {
 	if r.fields == nil {
 		return msg

@@ -32,7 +32,7 @@ func (c *countApiServerClient) UpdateCount(ctx context.Context, in *traits.Updat
 }
 
 func (c *countApiServerClient) PullCounts(ctx context.Context, in *traits.PullCountsRequest, _ ...grpc.CallOption) (traits.CountApi_PullCountsClient, error) {
-	stream := newClientServerStream(ctx)
+	stream := NewClientServerStream(ctx)
 	server := &countApiPullCountsServer{stream.Server()}
 	client := &countApiPullCountsClient{stream.Client()}
 	go func() {

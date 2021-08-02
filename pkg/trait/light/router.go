@@ -1,4 +1,4 @@
-package router
+package light
 
 import (
 	"context"
@@ -11,8 +11,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// LightApiRouter is a LightApiServer that allows routing named requests to specific LightApiClients
-type LightApiRouter struct {
+// Router is a LightApiServer that allows routing named requests to specific LightApiClients
+type Router struct {
 	traits.UnimplementedLightApiServer
 
 	mu       sync.Mutex
@@ -22,19 +22,19 @@ type LightApiRouter struct {
 }
 
 // compile time check that we implement the interface we need
-var _ traits.LightApiServer = &LightApiRouter{}
+var _ traits.LightApiServer = &Router{}
 
-func NewLightApiRouter() *LightApiRouter {
-	return &LightApiRouter{
+func NewRouter() *Router {
+	return &Router{
 		registry: make(map[string]traits.LightApiClient),
 	}
 }
 
-func (r *LightApiRouter) Register(server *grpc.Server) {
+func (r *Router) Register(server *grpc.Server) {
 	traits.RegisterLightApiServer(server, r)
 }
 
-func (r *LightApiRouter) Add(name string, client traits.LightApiClient) traits.LightApiClient {
+func (r *Router) Add(name string, client traits.LightApiClient) traits.LightApiClient {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	old := r.registry[name]
@@ -42,7 +42,7 @@ func (r *LightApiRouter) Add(name string, client traits.LightApiClient) traits.L
 	return old
 }
 
-func (r *LightApiRouter) Remove(name string) traits.LightApiClient {
+func (r *Router) Remove(name string) traits.LightApiClient {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	old := r.registry[name]
@@ -50,14 +50,14 @@ func (r *LightApiRouter) Remove(name string) traits.LightApiClient {
 	return old
 }
 
-func (r *LightApiRouter) Has(name string) bool {
+func (r *Router) Has(name string) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	_, exists := r.registry[name]
 	return exists
 }
 
-func (r *LightApiRouter) Get(name string) (traits.LightApiClient, error) {
+func (r *Router) Get(name string) (traits.LightApiClient, error) {
 	r.mu.Lock()
 	child, exists := r.registry[name]
 	defer r.mu.Unlock()
@@ -75,7 +75,7 @@ func (r *LightApiRouter) Get(name string) (traits.LightApiClient, error) {
 	return child, nil
 }
 
-func (r *LightApiRouter) UpdateBrightness(ctx context.Context, request *traits.UpdateBrightnessRequest) (*traits.Brightness, error) {
+func (r *Router) UpdateBrightness(ctx context.Context, request *traits.UpdateBrightnessRequest) (*traits.Brightness, error) {
 	child, err := r.Get(request.Name)
 	if err != nil {
 		return nil, err
@@ -84,7 +84,7 @@ func (r *LightApiRouter) UpdateBrightness(ctx context.Context, request *traits.U
 	return child.UpdateBrightness(ctx, request)
 }
 
-func (r *LightApiRouter) GetBrightness(ctx context.Context, request *traits.GetBrightnessRequest) (*traits.Brightness, error) {
+func (r *Router) GetBrightness(ctx context.Context, request *traits.GetBrightnessRequest) (*traits.Brightness, error) {
 	child, err := r.Get(request.Name)
 	if err != nil {
 		return nil, err
@@ -93,7 +93,7 @@ func (r *LightApiRouter) GetBrightness(ctx context.Context, request *traits.GetB
 	return child.GetBrightness(ctx, request)
 }
 
-func (r *LightApiRouter) PullBrightness(request *traits.PullBrightnessRequest, server traits.LightApi_PullBrightnessServer) error {
+func (r *Router) PullBrightness(request *traits.PullBrightnessRequest, server traits.LightApi_PullBrightnessServer) error {
 	child, err := r.Get(request.Name)
 	if err != nil {
 		return err

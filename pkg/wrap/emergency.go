@@ -28,7 +28,7 @@ func (b *emergencyApiServerClient) UpdateEmergency(ctx context.Context, in *trai
 }
 
 func (b *emergencyApiServerClient) PullEmergency(ctx context.Context, in *traits.PullEmergencyRequest, opts ...grpc.CallOption) (traits.EmergencyApi_PullEmergencyClient, error) {
-	stream := newClientServerStream(ctx)
+	stream := NewClientServerStream(ctx)
 	server := &emergencyApiPullEmergencyServer{stream.Server()}
 	client := &emergencyApiPullEmergencyClient{stream.Client()}
 	go func() {

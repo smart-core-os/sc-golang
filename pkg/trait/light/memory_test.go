@@ -1,8 +1,11 @@
-package memory
+package light
 
 import (
 	"testing"
 	"time"
+
+	"github.com/smart-core-os/sc-golang/internal/th"
+	"github.com/smart-core-os/sc-golang/pkg/memory"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/smart-core-os/sc-api/go/traits"
@@ -11,13 +14,13 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 
-func TestLightApi_UpdateBrightness(t *testing.T) {
+func TestMemoryDevice_UpdateBrightness(t *testing.T) {
 	t.Run("tween", func(t *testing.T) {
-		api := NewLightApi()
+		api := NewMemoryDevice()
 		api.brightnessTick = 10 * time.Millisecond // give us a chance to see some updates
-		update, done := api.brightness.OnUpdate(ctx)
+		update, done := api.brightness.OnUpdate(th.Ctx)
 		t.Cleanup(done)
-		var updates []*ResourceChange
+		var updates []*memory.ResourceChange
 		go func() {
 			for change := range update {
 				updates = append(updates, change)
@@ -33,7 +36,7 @@ func TestLightApi_UpdateBrightness(t *testing.T) {
 				Progress:      0,
 			},
 		}
-		initialValue, err := api.UpdateBrightness(ctx, &traits.UpdateBrightnessRequest{
+		initialValue, err := api.UpdateBrightness(th.Ctx, &traits.UpdateBrightnessRequest{
 			Brightness: &traits.Brightness{
 				LevelPercent: 50,
 				BrightnessTween: &types.Tween{
@@ -91,13 +94,13 @@ func TestLightApi_UpdateBrightness(t *testing.T) {
 	})
 
 	t.Run("tween interrupted", func(t *testing.T) {
-		api := NewLightApi()
+		api := NewMemoryDevice()
 		api.brightnessTick = 10 * time.Millisecond // give us a chance to see some updates
-		update, done := api.brightness.OnUpdate(ctx)
+		update, done := api.brightness.OnUpdate(th.Ctx)
 		t.Cleanup(done)
 
 		tweenStarted := make(chan struct{}, 3)
-		var updates []*ResourceChange
+		var updates []*memory.ResourceChange
 		go func() {
 			for change := range update {
 				updates = append(updates, change)
@@ -110,7 +113,7 @@ func TestLightApi_UpdateBrightness(t *testing.T) {
 		}()
 
 		duration := 100 * time.Millisecond
-		_, err := api.UpdateBrightness(ctx, &traits.UpdateBrightnessRequest{
+		_, err := api.UpdateBrightness(th.Ctx, &traits.UpdateBrightnessRequest{
 			Brightness: &traits.Brightness{
 				LevelPercent:    100,
 				BrightnessTween: &types.Tween{TotalDuration: durationpb.New(duration)},
@@ -125,7 +128,7 @@ func TestLightApi_UpdateBrightness(t *testing.T) {
 		<-tweenStarted
 		<-tweenStarted
 
-		finalValue, err := api.UpdateBrightness(ctx, &traits.UpdateBrightnessRequest{
+		finalValue, err := api.UpdateBrightness(th.Ctx, &traits.UpdateBrightnessRequest{
 			Brightness: &traits.Brightness{LevelPercent: 10},
 		})
 		if err != nil {

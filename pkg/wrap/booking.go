@@ -40,7 +40,7 @@ func (b *bookingApiServerClient) UpdateBooking(ctx context.Context, in *traits.U
 }
 
 func (b *bookingApiServerClient) PullBookings(ctx context.Context, in *traits.ListBookingsRequest, opts ...grpc.CallOption) (traits.BookingApi_PullBookingsClient, error) {
-	stream := newClientServerStream(ctx)
+	stream := NewClientServerStream(ctx)
 	server := &bookingApiPullBookingsServer{stream.Server()}
 	client := &bookingApiPullBookingsClient{stream.Client()}
 	go func() {

@@ -1,36 +1,37 @@
-package group
+package light
 
 import (
 	"context"
 
 	"github.com/smart-core-os/sc-api/go/traits"
+	"github.com/smart-core-os/sc-golang/pkg/group"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// LightApi combines multiple named devices into a single named device.
-type LightApi struct {
+// Group combines multiple named devices into a single named device.
+type Group struct {
 	traits.UnimplementedLightApiServer
 
-	ReadExecution  ExecutionStrategy
-	WriteExecution ExecutionStrategy
+	ReadExecution  group.ExecutionStrategy
+	WriteExecution group.ExecutionStrategy
 
 	members []string
 	impl    traits.LightApiClient
 }
 
-// NewLightApi creates a new LightApi instance with ExecutionStrategyAll for both reads and writes.
-func NewLightApi(impl traits.LightApiClient, members ...string) *LightApi {
-	return &LightApi{
-		ReadExecution:  ExecutionStrategyAll,
-		WriteExecution: ExecutionStrategyAll,
+// NewGroup creates a new Group instance with ExecutionStrategyAll for both reads and writes.
+func NewGroup(impl traits.LightApiClient, members ...string) *Group {
+	return &Group{
+		ReadExecution:  group.ExecutionStrategyAll,
+		WriteExecution: group.ExecutionStrategyAll,
 		impl:           impl,
 		members:        members,
 	}
 }
 
-func (s *LightApi) GetBrightness(ctx context.Context, request *traits.GetBrightnessRequest) (*traits.Brightness, error) {
-	actions := make([]Member, len(s.members))
+func (s *Group) GetBrightness(ctx context.Context, request *traits.GetBrightnessRequest) (*traits.Brightness, error) {
+	actions := make([]group.Member, len(s.members))
 	for i, member := range s.members {
 		i := i
 		member := member
@@ -40,7 +41,7 @@ func (s *LightApi) GetBrightness(ctx context.Context, request *traits.GetBrightn
 			return s.impl.GetBrightness(ctx, memberRequest)
 		}
 	}
-	results, err := Execute(ctx, s.ReadExecution, actions)
+	results, err := group.Execute(ctx, s.ReadExecution, actions)
 	if err != nil {
 		return nil, err
 	}
@@ -48,8 +49,8 @@ func (s *LightApi) GetBrightness(ctx context.Context, request *traits.GetBrightn
 	return s.reduce(results), nil
 }
 
-func (s *LightApi) UpdateBrightness(ctx context.Context, request *traits.UpdateBrightnessRequest) (*traits.Brightness, error) {
-	actions := make([]Member, len(s.members))
+func (s *Group) UpdateBrightness(ctx context.Context, request *traits.UpdateBrightnessRequest) (*traits.Brightness, error) {
+	actions := make([]group.Member, len(s.members))
 	for i, member := range s.members {
 		i := i
 		member := member
@@ -59,7 +60,7 @@ func (s *LightApi) UpdateBrightness(ctx context.Context, request *traits.UpdateB
 			return s.impl.UpdateBrightness(ctx, memberRequest)
 		}
 	}
-	results, err := Execute(ctx, s.WriteExecution, actions)
+	results, err := group.Execute(ctx, s.WriteExecution, actions)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +68,7 @@ func (s *LightApi) UpdateBrightness(ctx context.Context, request *traits.UpdateB
 	return s.reduce(results), nil
 }
 
-func (s *LightApi) PullBrightness(request *traits.PullBrightnessRequest, server traits.LightApi_PullBrightnessServer) error {
+func (s *Group) PullBrightness(request *traits.PullBrightnessRequest, server traits.LightApi_PullBrightnessServer) error {
 	// NB we dont connect response headers or trailers for the members with the passed server.
 	// If we did we'd be in a situation where one member who didn't send headers could cause
 	// the entire subscription to be blocked. Either that or we'd be introducing timeouts and latency.
@@ -80,7 +81,7 @@ func (s *LightApi) PullBrightness(request *traits.PullBrightnessRequest, server 
 
 	returnErr := make(chan error, 1)
 	go func() {
-		_, err := Execute(ctx, s.ReadExecution, actions)
+		_, err := group.Execute(ctx, s.ReadExecution, actions)
 		returnErr <- err
 	}()
 
@@ -124,8 +125,8 @@ func (s *LightApi) PullBrightness(request *traits.PullBrightnessRequest, server 
 	}
 }
 
-func (s *LightApi) pullBrightnessActions(request *traits.PullBrightnessRequest, memberValues chan<- pullBrightnessResponse) []Member {
-	actions := make([]Member, len(s.members))
+func (s *Group) pullBrightnessActions(request *traits.PullBrightnessRequest, memberValues chan<- pullBrightnessResponse) []group.Member {
+	actions := make([]group.Member, len(s.members))
 	for i, member := range s.members {
 		i := i
 		member := member
@@ -159,7 +160,7 @@ func (s *LightApi) pullBrightnessActions(request *traits.PullBrightnessRequest, 
 	return actions
 }
 
-func (s *LightApi) reduce(results []proto.Message) *traits.Brightness {
+func (s *Group) reduce(results []proto.Message) *traits.Brightness {
 	val := new(traits.Brightness)
 	for i, result := range results {
 		if result == nil {
@@ -171,7 +172,7 @@ func (s *LightApi) reduce(results []proto.Message) *traits.Brightness {
 	return val
 }
 
-func (s *LightApi) reduceBrightnessChanges(arr []*traits.PullBrightnessResponse_Change) *traits.PullBrightnessResponse_Change {
+func (s *Group) reduceBrightnessChanges(arr []*traits.PullBrightnessResponse_Change) *traits.PullBrightnessResponse_Change {
 	val := &traits.PullBrightnessResponse_Change{}
 	for i, change := range arr {
 		if change == nil {
@@ -184,7 +185,7 @@ func (s *LightApi) reduceBrightnessChanges(arr []*traits.PullBrightnessResponse_
 	return val
 }
 
-func (s *LightApi) reduceBrightness(acc, v *traits.Brightness, i int) *traits.Brightness {
+func (s *Group) reduceBrightness(acc, v *traits.Brightness, i int) *traits.Brightness {
 	if v == nil {
 		return acc
 	}

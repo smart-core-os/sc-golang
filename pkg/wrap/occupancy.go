@@ -24,7 +24,7 @@ func (c *occupancySensorApiServerClient) GetOccupancy(ctx context.Context, in *t
 }
 
 func (c *occupancySensorApiServerClient) PullOccupancy(ctx context.Context, in *traits.PullOccupancyRequest, _ ...grpc.CallOption) (traits.OccupancySensorApi_PullOccupancyClient, error) {
-	stream := newClientServerStream(ctx)
+	stream := NewClientServerStream(ctx)
 	server := &occupancySensorApiPullOccupancyServer{stream.Server()}
 	client := &occupancySensorApiPullOccupancyClient{stream.Client()}
 	go func() {

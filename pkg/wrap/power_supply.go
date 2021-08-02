@@ -25,7 +25,7 @@ func (b *powerSupplyApiServerClient) GetPowerCapacity(ctx context.Context, in *t
 }
 
 func (b *powerSupplyApiServerClient) PullPowerCapacity(ctx context.Context, in *traits.PullPowerCapacityRequest, _ ...grpc.CallOption) (traits.PowerSupplyApi_PullPowerCapacityClient, error) {
-	stream := newClientServerStream(ctx)
+	stream := NewClientServerStream(ctx)
 	server := &powerSupplyApiPullPowerCapacityServer{stream.Server()}
 	client := &powerSupplyApiPullPowerCapacityClient{stream.Client()}
 	go func() {

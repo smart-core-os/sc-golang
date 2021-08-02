@@ -10,7 +10,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type clientServerStream struct {
+// ClientServerStream combines both a grpc.ServerStream and grpc.ClientStream
+type ClientServerStream struct {
 	ctx        context.Context
 	header     metadata.MD
 	headerCond *sync.Cond
@@ -22,9 +23,9 @@ type clientServerStream struct {
 	closeErr   error
 }
 
-func newClientServerStream(ctx context.Context) *clientServerStream {
+func NewClientServerStream(ctx context.Context) *ClientServerStream {
 	newCtx, closed := context.WithCancel(ctx)
-	return &clientServerStream{
+	return &ClientServerStream{
 		ctx:        newCtx,
 		closed:     closed,
 		headerCond: sync.NewCond(&sync.Mutex{}),
@@ -33,22 +34,22 @@ func newClientServerStream(ctx context.Context) *clientServerStream {
 	}
 }
 
-func (s *clientServerStream) Close(err error) {
+func (s *ClientServerStream) Close(err error) {
 	s.closeErr = err
 	close(s.serverSend)
 	s.closed()
 }
 
-func (s *clientServerStream) Client() grpc.ClientStream {
+func (s *ClientServerStream) Client() grpc.ClientStream {
 	return &clientStream{s}
 }
 
-func (s *clientServerStream) Server() grpc.ServerStream {
+func (s *ClientServerStream) Server() grpc.ServerStream {
 	return &serverStream{s}
 }
 
 type clientStream struct {
-	*clientServerStream
+	*ClientServerStream
 }
 
 func (c *clientStream) Header() (metadata.MD, error) {
@@ -99,7 +100,7 @@ func (c *clientStream) RecvMsg(m interface{}) error {
 }
 
 type serverStream struct {
-	*clientServerStream
+	*ClientServerStream
 }
 
 func (s *serverStream) SetHeader(md metadata.MD) error {

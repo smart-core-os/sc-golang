@@ -1,40 +1,41 @@
-package memory
+package onoff
 
 import (
 	"context"
 
 	"github.com/smart-core-os/sc-api/go/traits"
+	"github.com/smart-core-os/sc-golang/pkg/memory"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
 )
 
-type OnOffApi struct {
+type MemoryDevice struct {
 	traits.UnimplementedOnOffApiServer
-	onOff *Resource
+	onOff *memory.Resource
 }
 
-func NewOnOffApi(initialState traits.OnOff_State) *OnOffApi {
-	return &OnOffApi{
-		onOff: NewResource(WithInitialValue(&traits.OnOff{
+func NewMemoryDevice(initialState traits.OnOff_State) *MemoryDevice {
+	return &MemoryDevice{
+		onOff: memory.NewResource(memory.WithInitialValue(&traits.OnOff{
 			State: initialState,
 		})),
 	}
 }
 
-func (t *OnOffApi) Register(server *grpc.Server) {
+func (t *MemoryDevice) Register(server *grpc.Server) {
 	traits.RegisterOnOffApiServer(server, t)
 }
 
-func (t *OnOffApi) GetOnOff(_ context.Context, _ *traits.GetOnOffRequest) (*traits.OnOff, error) {
+func (t *MemoryDevice) GetOnOff(_ context.Context, _ *traits.GetOnOffRequest) (*traits.OnOff, error) {
 	return t.onOff.Get().(*traits.OnOff), nil
 }
 
-func (t *OnOffApi) UpdateOnOff(_ context.Context, request *traits.UpdateOnOffRequest) (*traits.OnOff, error) {
+func (t *MemoryDevice) UpdateOnOff(_ context.Context, request *traits.UpdateOnOffRequest) (*traits.OnOff, error) {
 	res, err := t.onOff.Set(request.OnOff)
 	return res.(*traits.OnOff), err
 }
 
-func (t *OnOffApi) PullOnOff(request *traits.PullOnOffRequest, server traits.OnOffApi_PullOnOffServer) error {
+func (t *MemoryDevice) PullOnOff(request *traits.PullOnOffRequest, server traits.OnOffApi_PullOnOffServer) error {
 	changes, done := t.onOff.OnUpdate(server.Context())
 	defer done()
 

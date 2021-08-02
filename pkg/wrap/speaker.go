@@ -29,7 +29,7 @@ func (b *speakerApiServerClient) UpdateVolume(ctx context.Context, in *traits.Up
 }
 
 func (b *speakerApiServerClient) PullVolume(ctx context.Context, in *traits.PullSpeakerVolumeRequest, _ ...grpc.CallOption) (traits.SpeakerApi_PullVolumeClient, error) {
-	stream := newClientServerStream(ctx)
+	stream := NewClientServerStream(ctx)
 	server := &speakerPullVolumeServer{stream.Server()}
 	client := &speakerPullVolumeClient{stream.Client()}
 	go func() {

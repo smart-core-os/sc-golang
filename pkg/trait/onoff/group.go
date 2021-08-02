@@ -1,36 +1,37 @@
-package group
+package onoff
 
 import (
 	"context"
 
 	"github.com/smart-core-os/sc-api/go/traits"
+	"github.com/smart-core-os/sc-golang/pkg/group"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// OnOffApi combines multiple named devices into a single named device.
-type OnOffApi struct {
+// Group combines multiple named devices into a single named device.
+type Group struct {
 	traits.UnimplementedOnOffApiServer
 
-	ReadExecution  ExecutionStrategy
-	WriteExecution ExecutionStrategy
+	ReadExecution  group.ExecutionStrategy
+	WriteExecution group.ExecutionStrategy
 
 	members []string
 	impl    traits.OnOffApiClient
 }
 
-// NewOnOffApi creates a new OnOffApi instance with ExecutionStrategyAll for both reads and writes.
-func NewOnOffApi(impl traits.OnOffApiClient, members ...string) *OnOffApi {
-	return &OnOffApi{
-		ReadExecution:  ExecutionStrategyAll,
-		WriteExecution: ExecutionStrategyAll,
+// NewGroup creates a new Group instance with ExecutionStrategyAll for both reads and writes.
+func NewGroup(impl traits.OnOffApiClient, members ...string) *Group {
+	return &Group{
+		ReadExecution:  group.ExecutionStrategyAll,
+		WriteExecution: group.ExecutionStrategyAll,
 		impl:           impl,
 		members:        members,
 	}
 }
 
-func (s *OnOffApi) GetOnOff(ctx context.Context, request *traits.GetOnOffRequest) (*traits.OnOff, error) {
-	actions := make([]Member, len(s.members))
+func (s *Group) GetOnOff(ctx context.Context, request *traits.GetOnOffRequest) (*traits.OnOff, error) {
+	actions := make([]group.Member, len(s.members))
 	for i, member := range s.members {
 		i := i
 		member := member
@@ -40,7 +41,7 @@ func (s *OnOffApi) GetOnOff(ctx context.Context, request *traits.GetOnOffRequest
 			return s.impl.GetOnOff(ctx, memberRequest)
 		}
 	}
-	results, err := Execute(ctx, s.ReadExecution, actions)
+	results, err := group.Execute(ctx, s.ReadExecution, actions)
 	if err != nil {
 		return nil, err
 	}
@@ -48,8 +49,8 @@ func (s *OnOffApi) GetOnOff(ctx context.Context, request *traits.GetOnOffRequest
 	return s.reduce(results), nil
 }
 
-func (s *OnOffApi) UpdateOnOff(ctx context.Context, request *traits.UpdateOnOffRequest) (*traits.OnOff, error) {
-	actions := make([]Member, len(s.members))
+func (s *Group) UpdateOnOff(ctx context.Context, request *traits.UpdateOnOffRequest) (*traits.OnOff, error) {
+	actions := make([]group.Member, len(s.members))
 	for i, member := range s.members {
 		i := i
 		member := member
@@ -59,7 +60,7 @@ func (s *OnOffApi) UpdateOnOff(ctx context.Context, request *traits.UpdateOnOffR
 			return s.impl.UpdateOnOff(ctx, memberRequest)
 		}
 	}
-	results, err := Execute(ctx, s.WriteExecution, actions)
+	results, err := group.Execute(ctx, s.WriteExecution, actions)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +68,7 @@ func (s *OnOffApi) UpdateOnOff(ctx context.Context, request *traits.UpdateOnOffR
 	return s.reduce(results), nil
 }
 
-func (s *OnOffApi) PullOnOff(request *traits.PullOnOffRequest, server traits.OnOffApi_PullOnOffServer) error {
+func (s *Group) PullOnOff(request *traits.PullOnOffRequest, server traits.OnOffApi_PullOnOffServer) error {
 	// NB we dont connect response headers or trailers for the members with the passed server.
 	// If we did we'd be in a situation where one member who didn't send headers could cause
 	// the entire subscription to be blocked. Either that or we'd be introducing timeouts and latency.
@@ -80,7 +81,7 @@ func (s *OnOffApi) PullOnOff(request *traits.PullOnOffRequest, server traits.OnO
 
 	returnErr := make(chan error, 1)
 	go func() {
-		_, err := Execute(ctx, s.ReadExecution, actions)
+		_, err := group.Execute(ctx, s.ReadExecution, actions)
 		returnErr <- err
 	}()
 
@@ -124,8 +125,8 @@ func (s *OnOffApi) PullOnOff(request *traits.PullOnOffRequest, server traits.OnO
 	}
 }
 
-func (s *OnOffApi) pullOnOffActions(request *traits.PullOnOffRequest, memberValues chan<- pullOnOffResponse) []Member {
-	actions := make([]Member, len(s.members))
+func (s *Group) pullOnOffActions(request *traits.PullOnOffRequest, memberValues chan<- pullOnOffResponse) []group.Member {
+	actions := make([]group.Member, len(s.members))
 	for i, member := range s.members {
 		i := i
 		member := member
@@ -159,7 +160,7 @@ func (s *OnOffApi) pullOnOffActions(request *traits.PullOnOffRequest, memberValu
 	return actions
 }
 
-func (s *OnOffApi) reduce(results []proto.Message) *traits.OnOff {
+func (s *Group) reduce(results []proto.Message) *traits.OnOff {
 	val := new(traits.OnOff)
 	for _, result := range results {
 		if result == nil {
@@ -171,7 +172,7 @@ func (s *OnOffApi) reduce(results []proto.Message) *traits.OnOff {
 	return val
 }
 
-func (s *OnOffApi) reduceOnOffChanges(arr []*traits.PullOnOffResponse_Change) *traits.PullOnOffResponse_Change {
+func (s *Group) reduceOnOffChanges(arr []*traits.PullOnOffResponse_Change) *traits.PullOnOffResponse_Change {
 	val := &traits.PullOnOffResponse_Change{}
 	for _, change := range arr {
 		if change == nil {
@@ -184,7 +185,7 @@ func (s *OnOffApi) reduceOnOffChanges(arr []*traits.PullOnOffResponse_Change) *t
 	return val
 }
 
-func (s *OnOffApi) reduceOnOff(acc, v *traits.OnOff) *traits.OnOff {
+func (s *Group) reduceOnOff(acc, v *traits.OnOff) *traits.OnOff {
 	if v == nil {
 		return acc
 	}

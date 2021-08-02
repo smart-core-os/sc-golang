@@ -1,4 +1,4 @@
-package router
+package onoff
 
 import (
 	"context"
@@ -11,8 +11,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// OnOffApiRouter is a OnOffApiServer that allows routing named requests to specific OnOffApiClients
-type OnOffApiRouter struct {
+// Router is a OnOffApiServer that allows routing named requests to specific OnOffApiClients
+type Router struct {
 	traits.UnimplementedOnOffApiServer
 
 	mu       sync.Mutex
@@ -22,19 +22,19 @@ type OnOffApiRouter struct {
 }
 
 // compile time check that we implement the interface we need
-var _ traits.OnOffApiServer = &OnOffApiRouter{}
+var _ traits.OnOffApiServer = &Router{}
 
-func NewOnOffApiRouter() *OnOffApiRouter {
-	return &OnOffApiRouter{
+func NewRouter() *Router {
+	return &Router{
 		registry: make(map[string]traits.OnOffApiClient),
 	}
 }
 
-func (r *OnOffApiRouter) Register(server *grpc.Server) {
+func (r *Router) Register(server *grpc.Server) {
 	traits.RegisterOnOffApiServer(server, r)
 }
 
-func (r *OnOffApiRouter) Add(name string, client traits.OnOffApiClient) traits.OnOffApiClient {
+func (r *Router) Add(name string, client traits.OnOffApiClient) traits.OnOffApiClient {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	old := r.registry[name]
@@ -42,7 +42,7 @@ func (r *OnOffApiRouter) Add(name string, client traits.OnOffApiClient) traits.O
 	return old
 }
 
-func (r *OnOffApiRouter) Remove(name string) traits.OnOffApiClient {
+func (r *Router) Remove(name string) traits.OnOffApiClient {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	old := r.registry[name]
@@ -50,14 +50,14 @@ func (r *OnOffApiRouter) Remove(name string) traits.OnOffApiClient {
 	return old
 }
 
-func (r *OnOffApiRouter) Has(name string) bool {
+func (r *Router) Has(name string) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	_, exists := r.registry[name]
 	return exists
 }
 
-func (r *OnOffApiRouter) Get(name string) (traits.OnOffApiClient, error) {
+func (r *Router) Get(name string) (traits.OnOffApiClient, error) {
 	r.mu.Lock()
 	child, exists := r.registry[name]
 	defer r.mu.Unlock()
@@ -75,7 +75,7 @@ func (r *OnOffApiRouter) Get(name string) (traits.OnOffApiClient, error) {
 	return child, nil
 }
 
-func (r *OnOffApiRouter) GetOnOff(ctx context.Context, request *traits.GetOnOffRequest) (*traits.OnOff, error) {
+func (r *Router) GetOnOff(ctx context.Context, request *traits.GetOnOffRequest) (*traits.OnOff, error) {
 	child, err := r.Get(request.Name)
 	if err != nil {
 		return nil, err
@@ -84,7 +84,7 @@ func (r *OnOffApiRouter) GetOnOff(ctx context.Context, request *traits.GetOnOffR
 	return child.GetOnOff(ctx, request)
 }
 
-func (r *OnOffApiRouter) UpdateOnOff(ctx context.Context, request *traits.UpdateOnOffRequest) (*traits.OnOff, error) {
+func (r *Router) UpdateOnOff(ctx context.Context, request *traits.UpdateOnOffRequest) (*traits.OnOff, error) {
 	child, err := r.Get(request.Name)
 	if err != nil {
 		return nil, err
@@ -93,7 +93,7 @@ func (r *OnOffApiRouter) UpdateOnOff(ctx context.Context, request *traits.Update
 	return child.UpdateOnOff(ctx, request)
 }
 
-func (r *OnOffApiRouter) PullOnOff(request *traits.PullOnOffRequest, server traits.OnOffApi_PullOnOffServer) error {
+func (r *Router) PullOnOff(request *traits.PullOnOffRequest, server traits.OnOffApi_PullOnOffServer) error {
 	child, err := r.Get(request.Name)
 	if err != nil {
 		return err

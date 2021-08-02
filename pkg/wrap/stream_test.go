@@ -10,7 +10,7 @@ import (
 
 func Test_clientSend(t *testing.T) {
 	ctx := context.Background()
-	clientServer := newClientServerStream(ctx)
+	clientServer := NewClientServerStream(ctx)
 	client := clientServer.Client()
 	server := clientServer.Server()
 
@@ -29,7 +29,7 @@ func Test_clientSend(t *testing.T) {
 
 func Test_serverSend(t *testing.T) {
 	ctx := context.Background()
-	clientServer := newClientServerStream(ctx)
+	clientServer := NewClientServerStream(ctx)
 	client := clientServer.Client()
 	server := clientServer.Server()
 

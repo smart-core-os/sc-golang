@@ -28,7 +28,7 @@ func (b *airTemperatureApiServerClient) UpdateAirTemperature(ctx context.Context
 }
 
 func (b *airTemperatureApiServerClient) PullAirTemperature(ctx context.Context, in *traits.PullAirTemperatureRequest, _ ...grpc.CallOption) (traits.AirTemperatureApi_PullAirTemperatureClient, error) {
-	stream := newClientServerStream(ctx)
+	stream := NewClientServerStream(ctx)
 	server := &thermostatPullAirTemperatureServer{stream.Server()}
 	client := &thermostatPullAirTemperatureClient{stream.Client()}
 	go func() {

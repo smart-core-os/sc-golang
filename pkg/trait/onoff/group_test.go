@@ -1,4 +1,4 @@
-package group
+package onoff
 
 import (
 	"context"
@@ -10,9 +10,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/smart-core-os/sc-api/go/traits"
-	"github.com/smart-core-os/sc-golang/pkg/memory"
-	"github.com/smart-core-os/sc-golang/pkg/router"
-	"github.com/smart-core-os/sc-golang/pkg/wrap"
+	"github.com/smart-core-os/sc-golang/internal/th"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -20,7 +18,7 @@ import (
 
 // todo: test one, some, all failures for get, update, pull
 
-func TestOnOffApi_GetOnOff(t *testing.T) {
+func TestGroup_GetOnOff(t *testing.T) {
 	tester := newOnOffTester(t, "A", "B")
 	// initial state
 	tester.assertGet(traits.OnOff_UNKNOWN)
@@ -38,7 +36,7 @@ func TestOnOffApi_GetOnOff(t *testing.T) {
 	tester.assertGet(traits.OnOff_ON)
 }
 
-func TestOnOffApi_UpdateOnOff(t *testing.T) {
+func TestGroup_UpdateOnOff(t *testing.T) {
 	tester := newOnOffTester(t, "A", "B")
 	// check no writes happen without us knowing
 	tester.confirm(traits.OnOff_UNKNOWN, "A", "B")
@@ -54,7 +52,7 @@ func TestOnOffApi_UpdateOnOff(t *testing.T) {
 	tester.confirm(traits.OnOff_OFF, "A", "B")
 }
 
-func TestOnOffApi_PullOnOff(t *testing.T) {
+func TestGroup_PullOnOff(t *testing.T) {
 	tester := newOnOffTester(t, "A", "B").pull()
 	// no messages to start with
 	tester.assertNone()
@@ -76,12 +74,12 @@ type onOffTester struct {
 }
 
 func newOnOffTester(t *testing.T, members ...string) *onOffTester {
-	devices := router.NewOnOffApiRouter()
+	devices := NewRouter()
 	devices.Factory = func(name string) (traits.OnOffApiClient, error) {
-		return wrap.OnOffApiServer(memory.NewOnOffApi(traits.OnOff_UNKNOWN)), nil
+		return Wrap(NewMemoryDevice(traits.OnOff_UNKNOWN)), nil
 	}
-	impl := wrap.OnOffApiServer(devices)
-	group := NewOnOffApi(impl, members...)
+	impl := Wrap(devices)
+	group := NewGroup(impl, members...)
 
 	// server and client setup
 	lis := bufconn.Listen(1024 * 1024)
@@ -98,8 +96,8 @@ func newOnOffTester(t *testing.T, members ...string) *onOffTester {
 	}()
 
 	// setup the client
-	conn, err := dial(lis)
-	checkErr(t, err, "dial")
+	conn, err := th.Dial(lis)
+	th.CheckErr(t, err, "dial")
 	t.Cleanup(func() {
 		conn.Close()
 	})
@@ -116,8 +114,8 @@ func newOnOffTester(t *testing.T, members ...string) *onOffTester {
 func (t *onOffTester) prepare(state traits.OnOff_State, names ...string) {
 	t.t.Helper()
 	for _, name := range names {
-		_, err := t.impl.UpdateOnOff(ctx, &traits.UpdateOnOffRequest{Name: name, OnOff: &traits.OnOff{State: state}})
-		checkErr(t.t, err, fmt.Sprintf("%v.UpdateOnOff", name))
+		_, err := t.impl.UpdateOnOff(th.Ctx, &traits.UpdateOnOffRequest{Name: name, OnOff: &traits.OnOff{State: state}})
+		th.CheckErr(t.t, err, fmt.Sprintf("%v.UpdateOnOff", name))
 	}
 }
 
@@ -129,8 +127,8 @@ func (t *onOffTester) confirm(state traits.OnOff_State, names ...string) {
 	}
 	var badNames []badName
 	for _, name := range names {
-		got, err := t.impl.GetOnOff(ctx, &traits.GetOnOffRequest{Name: name})
-		checkErr(t.t, err, fmt.Sprintf("%v.GetOnOff", name))
+		got, err := t.impl.GetOnOff(th.Ctx, &traits.GetOnOffRequest{Name: name})
+		th.CheckErr(t.t, err, fmt.Sprintf("%v.GetOnOff", name))
 		if got.GetState() != state {
 			badNames = append(badNames, badName{name: name, state: got.GetState()})
 		}
@@ -151,8 +149,8 @@ func (t *onOffTester) confirm(state traits.OnOff_State, names ...string) {
 
 func (t *onOffTester) assertGet(expected traits.OnOff_State) {
 	t.t.Helper()
-	res, err := t.subj.GetOnOff(ctx, &traits.GetOnOffRequest{Name: "Parent"})
-	checkErr(t.t, err, "Parent.GetOnOff")
+	res, err := t.subj.GetOnOff(th.Ctx, &traits.GetOnOffRequest{Name: "Parent"})
+	th.CheckErr(t.t, err, "Parent.GetOnOff")
 	if res.GetState() != expected {
 		t.t.Fatalf("Parent.GetOnOff want %v, got %v", expected, res.GetState())
 	}
@@ -160,11 +158,11 @@ func (t *onOffTester) assertGet(expected traits.OnOff_State) {
 
 func (t *onOffTester) assertUpdate(state traits.OnOff_State, membersUpdated ...string) {
 	t.t.Helper()
-	updateState, err := t.subj.UpdateOnOff(ctx, &traits.UpdateOnOffRequest{Name: "Parent", OnOff: &traits.OnOff{State: state}})
-	checkErr(t.t, err, "Parent.UpdateOnOff")
+	updateState, err := t.subj.UpdateOnOff(th.Ctx, &traits.UpdateOnOffRequest{Name: "Parent", OnOff: &traits.OnOff{State: state}})
+	th.CheckErr(t.t, err, "Parent.UpdateOnOff")
 	// note: can't compare the update result with the given state as we might be updating just a few
 	// It's more correct to compare with the GetOnOff state as that uses the same merge strategy
-	getState, err := t.subj.GetOnOff(ctx, &traits.GetOnOffRequest{Name: "Parent"})
+	getState, err := t.subj.GetOnOff(th.Ctx, &traits.GetOnOffRequest{Name: "Parent"})
 	if diff := cmp.Diff(getState, updateState, protocmp.Transform()); diff != "" {
 		t.t.Fatalf("Update state doesn't match read state (-want, +got)\n%v", diff)
 	}
@@ -172,8 +170,8 @@ func (t *onOffTester) assertUpdate(state traits.OnOff_State, membersUpdated ...s
 
 func (t *onOffTester) pull() *onOffStreamTester {
 	t.t.Helper()
-	s, err := t.subj.PullOnOff(ctx, &traits.PullOnOffRequest{Name: "Parent"})
-	checkErr(t.t, err, "Parent.PullOnOff")
+	s, err := t.subj.PullOnOff(th.Ctx, &traits.PullOnOffRequest{Name: "Parent"})
+	th.CheckErr(t.t, err, "Parent.PullOnOff")
 	return &onOffStreamTester{onOffTester: t, s: s, c: make(chan onOffStreamMsg, 10)}
 }
 
@@ -194,7 +192,7 @@ func (t *onOffStreamTester) start() {
 	t.t.Helper()
 	t.startOnce.Do(func() {
 		t.t.Helper()
-		ctx, done := context.WithCancel(ctx)
+		ctx, done := context.WithCancel(th.Ctx)
 		t.t.Cleanup(done)
 
 		started := make(chan struct{}, 1)
@@ -214,7 +212,7 @@ func (t *onOffStreamTester) start() {
 				}
 
 				msg, err := t.s.Recv()
-				sendTimeout := time.NewTimer(streamTimout)
+				sendTimeout := time.NewTimer(th.StreamTimout)
 				select {
 				case <-sendTimeout.C:
 					t.t.Errorf("Message received when none were expected: %v %v", msg, err)
@@ -235,7 +233,7 @@ func (t *onOffStreamTester) start() {
 func (t *onOffStreamTester) assertNone() {
 	t.start()
 	t.t.Helper()
-	timer := time.NewTimer(streamTimout)
+	timer := time.NewTimer(th.StreamTimout)
 	defer timer.Stop()
 	select {
 	case v := <-t.c:
@@ -249,7 +247,7 @@ func (t *onOffStreamTester) assertPull(want traits.OnOff_State) {
 	t.start()
 	t.t.Helper()
 	now := time.Now()
-	timer := time.NewTimer(streamTimout)
+	timer := time.NewTimer(th.StreamTimout)
 	defer timer.Stop()
 
 	select {

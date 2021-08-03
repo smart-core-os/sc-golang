@@ -9,9 +9,9 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// generateUniqueId attempts to find a unique id using rand and using the given function to check existence.
+// GenerateUniqueId attempts to find a unique id using rand and using the given function to check existence.
 // This will attempt a few times before giving up and returning an error.
-func generateUniqueId(rand *rand.Rand, exists func(candidate string) bool) (string, error) {
+func GenerateUniqueId(rand *rand.Rand, exists func(candidate string) bool) (string, error) {
 	tries := 10
 	for i := 0; i < tries; i++ {
 		idCandidate := strconv.Itoa(rand.Int())

@@ -1,4 +1,4 @@
-package memory
+package powersupply
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/smart-core-os/sc-api/go/traits"
+	"github.com/smart-core-os/sc-golang/pkg/memory"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -16,13 +17,13 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-// PowerSupplyApi is an in-memory implementation of PowerSupplyApiServer scoped to a single device.
-type PowerSupplyApi struct {
+// MemoryDevice is an in-memory implementation of PowerSupplyApiServer scoped to a single device.
+type MemoryDevice struct {
 	traits.UnimplementedPowerSupplyApiServer
-	UnimplementedMemoryPowerSupplySettingsApiServer
+	UnimplementedMemorySettingsApiServer
 
-	powerCapacity *Resource // of *traits.PowerCapacity
-	settings      *Resource // of *MemoryPowerSupplySettings
+	powerCapacity *memory.Resource // of *traits.PowerCapacity
+	settings      *memory.Resource // of *MemorySettings
 
 	notificationsById   map[string]*drawNotification
 	notificationsByIdMu sync.RWMutex
@@ -30,14 +31,14 @@ type PowerSupplyApi struct {
 	Rng *rand.Rand
 }
 
-func NewPowerSupplyApi() *PowerSupplyApi {
+func NewMemoryDevice() *MemoryDevice {
 	initialPowerCapacity := InitialPowerCapacity()
-	return &PowerSupplyApi{
-		powerCapacity: NewResource(
-			WithInitialValue(initialPowerCapacity),
+	return &MemoryDevice{
+		powerCapacity: memory.NewResource(
+			memory.WithInitialValue(initialPowerCapacity),
 		),
-		settings: NewResource(
-			WithInitialValue(&MemoryPowerSupplySettings{
+		settings: memory.NewResource(
+			memory.WithInitialValue(&MemorySettings{
 				Rating:              initialPowerCapacity.Rating,
 				Load:                *initialPowerCapacity.Load,
 				Voltage:             initialPowerCapacity.Voltage,
@@ -61,19 +62,19 @@ func InitialPowerCapacity() *traits.PowerCapacity {
 	return c
 }
 
-func (s *PowerSupplyApi) SetLoad(load float32) {
+func (s *MemoryDevice) SetLoad(load float32) {
 	reserved := s.readSettings().Reserved
-	_, _ = s.powerCapacity.Set(&traits.PowerCapacity{Load: &load}, WithUpdatePaths("load"), InterceptAfter(func(old, new proto.Message) {
+	_, _ = s.powerCapacity.Set(&traits.PowerCapacity{Load: &load}, memory.WithUpdatePaths("load"), memory.InterceptAfter(func(old, new proto.Message) {
 		newCapacity := new.(*traits.PowerCapacity)
 		adjustPowerCapacityForLoad(newCapacity, reserved)
 	}))
 }
 
-func (s *PowerSupplyApi) GetPowerCapacity(_ context.Context, _ *traits.GetPowerCapacityRequest) (*traits.PowerCapacity, error) {
+func (s *MemoryDevice) GetPowerCapacity(_ context.Context, _ *traits.GetPowerCapacityRequest) (*traits.PowerCapacity, error) {
 	return s.powerCapacity.Get().(*traits.PowerCapacity), nil
 }
 
-func (s *PowerSupplyApi) PullPowerCapacity(request *traits.PullPowerCapacityRequest, server traits.PowerSupplyApi_PullPowerCapacityServer) error {
+func (s *MemoryDevice) PullPowerCapacity(request *traits.PullPowerCapacityRequest, server traits.PowerSupplyApi_PullPowerCapacityServer) error {
 	changes, done := s.powerCapacity.OnUpdate(server.Context())
 	defer done()
 
@@ -97,7 +98,7 @@ func (s *PowerSupplyApi) PullPowerCapacity(request *traits.PullPowerCapacityRequ
 	}
 }
 
-func (s *PowerSupplyApi) CreateDrawNotification(_ context.Context, request *traits.CreateDrawNotificationRequest) (*traits.DrawNotification, error) {
+func (s *MemoryDevice) CreateDrawNotification(_ context.Context, request *traits.CreateDrawNotificationRequest) (*traits.DrawNotification, error) {
 	if err := validateWriteRequest(request); err != nil {
 		return nil, err
 	}
@@ -124,7 +125,7 @@ func (s *PowerSupplyApi) CreateDrawNotification(_ context.Context, request *trai
 	return s.setDrawNotification(n)
 }
 
-func (s *PowerSupplyApi) UpdateDrawNotification(ctx context.Context, request *traits.UpdateDrawNotificationRequest) (*traits.DrawNotification, error) {
+func (s *MemoryDevice) UpdateDrawNotification(ctx context.Context, request *traits.UpdateDrawNotificationRequest) (*traits.DrawNotification, error) {
 	if err := validateUpdateRequest(request); err != nil {
 		return nil, err
 	}
@@ -155,7 +156,7 @@ func (s *PowerSupplyApi) UpdateDrawNotification(ctx context.Context, request *tr
 	return s.setDrawNotification(n)
 }
 
-func (s *PowerSupplyApi) DeleteDrawNotification(_ context.Context, request *traits.DeleteDrawNotificationRequest) (*emptypb.Empty, error) {
+func (s *MemoryDevice) DeleteDrawNotification(_ context.Context, request *traits.DeleteDrawNotificationRequest) (*emptypb.Empty, error) {
 	s.notificationsByIdMu.Lock()
 	defer s.notificationsByIdMu.Unlock()
 

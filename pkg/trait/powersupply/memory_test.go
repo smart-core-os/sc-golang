@@ -1,4 +1,4 @@
-package memory
+package powersupply
 
 import (
 	"fmt"
@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/smart-core-os/sc-api/go/traits"
-	"github.com/smart-core-os/sc-golang/pkg/wrap"
 	"golang.org/x/net/context"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
@@ -14,9 +13,9 @@ import (
 var ctx = context.Background()
 
 func powerSupplyClient() traits.PowerSupplyApiClient {
-	var device = NewPowerSupplyApi()
+	var device = NewMemoryDevice()
 	device.SetLoad(20)
-	var client = wrap.PowerSupplyApiServer(device)
+	var client = Wrap(device)
 	return client
 }
 

@@ -1,8 +1,10 @@
-package memory
+package powersupply
 
 import (
 	"context"
 	"log"
+
+	"github.com/smart-core-os/sc-golang/pkg/memory"
 
 	"github.com/smart-core-os/sc-api/go/traits"
 	"google.golang.org/grpc/codes"
@@ -10,16 +12,16 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func (s *PowerSupplyApi) setNotified(notified float32) {
-	_, _ = s.powerCapacity.Set(&traits.PowerCapacity{Notified: notified}, WithUpdatePaths("notified"))
+func (s *MemoryDevice) setNotified(notified float32) {
+	_, _ = s.powerCapacity.Set(&traits.PowerCapacity{Notified: notified}, memory.WithUpdatePaths("notified"))
 }
 
-func (s *PowerSupplyApi) addNotified(notified float32) {
+func (s *MemoryDevice) addNotified(notified float32) {
 	log.Printf("addNotified(%v)", notified)
 	_, _ = s.powerCapacity.Set(
 		&traits.PowerCapacity{Notified: notified},
-		WithUpdatePaths("notified"),
-		InterceptBefore(func(old, change proto.Message) {
+		memory.WithUpdatePaths("notified"),
+		memory.InterceptBefore(func(old, change proto.Message) {
 			val := old.(*traits.PowerCapacity)
 			delta := change.(*traits.PowerCapacity)
 			delta.Notified += val.Notified
@@ -27,7 +29,7 @@ func (s *PowerSupplyApi) addNotified(notified float32) {
 	)
 }
 
-func (s *PowerSupplyApi) normaliseMaxDraw(n *traits.DrawNotification) {
+func (s *MemoryDevice) normaliseMaxDraw(n *traits.DrawNotification) {
 	capacity := s.powerCapacity.Get().(*traits.PowerCapacity)
 	available := capacity.Free - capacity.Notified
 	if available < 0 {
@@ -42,7 +44,7 @@ func (s *PowerSupplyApi) normaliseMaxDraw(n *traits.DrawNotification) {
 	}
 }
 
-func (s *PowerSupplyApi) normaliseRampDuration(n *traits.DrawNotification) {
+func (s *MemoryDevice) normaliseRampDuration(n *traits.DrawNotification) {
 	settings := s.readSettings()
 	if n.RampDuration == nil {
 		n.RampDuration = settings.DefaultRampDuration
@@ -54,8 +56,8 @@ func (s *PowerSupplyApi) normaliseRampDuration(n *traits.DrawNotification) {
 
 // generateId assigns a unique id to the given DrawNotification.
 // s.notificationsByIdMu must be locked before calling.
-func (s *PowerSupplyApi) generateId(n *traits.DrawNotification) error {
-	id, err := generateUniqueId(s.Rng, func(candidate string) bool {
+func (s *MemoryDevice) generateId(n *traits.DrawNotification) error {
+	id, err := memory.GenerateUniqueId(s.Rng, func(candidate string) bool {
 		_, ok := s.notificationsById[candidate]
 		return ok
 	})
@@ -69,7 +71,7 @@ func (s *PowerSupplyApi) generateId(n *traits.DrawNotification) error {
 // setDrawNotification adds n to the set of known notifications.
 // The notification will be removed and n.MaxDraw will be subtracted from the current capacity
 // after n.RampDuration time.
-func (s *PowerSupplyApi) setDrawNotification(n *traits.DrawNotification) (*traits.DrawNotification, error) {
+func (s *MemoryDevice) setDrawNotification(n *traits.DrawNotification) (*traits.DrawNotification, error) {
 	id := n.Id
 	notifiedValue := n.MaxDraw
 

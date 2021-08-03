@@ -115,7 +115,7 @@ func (b *BookingApi) CreateBooking(_ context.Context, request *traits.CreateBook
 		// try to generate a unique id
 		b.bookingsByIdMu.RLock()
 		var err error
-		id, err = generateUniqueId(b.Rng, func(candidate string) bool {
+		id, err = GenerateUniqueId(b.Rng, func(candidate string) bool {
 			_, ok := b.bookingsById[candidate]
 			return ok
 		})

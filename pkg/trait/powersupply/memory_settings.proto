@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package smartcore.go.trait.powersupply;
+
+option go_package = "github.com/smart-core-os/sc-golang/pkg/trait/powersupply";
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/timestamp.proto";
+
+// MemoryApi allows a client to adjust the internal state of an in-memory power supply server.
+// Use for configuring testing.
+service MemorySettingsApi {
+  rpc GetSettings(GetMemorySettingsReq) returns (MemorySettings);
+  rpc UpdateSettings(UpdateMemorySettingsReq) returns (MemorySettings);
+  rpc PullSettings(PullMemorySettingsReq) returns (stream PullMemorySettingsRes);
+}
+
+// MemorySettings describes properties of the in-memory Api server that can be changed
+// at run time.
+message MemorySettings {
+  float rating = 1;
+  float voltage = 2;
+  float load = 3;
+  float reserved = 4;
+  google.protobuf.Duration max_ramp_duration = 5;
+  google.protobuf.Duration default_ramp_duration = 6;
+}
+
+message UpdateMemorySettingsReq {
+  string name = 1;
+  MemorySettings settings = 2;
+  google.protobuf.FieldMask update_mask = 3;
+}
+
+message GetMemorySettingsReq {
+  string name = 1;
+  google.protobuf.FieldMask fields = 2;
+}
+
+message PullMemorySettingsReq {
+  string name = 1;
+  google.protobuf.FieldMask fields = 2;
+}
+
+// Response message enclosing device state changes
+message PullMemorySettingsRes {
+  repeated Change changes = 1;
+
+  message Change {
+    // name for the device that issued the change
+    string name = 1;
+    // when the change occurred
+    google.protobuf.Timestamp change_time = 2;
+    MemorySettings settings = 3;
+  }
+}

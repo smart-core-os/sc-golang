@@ -1,35 +1,37 @@
-package memory
+package powersupply
 
-//go:generate protoc -I. --go_out=paths=source_relative:. --go-grpc_out=paths=source_relative:. power_supply_settings.proto
+//go:generate protoc -I. --go_out=paths=source_relative:. --go-grpc_out=paths=source_relative:. memory_settings.proto
 
 import (
 	"context"
+
+	"github.com/smart-core-os/sc-golang/pkg/memory"
 
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-golang/pkg/masks"
 	"google.golang.org/protobuf/proto"
 )
 
-func (s *PowerSupplyApi) readSettings() *MemoryPowerSupplySettings {
-	return s.settings.Get().(*MemoryPowerSupplySettings)
+func (s *MemoryDevice) readSettings() *MemorySettings {
+	return s.settings.Get().(*MemorySettings)
 }
 
-func (s *PowerSupplyApi) GetSettings(_ context.Context, req *GetMemoryPowerSupplySettingsReq) (*MemoryPowerSupplySettings, error) {
-	return s.settings.Get(WithGetMask(req.Fields)).(*MemoryPowerSupplySettings), nil
+func (s *MemoryDevice) GetSettings(_ context.Context, req *GetMemorySettingsReq) (*MemorySettings, error) {
+	return s.settings.Get(memory.WithGetMask(req.Fields)).(*MemorySettings), nil
 }
 
-func (s *PowerSupplyApi) UpdateSettings(_ context.Context, req *UpdateMemoryPowerSupplySettingsReq) (*MemoryPowerSupplySettings, error) {
-	var oldSettings *MemoryPowerSupplySettings
+func (s *MemoryDevice) UpdateSettings(_ context.Context, req *UpdateMemorySettingsReq) (*MemorySettings, error) {
+	var oldSettings *MemorySettings
 	newVal, err := s.settings.Set(
 		req.Settings,
-		InterceptAfter(func(old, new proto.Message) {
-			oldSettings = old.(*MemoryPowerSupplySettings)
+		memory.InterceptAfter(func(old, new proto.Message) {
+			oldSettings = old.(*MemorySettings)
 		}),
 	)
 	if err != nil {
 		return nil, err
 	}
-	newSettings := newVal.(*MemoryPowerSupplySettings)
+	newSettings := newVal.(*MemorySettings)
 	if err := s.updateCapacityForSettingChange(oldSettings, newSettings); err != nil {
 		return nil, err
 	}
@@ -37,20 +39,20 @@ func (s *PowerSupplyApi) UpdateSettings(_ context.Context, req *UpdateMemoryPowe
 	return newSettings, nil
 }
 
-func (s *PowerSupplyApi) PullSettings(req *PullMemoryPowerSupplySettingsReq, server MemoryPowerSupplySettingsApi_PullSettingsServer) error {
+func (s *MemoryDevice) PullSettings(req *PullMemorySettingsReq, server MemorySettingsApi_PullSettingsServer) error {
 	events, done := s.settings.OnUpdate(server.Context())
 	defer done()
 
-	var lastSentMsg *MemoryPowerSupplySettings
+	var lastSentMsg *MemorySettings
 	filter := masks.NewResponseFilter(masks.WithFieldMask(req.Fields))
 	for event := range events {
-		settings := filter.FilterClone(event.Value).(*MemoryPowerSupplySettings)
+		settings := filter.FilterClone(event.Value).(*MemorySettings)
 		if lastSentMsg != nil && proto.Equal(lastSentMsg, settings) {
 			// nothing has changed, nothing to send
 			continue
 		}
-		res := &PullMemoryPowerSupplySettingsRes{
-			Changes: []*PullMemoryPowerSupplySettingsRes_Change{
+		res := &PullMemorySettingsRes{
+			Changes: []*PullMemorySettingsRes_Change{
 				{
 					Name:       req.Name,
 					Settings:   settings,
@@ -65,7 +67,7 @@ func (s *PowerSupplyApi) PullSettings(req *PullMemoryPowerSupplySettingsReq, ser
 	return nil
 }
 
-func (s *PowerSupplyApi) updateCapacityForSettingChange(oldSettings, newSettings *MemoryPowerSupplySettings) error {
+func (s *MemoryDevice) updateCapacityForSettingChange(oldSettings, newSettings *MemorySettings) error {
 	var updateCapacity bool
 	var capacityUpdateFields []string
 	if oldSettings.Rating != newSettings.Rating {
@@ -91,9 +93,9 @@ func (s *PowerSupplyApi) updateCapacityForSettingChange(oldSettings, newSettings
 			Load:    &newSettings.Load,
 		}
 		_, err := s.powerCapacity.Set(&capacity,
-			WithUpdatePaths(capacityUpdateFields...),
-			WithMoreWritablePaths(capacityUpdateFields...),
-			InterceptAfter(func(old, new proto.Message) {
+			memory.WithUpdatePaths(capacityUpdateFields...),
+			memory.WithMoreWritablePaths(capacityUpdateFields...),
+			memory.InterceptAfter(func(old, new proto.Message) {
 				newCapacity := new.(*traits.PowerCapacity)
 				adjustPowerCapacityForLoad(newCapacity, newSettings.Reserved)
 			}))

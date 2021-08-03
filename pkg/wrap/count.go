@@ -17,7 +17,7 @@ type countApiServerClient struct {
 }
 
 // compile time check that we implement the interface we need
-var _ traits.CountApiClient = &countApiServerClient{}
+var _ traits.CountApiClient = (*countApiServerClient)(nil)
 
 func (c *countApiServerClient) GetCount(ctx context.Context, in *traits.GetCountRequest, _ ...grpc.CallOption) (*traits.Count, error) {
 	return c.server.GetCount(ctx, in)

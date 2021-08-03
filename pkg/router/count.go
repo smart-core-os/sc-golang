@@ -22,7 +22,7 @@ type CountApiRouter struct {
 }
 
 // compile time check that we implement the interface we need
-var _ traits.CountApiServer = &CountApiRouter{}
+var _ traits.CountApiServer = (*CountApiRouter)(nil)
 
 func NewCountApiRouter() *CountApiRouter {
 	return &CountApiRouter{

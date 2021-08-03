@@ -19,7 +19,7 @@ type wrapper struct {
 }
 
 // compile time check that we implement the interface we need
-var _ traits.PowerSupplyApiClient = &wrapper{}
+var _ traits.PowerSupplyApiClient = (*wrapper)(nil)
 
 func (w *wrapper) GetPowerCapacity(ctx context.Context, in *traits.GetPowerCapacityRequest, _ ...grpc.CallOption) (*traits.PowerCapacity, error) {
 	return w.server.GetPowerCapacity(ctx, in)

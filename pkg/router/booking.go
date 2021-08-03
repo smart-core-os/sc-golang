@@ -23,7 +23,7 @@ type BookingApiRouter struct {
 }
 
 // compile time check that we implement the interface we need
-var _ traits.BookingApiServer = &BookingApiRouter{}
+var _ traits.BookingApiServer = (*BookingApiRouter)(nil)
 
 func NewBookingApiRouter() *BookingApiRouter {
 	return &BookingApiRouter{

@@ -16,7 +16,7 @@ type CountApi struct {
 }
 
 // compile time check that we implement the interface we need
-var _ traits.CountApiServer = &CountApi{}
+var _ traits.CountApiServer = (*CountApi)(nil)
 
 func NewCountApi() *CountApi {
 	return &CountApi{

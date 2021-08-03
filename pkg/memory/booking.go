@@ -34,7 +34,7 @@ type BookingApi struct {
 }
 
 // compile time check that we implement the interface we need
-var _ traits.BookingApiServer = &BookingApi{}
+var _ traits.BookingApiServer = (*BookingApi)(nil)
 
 func NewBookingApi() *BookingApi {
 	return &BookingApi{

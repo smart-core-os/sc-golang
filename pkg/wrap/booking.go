@@ -17,7 +17,7 @@ type bookingApiServerClient struct {
 }
 
 // compile time check that we implement the interface we need
-var _ traits.BookingApiClient = &bookingApiServerClient{}
+var _ traits.BookingApiClient = (*bookingApiServerClient)(nil)
 
 func (b *bookingApiServerClient) ListBookings(ctx context.Context, in *traits.ListBookingsRequest, opts ...grpc.CallOption) (*traits.ListBookingsResponse, error) {
 	return b.server.ListBookings(ctx, in)

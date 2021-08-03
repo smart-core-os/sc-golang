@@ -22,7 +22,7 @@ type Router struct {
 }
 
 // compile time check that we implement the interface we need
-var _ traits.OnOffApiServer = &Router{}
+var _ traits.OnOffApiServer = (*Router)(nil)
 
 func NewRouter() *Router {
 	return &Router{

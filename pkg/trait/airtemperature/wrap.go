@@ -19,7 +19,7 @@ type wrapper struct {
 }
 
 // compile time check that we implement the interface we need
-var _ traits.AirTemperatureApiClient = &wrapper{}
+var _ traits.AirTemperatureApiClient = (*wrapper)(nil)
 
 func (b *wrapper) GetAirTemperature(ctx context.Context, in *traits.GetAirTemperatureRequest, _ ...grpc.CallOption) (*traits.AirTemperature, error) {
 	return b.server.GetAirTemperature(ctx, in)

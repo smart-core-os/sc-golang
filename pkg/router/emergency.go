@@ -22,7 +22,7 @@ type EmergencyApiRouter struct {
 }
 
 // compile time check that we implement the interface we need
-var _ traits.EmergencyApiServer = &EmergencyApiRouter{}
+var _ traits.EmergencyApiServer = (*EmergencyApiRouter)(nil)
 
 func NewEmergencyApiRouter() *EmergencyApiRouter {
 	return &EmergencyApiRouter{

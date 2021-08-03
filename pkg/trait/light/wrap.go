@@ -19,7 +19,7 @@ type wrapper struct {
 }
 
 // compile time check that we implement the interface we need
-var _ traits.LightApiClient = &wrapper{}
+var _ traits.LightApiClient = (*wrapper)(nil)
 
 func (c *wrapper) UpdateBrightness(ctx context.Context, in *traits.UpdateBrightnessRequest, opts ...grpc.CallOption) (*traits.Brightness, error) {
 	return c.server.UpdateBrightness(ctx, in)

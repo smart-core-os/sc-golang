@@ -17,7 +17,7 @@ type occupancySensorApiServerClient struct {
 }
 
 // compile time check that we implement the interface we need
-var _ traits.OccupancySensorApiClient = &occupancySensorApiServerClient{}
+var _ traits.OccupancySensorApiClient = (*occupancySensorApiServerClient)(nil)
 
 func (c *occupancySensorApiServerClient) GetOccupancy(ctx context.Context, in *traits.GetOccupancyRequest, _ ...grpc.CallOption) (*traits.Occupancy, error) {
 	return c.server.GetOccupancy(ctx, in)

@@ -18,7 +18,7 @@ type wrapper struct {
 }
 
 // compile time check that we implement the interface we need
-var _ traits.OnOffApiClient = &wrapper{}
+var _ traits.OnOffApiClient = (*wrapper)(nil)
 
 func (c *wrapper) GetOnOff(ctx context.Context, in *traits.GetOnOffRequest, _ ...grpc.CallOption) (*traits.OnOff, error) {
 	return c.server.GetOnOff(ctx, in)

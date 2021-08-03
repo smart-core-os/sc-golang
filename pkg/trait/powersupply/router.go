@@ -23,7 +23,7 @@ type Router struct {
 }
 
 // compile time check that we implement the interface we need
-var _ traits.PowerSupplyApiServer = &Router{}
+var _ traits.PowerSupplyApiServer = (*Router)(nil)
 
 func NewRouter() *Router {
 	return &Router{

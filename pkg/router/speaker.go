@@ -23,7 +23,7 @@ type SpeakerApiRouter struct {
 }
 
 // compile time check that we implement the interface we need
-var _ traits.SpeakerApiServer = &SpeakerApiRouter{}
+var _ traits.SpeakerApiServer = (*SpeakerApiRouter)(nil)
 
 func NewSpeakerApiRouter() *SpeakerApiRouter {
 	return &SpeakerApiRouter{

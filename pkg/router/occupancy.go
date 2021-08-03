@@ -22,7 +22,7 @@ type OccupancySensorApiRouter struct {
 }
 
 // compile time check that we implement the interface we need
-var _ traits.OccupancySensorApiServer = &OccupancySensorApiRouter{}
+var _ traits.OccupancySensorApiServer = (*OccupancySensorApiRouter)(nil)
 
 func NewOccupancySensorApiRouter() *OccupancySensorApiRouter {
 	return &OccupancySensorApiRouter{

@@ -18,7 +18,7 @@ type speakerApiServerClient struct {
 }
 
 // compile time check that we implement the interface we need
-var _ traits.SpeakerApiClient = &speakerApiServerClient{}
+var _ traits.SpeakerApiClient = (*speakerApiServerClient)(nil)
 
 func (b *speakerApiServerClient) GetVolume(ctx context.Context, in *traits.GetSpeakerVolumeRequest, _ ...grpc.CallOption) (*types.AudioLevel, error) {
 	return b.server.GetVolume(ctx, in)

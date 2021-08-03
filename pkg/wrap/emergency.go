@@ -17,7 +17,7 @@ type emergencyApiServerClient struct {
 }
 
 // compile time check that we implement the interface we need
-var _ traits.EmergencyApiClient = &emergencyApiServerClient{}
+var _ traits.EmergencyApiClient = (*emergencyApiServerClient)(nil)
 
 func (b *emergencyApiServerClient) GetEmergency(ctx context.Context, in *traits.GetEmergencyRequest, opts ...grpc.CallOption) (*traits.Emergency, error) {
 	return b.server.GetEmergency(ctx, in)

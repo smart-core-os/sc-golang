@@ -22,7 +22,7 @@ type Router struct {
 }
 
 // compile time check that we implement the interface we need
-var _ traits.AirTemperatureApiServer = &Router{}
+var _ traits.AirTemperatureApiServer = (*Router)(nil)
 
 func NewRouter() *Router {
 	return &Router{

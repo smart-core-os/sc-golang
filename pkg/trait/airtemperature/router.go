@@ -1,4 +1,4 @@
-package router
+package airtemperature
 
 import (
 	"context"
@@ -11,8 +11,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// AirTemperatureRouter is a AirTemperatureApiServer that allows routing named requests to specific AirTemperatureApiClients
-type AirTemperatureRouter struct {
+// Router is a AirTemperatureApiServer that allows routing named requests to specific AirTemperatureApiClients
+type Router struct {
 	traits.UnimplementedAirTemperatureApiServer
 
 	mu       sync.Mutex
@@ -22,19 +22,19 @@ type AirTemperatureRouter struct {
 }
 
 // compile time check that we implement the interface we need
-var _ traits.AirTemperatureApiServer = &AirTemperatureRouter{}
+var _ traits.AirTemperatureApiServer = &Router{}
 
-func NewAirTemperatureRouter() *AirTemperatureRouter {
-	return &AirTemperatureRouter{
+func NewRouter() *Router {
+	return &Router{
 		registry: make(map[string]traits.AirTemperatureApiClient),
 	}
 }
 
-func (r *AirTemperatureRouter) Register(server *grpc.Server) {
+func (r *Router) Register(server *grpc.Server) {
 	traits.RegisterAirTemperatureApiServer(server, r)
 }
 
-func (r *AirTemperatureRouter) Add(name string, client traits.AirTemperatureApiClient) traits.AirTemperatureApiClient {
+func (r *Router) Add(name string, client traits.AirTemperatureApiClient) traits.AirTemperatureApiClient {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	old := r.registry[name]
@@ -42,7 +42,7 @@ func (r *AirTemperatureRouter) Add(name string, client traits.AirTemperatureApiC
 	return old
 }
 
-func (r *AirTemperatureRouter) Remove(name string) traits.AirTemperatureApiClient {
+func (r *Router) Remove(name string) traits.AirTemperatureApiClient {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	old := r.registry[name]
@@ -50,14 +50,14 @@ func (r *AirTemperatureRouter) Remove(name string) traits.AirTemperatureApiClien
 	return old
 }
 
-func (r *AirTemperatureRouter) Has(name string) bool {
+func (r *Router) Has(name string) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	_, exists := r.registry[name]
 	return exists
 }
 
-func (r *AirTemperatureRouter) Get(name string) (traits.AirTemperatureApiClient, error) {
+func (r *Router) Get(name string) (traits.AirTemperatureApiClient, error) {
 	r.mu.Lock()
 	child, exists := r.registry[name]
 	defer r.mu.Unlock()
@@ -75,7 +75,7 @@ func (r *AirTemperatureRouter) Get(name string) (traits.AirTemperatureApiClient,
 	return child, nil
 }
 
-func (r *AirTemperatureRouter) UpdateAirTemperature(ctx context.Context, request *traits.UpdateAirTemperatureRequest) (*traits.AirTemperature, error) {
+func (r *Router) UpdateAirTemperature(ctx context.Context, request *traits.UpdateAirTemperatureRequest) (*traits.AirTemperature, error) {
 	child, err := r.Get(request.Name)
 	if err != nil {
 		return nil, err
@@ -84,7 +84,7 @@ func (r *AirTemperatureRouter) UpdateAirTemperature(ctx context.Context, request
 	return child.UpdateAirTemperature(ctx, request)
 }
 
-func (r *AirTemperatureRouter) GetAirTemperature(ctx context.Context, request *traits.GetAirTemperatureRequest) (*traits.AirTemperature, error) {
+func (r *Router) GetAirTemperature(ctx context.Context, request *traits.GetAirTemperatureRequest) (*traits.AirTemperature, error) {
 	child, err := r.Get(request.Name)
 	if err != nil {
 		return nil, err
@@ -93,7 +93,7 @@ func (r *AirTemperatureRouter) GetAirTemperature(ctx context.Context, request *t
 	return child.GetAirTemperature(ctx, request)
 }
 
-func (r *AirTemperatureRouter) PullAirTemperature(request *traits.PullAirTemperatureRequest, server traits.AirTemperatureApi_PullAirTemperatureServer) error {
+func (r *Router) PullAirTemperature(request *traits.PullAirTemperatureRequest, server traits.AirTemperatureApi_PullAirTemperatureServer) error {
 	child, err := r.Get(request.Name)
 	if err != nil {
 		return err

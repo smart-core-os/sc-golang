@@ -1,4 +1,4 @@
-package memory
+package airtemperature
 
 import (
 	"context"
@@ -12,8 +12,8 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-func TestAirTemperature_GetState_Initial(t *testing.T) {
-	api := NewAirTemperatureApi()
+func TestMemoryDevice_GetState_Initial(t *testing.T) {
+	api := NewMemoryDevice()
 	state, err := api.GetAirTemperature(context.Background(), &traits.GetAirTemperatureRequest{Name: "test"})
 	if err != nil {
 		t.Errorf("error not expected %v", err)
@@ -23,8 +23,8 @@ func TestAirTemperature_GetState_Initial(t *testing.T) {
 	}
 }
 
-func TestAirTemperature_UpdateAirTemperature(t *testing.T) {
-	api := NewAirTemperatureApi()
+func TestMemoryDevice_UpdateAirTemperature(t *testing.T) {
+	api := NewMemoryDevice()
 	initialState, _ := api.GetAirTemperature(context.Background(), &traits.GetAirTemperatureRequest{Name: "test"})
 	newState := &traits.AirTemperature{
 		// fields we can edit
@@ -61,8 +61,8 @@ func TestAirTemperature_UpdateAirTemperature(t *testing.T) {
 	}
 }
 
-func TestAirTemperature_UpdateAirTemperature_Mask(t *testing.T) {
-	api := NewAirTemperatureApi()
+func TestMemoryDevice_UpdateAirTemperature_Mask(t *testing.T) {
+	api := NewMemoryDevice()
 	initialState, _ := api.GetAirTemperature(context.Background(), &traits.GetAirTemperatureRequest{Name: "test"})
 	newState := &traits.AirTemperature{
 		// fields we can edit

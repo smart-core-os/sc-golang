@@ -22,6 +22,12 @@ type MemorySettingsRouter struct {
 
 var _ MemorySettingsApiServer = (*MemorySettingsRouter)(nil) // compiler check we implement the interface
 
+func NewMemorySettingsRouter() *MemorySettingsRouter {
+	return &MemorySettingsRouter{
+		registry: make(map[string]MemorySettingsApiClient),
+	}
+}
+
 func (r *MemorySettingsRouter) Register(server *grpc.Server) {
 	RegisterMemorySettingsApiServer(server, r)
 }

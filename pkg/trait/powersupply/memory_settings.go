@@ -24,6 +24,7 @@ func (s *MemoryDevice) UpdateSettings(_ context.Context, req *UpdateMemorySettin
 	var oldSettings *MemorySettings
 	newVal, err := s.settings.Set(
 		req.Settings,
+		memory.WithUpdateMask(req.UpdateMask),
 		memory.InterceptAfter(func(old, new proto.Message) {
 			oldSettings = old.(*MemorySettings)
 		}),

@@ -12,9 +12,9 @@ import (
 	"github.com/smart-core-os/sc-golang/pkg/memory"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
 // MemoryDevice is an in-memory implementation of PowerSupplyApiServer scoped to a single device.
@@ -63,11 +63,13 @@ func InitialPowerCapacity() *traits.PowerCapacity {
 }
 
 func (s *MemoryDevice) SetLoad(load float32) {
-	reserved := s.readSettings().Reserved
-	_, _ = s.powerCapacity.Set(&traits.PowerCapacity{Load: &load}, memory.WithUpdatePaths("load"), memory.InterceptAfter(func(old, new proto.Message) {
-		newCapacity := new.(*traits.PowerCapacity)
-		adjustPowerCapacityForLoad(newCapacity, reserved)
-	}))
+	_, err := s.UpdateSettings(context.Background(), &UpdateMemorySettingsReq{
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"load"}},
+		Settings:   &MemorySettings{Load: load},
+	})
+	if err != nil {
+		log.Printf("SetLoad: %v", err)
+	}
 }
 
 func (s *MemoryDevice) GetPowerCapacity(_ context.Context, _ *traits.GetPowerCapacityRequest) (*traits.PowerCapacity, error) {

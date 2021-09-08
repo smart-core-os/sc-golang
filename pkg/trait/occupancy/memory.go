@@ -1,4 +1,4 @@
-package memory
+package occupancy
 
 import (
 	"context"
@@ -6,36 +6,38 @@ import (
 	"math/rand"
 	goTime "time"
 
+	"github.com/smart-core-os/sc-golang/pkg/memory"
+
 	"github.com/smart-core-os/sc-api/go/traits"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
 )
 
-type OccupancySensorApi struct {
+type MemoryDevice struct {
 	traits.UnimplementedOccupancySensorApiServer
-	occupancy *Resource
+	occupancy *memory.Resource
 }
 
-func NewOccupancyApi(initialState *traits.Occupancy) *OccupancySensorApi {
-	return &OccupancySensorApi{
-		occupancy: NewResource(WithInitialValue(initialState)),
+func NewMemoryDevice(initialState *traits.Occupancy) *MemoryDevice {
+	return &MemoryDevice{
+		occupancy: memory.NewResource(memory.WithInitialValue(initialState)),
 	}
 }
 
-func (o *OccupancySensorApi) Register(server *grpc.Server) {
+func (o *MemoryDevice) Register(server *grpc.Server) {
 	traits.RegisterOccupancySensorApiServer(server, o)
 }
 
 // SetOccupancy updates the known occupancy state for this device
-func (o *OccupancySensorApi) SetOccupancy(_ context.Context, occupancy *traits.Occupancy) {
+func (o *MemoryDevice) SetOccupancy(_ context.Context, occupancy *traits.Occupancy) {
 	_, _ = o.occupancy.Set(occupancy)
 }
 
-func (o *OccupancySensorApi) GetOccupancy(_ context.Context, _ *traits.GetOccupancyRequest) (*traits.Occupancy, error) {
+func (o *MemoryDevice) GetOccupancy(_ context.Context, _ *traits.GetOccupancyRequest) (*traits.Occupancy, error) {
 	return o.occupancy.Get().(*traits.Occupancy), nil
 }
 
-func (o *OccupancySensorApi) PullOccupancy(request *traits.PullOccupancyRequest, server traits.OccupancySensorApi_PullOccupancyServer) error {
+func (o *MemoryDevice) PullOccupancy(request *traits.PullOccupancyRequest, server traits.OccupancySensorApi_PullOccupancyServer) error {
 	id := rand.Int()
 	t0 := goTime.Now()
 	sentItems := 0

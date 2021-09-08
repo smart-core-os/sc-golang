@@ -1,4 +1,4 @@
-package router
+package occupancy
 
 import (
 	"context"
@@ -11,8 +11,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// OccupancySensorApiRouter is a OccupancySensorApiServer that allows routing named requests to specific OccupancySensorApiClients
-type OccupancySensorApiRouter struct {
+// Router is a Wrap that allows routing named requests to specific OccupancySensorApiClients
+type Router struct {
 	traits.UnimplementedOccupancySensorApiServer
 
 	mu       sync.Mutex
@@ -22,19 +22,19 @@ type OccupancySensorApiRouter struct {
 }
 
 // compile time check that we implement the interface we need
-var _ traits.OccupancySensorApiServer = (*OccupancySensorApiRouter)(nil)
+var _ traits.OccupancySensorApiServer = (*Router)(nil)
 
-func NewOccupancySensorApiRouter() *OccupancySensorApiRouter {
-	return &OccupancySensorApiRouter{
+func NewRouter() *Router {
+	return &Router{
 		registry: make(map[string]traits.OccupancySensorApiClient),
 	}
 }
 
-func (r *OccupancySensorApiRouter) Register(server *grpc.Server) {
+func (r *Router) Register(server *grpc.Server) {
 	traits.RegisterOccupancySensorApiServer(server, r)
 }
 
-func (r *OccupancySensorApiRouter) Add(name string, client traits.OccupancySensorApiClient) traits.OccupancySensorApiClient {
+func (r *Router) Add(name string, client traits.OccupancySensorApiClient) traits.OccupancySensorApiClient {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	old := r.registry[name]
@@ -42,7 +42,7 @@ func (r *OccupancySensorApiRouter) Add(name string, client traits.OccupancySenso
 	return old
 }
 
-func (r *OccupancySensorApiRouter) Remove(name string) traits.OccupancySensorApiClient {
+func (r *Router) Remove(name string) traits.OccupancySensorApiClient {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	old := r.registry[name]
@@ -50,14 +50,14 @@ func (r *OccupancySensorApiRouter) Remove(name string) traits.OccupancySensorApi
 	return old
 }
 
-func (r *OccupancySensorApiRouter) Has(name string) bool {
+func (r *Router) Has(name string) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	_, exists := r.registry[name]
 	return exists
 }
 
-func (r *OccupancySensorApiRouter) Get(name string) (traits.OccupancySensorApiClient, error) {
+func (r *Router) Get(name string) (traits.OccupancySensorApiClient, error) {
 	r.mu.Lock()
 	child, exists := r.registry[name]
 	defer r.mu.Unlock()
@@ -75,7 +75,7 @@ func (r *OccupancySensorApiRouter) Get(name string) (traits.OccupancySensorApiCl
 	return child, nil
 }
 
-func (r *OccupancySensorApiRouter) GetOccupancy(ctx context.Context, request *traits.GetOccupancyRequest) (*traits.Occupancy, error) {
+func (r *Router) GetOccupancy(ctx context.Context, request *traits.GetOccupancyRequest) (*traits.Occupancy, error) {
 	child, err := r.Get(request.Name)
 	if err != nil {
 		return nil, err
@@ -84,7 +84,7 @@ func (r *OccupancySensorApiRouter) GetOccupancy(ctx context.Context, request *tr
 	return child.GetOccupancy(ctx, request)
 }
 
-func (r *OccupancySensorApiRouter) PullOccupancy(request *traits.PullOccupancyRequest, server traits.OccupancySensorApi_PullOccupancyServer) error {
+func (r *Router) PullOccupancy(request *traits.PullOccupancyRequest, server traits.OccupancySensorApi_PullOccupancyServer) error {
 	child, err := r.Get(request.Name)
 	if err != nil {
 		return err

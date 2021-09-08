@@ -1,7 +1,9 @@
-package memory
+package speaker
 
 import (
 	"context"
+
+	"github.com/smart-core-os/sc-golang/pkg/memory"
 
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-api/go/types"
@@ -10,27 +12,27 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type SpeakerApi struct {
+type MemoryDevice struct {
 	traits.UnimplementedSpeakerApiServer
-	volume *Resource
+	volume *memory.Resource
 }
 
-func NewSpeakerApi(initialState *types.AudioLevel) *SpeakerApi {
-	return &SpeakerApi{
-		volume: NewResource(WithInitialValue(initialState)),
+func NewMemoryDevice(initialState *types.AudioLevel) *MemoryDevice {
+	return &MemoryDevice{
+		volume: memory.NewResource(memory.WithInitialValue(initialState)),
 	}
 }
 
-func (s *SpeakerApi) Register(server *grpc.Server) {
+func (s *MemoryDevice) Register(server *grpc.Server) {
 	traits.RegisterSpeakerApiServer(server, s)
 }
 
-func (s *SpeakerApi) GetVolume(_ context.Context, _ *traits.GetSpeakerVolumeRequest) (*types.AudioLevel, error) {
+func (s *MemoryDevice) GetVolume(_ context.Context, _ *traits.GetSpeakerVolumeRequest) (*types.AudioLevel, error) {
 	return s.volume.Get().(*types.AudioLevel), nil
 }
 
-func (s *SpeakerApi) UpdateVolume(_ context.Context, request *traits.UpdateSpeakerVolumeRequest) (*types.AudioLevel, error) {
-	newValue, err := s.volume.Set(request.Volume, WithUpdateMask(request.UpdateMask), InterceptBefore(func(old, change proto.Message) {
+func (s *MemoryDevice) UpdateVolume(_ context.Context, request *traits.UpdateSpeakerVolumeRequest) (*types.AudioLevel, error) {
+	newValue, err := s.volume.Set(request.Volume, memory.WithUpdateMask(request.UpdateMask), memory.InterceptBefore(func(old, change proto.Message) {
 		if request.Delta {
 			val := old.(*types.AudioLevel)
 			delta := change.(*types.AudioLevel)
@@ -43,7 +45,7 @@ func (s *SpeakerApi) UpdateVolume(_ context.Context, request *traits.UpdateSpeak
 	return newValue.(*types.AudioLevel), nil
 }
 
-func (s *SpeakerApi) PullVolume(request *traits.PullSpeakerVolumeRequest, server traits.SpeakerApi_PullVolumeServer) error {
+func (s *MemoryDevice) PullVolume(request *traits.PullSpeakerVolumeRequest, server traits.SpeakerApi_PullVolumeServer) error {
 	changes, done := s.volume.OnUpdate(server.Context())
 	defer done()
 

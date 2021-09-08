@@ -1,4 +1,4 @@
-package router
+package emergency
 
 import (
 	"context"
@@ -11,8 +11,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// EmergencyApiRouter is a EmergencyApiServer that allows routing named requests to specific EmergencyApiClients
-type EmergencyApiRouter struct {
+// Router is a Wrap that allows routing named requests to specific EmergencyApiClients
+type Router struct {
 	traits.UnimplementedEmergencyApiServer
 
 	mu       sync.Mutex
@@ -22,19 +22,19 @@ type EmergencyApiRouter struct {
 }
 
 // compile time check that we implement the interface we need
-var _ traits.EmergencyApiServer = (*EmergencyApiRouter)(nil)
+var _ traits.EmergencyApiServer = (*Router)(nil)
 
-func NewEmergencyApiRouter() *EmergencyApiRouter {
-	return &EmergencyApiRouter{
+func NewRouter() *Router {
+	return &Router{
 		registry: make(map[string]traits.EmergencyApiClient),
 	}
 }
 
-func (r *EmergencyApiRouter) Register(server *grpc.Server) {
+func (r *Router) Register(server *grpc.Server) {
 	traits.RegisterEmergencyApiServer(server, r)
 }
 
-func (r *EmergencyApiRouter) Add(name string, client traits.EmergencyApiClient) traits.EmergencyApiClient {
+func (r *Router) Add(name string, client traits.EmergencyApiClient) traits.EmergencyApiClient {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	old := r.registry[name]
@@ -42,7 +42,7 @@ func (r *EmergencyApiRouter) Add(name string, client traits.EmergencyApiClient) 
 	return old
 }
 
-func (r *EmergencyApiRouter) Remove(name string) traits.EmergencyApiClient {
+func (r *Router) Remove(name string) traits.EmergencyApiClient {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	old := r.registry[name]
@@ -50,14 +50,14 @@ func (r *EmergencyApiRouter) Remove(name string) traits.EmergencyApiClient {
 	return old
 }
 
-func (r *EmergencyApiRouter) Has(name string) bool {
+func (r *Router) Has(name string) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	_, exists := r.registry[name]
 	return exists
 }
 
-func (r *EmergencyApiRouter) Get(name string) (traits.EmergencyApiClient, error) {
+func (r *Router) Get(name string) (traits.EmergencyApiClient, error) {
 	r.mu.Lock()
 	child, exists := r.registry[name]
 	defer r.mu.Unlock()
@@ -75,7 +75,7 @@ func (r *EmergencyApiRouter) Get(name string) (traits.EmergencyApiClient, error)
 	return child, nil
 }
 
-func (r *EmergencyApiRouter) GetEmergency(ctx context.Context, request *traits.GetEmergencyRequest) (*traits.Emergency, error) {
+func (r *Router) GetEmergency(ctx context.Context, request *traits.GetEmergencyRequest) (*traits.Emergency, error) {
 	child, err := r.Get(request.Name)
 	if err != nil {
 		return nil, err
@@ -84,7 +84,7 @@ func (r *EmergencyApiRouter) GetEmergency(ctx context.Context, request *traits.G
 	return child.GetEmergency(ctx, request)
 }
 
-func (r *EmergencyApiRouter) UpdateEmergency(ctx context.Context, request *traits.UpdateEmergencyRequest) (*traits.Emergency, error) {
+func (r *Router) UpdateEmergency(ctx context.Context, request *traits.UpdateEmergencyRequest) (*traits.Emergency, error) {
 	child, err := r.Get(request.Name)
 	if err != nil {
 		return nil, err
@@ -93,7 +93,7 @@ func (r *EmergencyApiRouter) UpdateEmergency(ctx context.Context, request *trait
 	return child.UpdateEmergency(ctx, request)
 }
 
-func (r *EmergencyApiRouter) PullEmergency(request *traits.PullEmergencyRequest, server traits.EmergencyApi_PullEmergencyServer) error {
+func (r *Router) PullEmergency(request *traits.PullEmergencyRequest, server traits.EmergencyApi_PullEmergencyServer) error {
 	child, err := r.Get(request.Name)
 	if err != nil {
 		return err

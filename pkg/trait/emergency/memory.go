@@ -1,7 +1,9 @@
-package memory
+package emergency
 
 import (
 	"context"
+
+	"github.com/smart-core-os/sc-golang/pkg/memory"
 
 	"github.com/smart-core-os/sc-api/go/traits"
 	"google.golang.org/grpc"
@@ -9,14 +11,14 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type EmergencyApi struct {
+type MemoryDevice struct {
 	traits.UnimplementedEmergencyApiServer
-	state *Resource
+	state *memory.Resource
 }
 
-func NewEmergencyApi() *EmergencyApi {
-	return &EmergencyApi{
-		state: NewResource(WithInitialValue(InitialEmergency())),
+func NewMemoryDevice() *MemoryDevice {
+	return &MemoryDevice{
+		state: memory.NewResource(memory.WithInitialValue(InitialEmergency())),
 	}
 }
 
@@ -27,16 +29,16 @@ func InitialEmergency() *traits.Emergency {
 	}
 }
 
-func (t *EmergencyApi) Register(server *grpc.Server) {
+func (t *MemoryDevice) Register(server *grpc.Server) {
 	traits.RegisterEmergencyApiServer(server, t)
 }
 
-func (t *EmergencyApi) GetEmergency(_ context.Context, _ *traits.GetEmergencyRequest) (*traits.Emergency, error) {
+func (t *MemoryDevice) GetEmergency(_ context.Context, _ *traits.GetEmergencyRequest) (*traits.Emergency, error) {
 	return t.state.Get().(*traits.Emergency), nil
 }
 
-func (t *EmergencyApi) UpdateEmergency(_ context.Context, request *traits.UpdateEmergencyRequest) (*traits.Emergency, error) {
-	update, err := t.state.Set(request.Emergency, WithUpdateMask(request.UpdateMask), InterceptAfter(func(old, new proto.Message) {
+func (t *MemoryDevice) UpdateEmergency(_ context.Context, request *traits.UpdateEmergencyRequest) (*traits.Emergency, error) {
+	update, err := t.state.Set(request.Emergency, memory.WithUpdateMask(request.UpdateMask), memory.InterceptAfter(func(old, new proto.Message) {
 		// user server time if the level changed but the change time didn't
 		oldt, newt := old.(*traits.Emergency), new.(*traits.Emergency)
 		if newt.Level != oldt.Level && oldt.LevelChangeTime == newt.LevelChangeTime {
@@ -46,7 +48,7 @@ func (t *EmergencyApi) UpdateEmergency(_ context.Context, request *traits.Update
 	return update.(*traits.Emergency), err
 }
 
-func (t *EmergencyApi) PullEmergency(request *traits.PullEmergencyRequest, server traits.EmergencyApi_PullEmergencyServer) error {
+func (t *MemoryDevice) PullEmergency(request *traits.PullEmergencyRequest, server traits.EmergencyApi_PullEmergencyServer) error {
 	changes, done := t.state.OnUpdate(server.Context())
 	defer done()
 

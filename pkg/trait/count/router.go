@@ -1,4 +1,4 @@
-package router
+package count
 
 import (
 	"context"
@@ -11,8 +11,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// CountApiRouter is a CountApiServer that allows routing named requests to specific CountApiClients
-type CountApiRouter struct {
+// Router is a Wrap that allows routing named requests to specific CountApiClients
+type Router struct {
 	traits.UnimplementedCountApiServer
 
 	mu       sync.Mutex
@@ -22,19 +22,19 @@ type CountApiRouter struct {
 }
 
 // compile time check that we implement the interface we need
-var _ traits.CountApiServer = (*CountApiRouter)(nil)
+var _ traits.CountApiServer = (*Router)(nil)
 
-func NewCountApiRouter() *CountApiRouter {
-	return &CountApiRouter{
+func NewRouter() *Router {
+	return &Router{
 		registry: make(map[string]traits.CountApiClient),
 	}
 }
 
-func (r *CountApiRouter) Register(server *grpc.Server) {
+func (r *Router) Register(server *grpc.Server) {
 	traits.RegisterCountApiServer(server, r)
 }
 
-func (r *CountApiRouter) Add(name string, client traits.CountApiClient) traits.CountApiClient {
+func (r *Router) Add(name string, client traits.CountApiClient) traits.CountApiClient {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	old := r.registry[name]
@@ -42,7 +42,7 @@ func (r *CountApiRouter) Add(name string, client traits.CountApiClient) traits.C
 	return old
 }
 
-func (r *CountApiRouter) Remove(name string) traits.CountApiClient {
+func (r *Router) Remove(name string) traits.CountApiClient {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	old := r.registry[name]
@@ -50,14 +50,14 @@ func (r *CountApiRouter) Remove(name string) traits.CountApiClient {
 	return old
 }
 
-func (r *CountApiRouter) Has(name string) bool {
+func (r *Router) Has(name string) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	_, exists := r.registry[name]
 	return exists
 }
 
-func (r *CountApiRouter) Get(name string) (traits.CountApiClient, error) {
+func (r *Router) Get(name string) (traits.CountApiClient, error) {
 	r.mu.Lock()
 	child, exists := r.registry[name]
 	defer r.mu.Unlock()
@@ -75,7 +75,7 @@ func (r *CountApiRouter) Get(name string) (traits.CountApiClient, error) {
 	return child, nil
 }
 
-func (r *CountApiRouter) GetCount(ctx context.Context, request *traits.GetCountRequest) (*traits.Count, error) {
+func (r *Router) GetCount(ctx context.Context, request *traits.GetCountRequest) (*traits.Count, error) {
 	child, err := r.Get(request.Name)
 	if err != nil {
 		return nil, err
@@ -84,7 +84,7 @@ func (r *CountApiRouter) GetCount(ctx context.Context, request *traits.GetCountR
 	return child.GetCount(ctx, request)
 }
 
-func (r *CountApiRouter) ResetCount(ctx context.Context, request *traits.ResetCountRequest) (*traits.Count, error) {
+func (r *Router) ResetCount(ctx context.Context, request *traits.ResetCountRequest) (*traits.Count, error) {
 	child, err := r.Get(request.Name)
 	if err != nil {
 		return nil, err
@@ -93,7 +93,7 @@ func (r *CountApiRouter) ResetCount(ctx context.Context, request *traits.ResetCo
 	return child.ResetCount(ctx, request)
 }
 
-func (r *CountApiRouter) UpdateCount(ctx context.Context, request *traits.UpdateCountRequest) (*traits.Count, error) {
+func (r *Router) UpdateCount(ctx context.Context, request *traits.UpdateCountRequest) (*traits.Count, error) {
 	child, err := r.Get(request.Name)
 	if err != nil {
 		return nil, err
@@ -102,7 +102,7 @@ func (r *CountApiRouter) UpdateCount(ctx context.Context, request *traits.Update
 	return child.UpdateCount(ctx, request)
 }
 
-func (r *CountApiRouter) PullCounts(request *traits.PullCountsRequest, server traits.CountApi_PullCountsServer) error {
+func (r *Router) PullCounts(request *traits.PullCountsRequest, server traits.CountApi_PullCountsServer) error {
 	child, err := r.Get(request.Name)
 	if err != nil {
 		return err

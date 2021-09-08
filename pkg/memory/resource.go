@@ -85,7 +85,7 @@ func (r *Resource) set(value proto.Message, request updateRequest) (proto.Messag
 		return nil, err
 	}
 
-	_, newValue, err := getAndUpdate(
+	_, newValue, err := GetAndUpdate(
 		&r.mu,
 		func() (proto.Message, error) {
 			return r.value, nil

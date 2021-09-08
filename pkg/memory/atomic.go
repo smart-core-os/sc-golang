@@ -8,20 +8,22 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// getFn is called to retrieve the message from the external store.
-type getFn func() (item proto.Message, err error)
+// GetFn is called to retrieve the message from the external store.
+type GetFn func() (item proto.Message, err error)
 
-// changeFn is called to apply changes to the new proto.Message.
-type changeFn func(old, new proto.Message) error
+// ChangeFn is called to apply changes to the new proto.Message.
+type ChangeFn func(old, new proto.Message) error
 
-// saveFn is called to save the message in the external store.
-type saveFn func(msg proto.Message)
+// SaveFn is called to save the message in the external store.
+type SaveFn func(msg proto.Message)
 
-// getAndUpdate applies an atomic get and update operation in the context of proto messages.
+// GetAndUpdate applies an atomic get and update operation in the context of proto messages.
 // mu.RLock will be held during the get call.
 // mu.Lock will be held during the save call.
 // No locks will be held during the change call.
-func getAndUpdate(mu *sync.RWMutex, get getFn, change changeFn, save saveFn) (oldValue proto.Message, newValue proto.Message, err error) {
+//
+// An error will be returned if the value returned by get changes during the change call.
+func GetAndUpdate(mu *sync.RWMutex, get GetFn, change ChangeFn, save SaveFn) (oldValue proto.Message, newValue proto.Message, err error) {
 	mu.RLock()
 	oldValue, err = get()
 	mu.RUnlock()

@@ -1,4 +1,4 @@
-package memory
+package booking
 
 import (
 	"context"
@@ -18,7 +18,7 @@ var randIds = []string{
 }
 
 func TestBookingApi_CreateBooking(t *testing.T) {
-	api := NewBookingApi()
+	api := NewMemoryDevice()
 	api.Rng.Seed(1)
 	ctx := context.Background()
 	res, err := api.CreateBooking(ctx, &traits.CreateBookingRequest{
@@ -43,7 +43,7 @@ func TestBookingApi_CreateBooking(t *testing.T) {
 }
 
 func TestBookingApi_CheckInBooking(t *testing.T) {
-	api := NewBookingApi()
+	api := NewMemoryDevice()
 	api.Rng.Seed(1)
 	ctx := context.Background()
 	createRes, err := api.CreateBooking(ctx, &traits.CreateBookingRequest{
@@ -74,7 +74,7 @@ func TestBookingApi_CheckInBooking(t *testing.T) {
 }
 
 func TestBookingApi_CheckOutBooking(t *testing.T) {
-	api := NewBookingApi()
+	api := NewMemoryDevice()
 	api.Rng.Seed(1)
 	ctx := context.Background()
 	createRes, err := api.CreateBooking(ctx, &traits.CreateBookingRequest{
@@ -105,7 +105,7 @@ func TestBookingApi_CheckOutBooking(t *testing.T) {
 }
 
 func TestBookingApi_UpdateBooking(t *testing.T) {
-	api := NewBookingApi()
+	api := NewMemoryDevice()
 	api.Rng.Seed(1)
 	ctx := context.Background()
 	booking := &traits.Booking{
@@ -162,7 +162,7 @@ func TestBookingApi_UpdateBooking(t *testing.T) {
 }
 
 func TestBookingApi_ListBookings(t *testing.T) {
-	api := NewBookingApi()
+	api := NewMemoryDevice()
 	api.Rng.Seed(1)
 	ctx := context.Background()
 	b1 := &traits.Booking{

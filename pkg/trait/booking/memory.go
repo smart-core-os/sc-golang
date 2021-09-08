@@ -1,4 +1,4 @@
-package memory
+package booking
 
 import (
 	"context"
@@ -7,6 +7,8 @@ import (
 	"sort"
 	"sync"
 	goTime "time"
+
+	"github.com/smart-core-os/sc-golang/pkg/memory"
 
 	"github.com/olebedev/emitter"
 	"github.com/smart-core-os/sc-api/go/traits"
@@ -23,7 +25,7 @@ import (
 
 const listBookingsOnPull = false
 
-type BookingApi struct {
+type MemoryDevice struct {
 	traits.UnimplementedBookingApiServer
 	bookingsById   map[string]*traits.Booking
 	bookingsByIdMu sync.RWMutex
@@ -34,17 +36,17 @@ type BookingApi struct {
 }
 
 // compile time check that we implement the interface we need
-var _ traits.BookingApiServer = (*BookingApi)(nil)
+var _ traits.BookingApiServer = (*MemoryDevice)(nil)
 
-func NewBookingApi() *BookingApi {
-	return &BookingApi{
+func NewMemoryDevice() *MemoryDevice {
+	return &MemoryDevice{
 		bookingsById: make(map[string]*traits.Booking),
 		bus:          &emitter.Emitter{},
 		Rng:          rand.New(rand.NewSource(rand.Int63())),
 	}
 }
 
-func (b *BookingApi) ListBookings(_ context.Context, request *traits.ListBookingsRequest) (*traits.ListBookingsResponse, error) {
+func (b *MemoryDevice) ListBookings(_ context.Context, request *traits.ListBookingsRequest) (*traits.ListBookingsResponse, error) {
 	response := &traits.ListBookingsResponse{}
 	b.bookingsByIdMu.RLock()
 	for _, booking := range b.bookingsById {
@@ -60,7 +62,7 @@ func (b *BookingApi) ListBookings(_ context.Context, request *traits.ListBooking
 	return response, nil
 }
 
-func (b *BookingApi) CheckInBooking(ctx context.Context, request *traits.CheckInBookingRequest) (*traits.CheckInBookingResponse, error) {
+func (b *MemoryDevice) CheckInBooking(ctx context.Context, request *traits.CheckInBookingRequest) (*traits.CheckInBookingResponse, error) {
 	if request.Time == nil {
 		request.Time = serverTimestamp()
 	}
@@ -82,7 +84,7 @@ func (b *BookingApi) CheckInBooking(ctx context.Context, request *traits.CheckIn
 	return &traits.CheckInBookingResponse{}, nil
 }
 
-func (b *BookingApi) CheckOutBooking(ctx context.Context, request *traits.CheckOutBookingRequest) (*traits.CheckOutBookingResponse, error) {
+func (b *MemoryDevice) CheckOutBooking(ctx context.Context, request *traits.CheckOutBookingRequest) (*traits.CheckOutBookingResponse, error) {
 	if request.Time == nil {
 		request.Time = serverTimestamp()
 	}
@@ -104,7 +106,7 @@ func (b *BookingApi) CheckOutBooking(ctx context.Context, request *traits.CheckO
 	return &traits.CheckOutBookingResponse{}, nil
 }
 
-func (b *BookingApi) CreateBooking(_ context.Context, request *traits.CreateBookingRequest) (*traits.CreateBookingResponse, error) {
+func (b *MemoryDevice) CreateBooking(_ context.Context, request *traits.CreateBookingRequest) (*traits.CreateBookingResponse, error) {
 	if request.Booking == nil {
 		return nil, status.Error(codes.InvalidArgument, "missing booking")
 	}
@@ -115,7 +117,7 @@ func (b *BookingApi) CreateBooking(_ context.Context, request *traits.CreateBook
 		// try to generate a unique id
 		b.bookingsByIdMu.RLock()
 		var err error
-		id, err = GenerateUniqueId(b.Rng, func(candidate string) bool {
+		id, err = memory.GenerateUniqueId(b.Rng, func(candidate string) bool {
 			_, ok := b.bookingsById[candidate]
 			return ok
 		})
@@ -150,7 +152,7 @@ func (b *BookingApi) CreateBooking(_ context.Context, request *traits.CreateBook
 	return &traits.CreateBookingResponse{BookingId: id}, nil
 }
 
-func (b *BookingApi) UpdateBooking(_ context.Context, request *traits.UpdateBookingRequest) (*traits.UpdateBookingResponse, error) {
+func (b *MemoryDevice) UpdateBooking(_ context.Context, request *traits.UpdateBookingRequest) (*traits.UpdateBookingResponse, error) {
 	if request.Booking == nil {
 		return nil, status.Error(codes.InvalidArgument, "missing booking")
 	}
@@ -178,7 +180,7 @@ func (b *BookingApi) UpdateBooking(_ context.Context, request *traits.UpdateBook
 	}, nil
 }
 
-func (b *BookingApi) PullBookings(request *traits.ListBookingsRequest, server traits.BookingApi_PullBookingsServer) error {
+func (b *MemoryDevice) PullBookings(request *traits.ListBookingsRequest, server traits.BookingApi_PullBookingsServer) error {
 	changes := b.bus.On("change")
 	defer b.bus.Off("change", changes)
 	id := rand.Int()
@@ -232,8 +234,8 @@ func (b *BookingApi) PullBookings(request *traits.ListBookingsRequest, server tr
 	}
 }
 
-func (b *BookingApi) applyChange(name string, id string, fn func(newBooking *traits.Booking) error) (*traits.Booking, error) {
-	oldValue, newValue, err := getAndUpdate(
+func (b *MemoryDevice) applyChange(name string, id string, fn func(newBooking *traits.Booking) error) (*traits.Booking, error) {
+	oldValue, newValue, err := memory.GetAndUpdate(
 		&b.bookingsByIdMu,
 		func() (proto.Message, error) {
 			val, exists := b.bookingsById[id]

@@ -1,9 +1,9 @@
 package memory
 
 import (
+	"encoding/base64"
 	"fmt"
-	"math/rand"
-	"strconv"
+	"io"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -11,10 +11,12 @@ import (
 
 // GenerateUniqueId attempts to find a unique id using rand and using the given function to check existence.
 // This will attempt a few times before giving up and returning an error.
-func GenerateUniqueId(rand *rand.Rand, exists func(candidate string) bool) (string, error) {
+func GenerateUniqueId(rng io.Reader, exists func(candidate string) bool) (string, error) {
 	tries := 10
 	for i := 0; i < tries; i++ {
-		idCandidate := strconv.Itoa(rand.Int())
+		r := make([]byte, 16)
+		_, _ = rng.Read(r)
+		idCandidate := base64.StdEncoding.EncodeToString(r)
 		if idCandidate != "" && !exists(idCandidate) {
 			return idCandidate, nil
 		}

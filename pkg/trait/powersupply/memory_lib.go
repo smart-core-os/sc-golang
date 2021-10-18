@@ -2,9 +2,14 @@ package powersupply
 
 import (
 	"context"
+	"encoding/base64"
+	"fmt"
 	"log"
+	"time"
 
+	"github.com/smart-core-os/sc-api/go/types"
 	"github.com/smart-core-os/sc-golang/pkg/memory"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/smart-core-os/sc-api/go/traits"
 	"google.golang.org/grpc/codes"
@@ -92,14 +97,28 @@ func (s *MemoryDevice) setDrawNotification(n *traits.DrawNotification) (*traits.
 			if _, ok := s.notificationsById[id]; ok {
 				delete(s.notificationsById, id)
 			}
+			// notify anyone who might be listening
+			s.bus.Emit("change", &traits.PullDrawNotificationsResponse_Change{
+				Type:       types.ChangeType_REMOVE,
+				ChangeTime: timestamppb.Now(),
+				OldValue:   n,
+			})
 		case <-abort:
 			log.Printf("abort after CreateDrawNotification")
 			stop() // clean up timers tracking the timeout
 		}
 	}()
 
+	var createTime time.Time
+	if oldVal, hasOld := s.notificationsById[n.Id]; hasOld {
+		createTime = oldVal.createTime
+	}
+	if createTime.IsZero() {
+		createTime = time.Now()
+	}
 	s.notificationsById[n.Id] = &drawNotification{
 		notification: n,
+		createTime:   createTime,
 		cancel:       stop,
 		abort: func() {
 			select {
@@ -137,4 +156,48 @@ type drawNotification struct {
 	cancel       func() // clean up and undo changes made when this notification was created
 	abort        func() // clean up without undoing state changes
 	notification *traits.DrawNotification
+	createTime   time.Time // use for deterministic sorting in combination with notification.Id
+}
+
+func (d *drawNotification) key() string {
+	return fmt.Sprintf("%v-%v", d.createTime.Format(time.RFC3339), d.notification.Id)
+}
+
+const (
+	defaultPageSize = 50
+	maxPageSize     = 1000
+)
+
+func capPageSize(pageSize int) int {
+	if pageSize == 0 {
+		return defaultPageSize
+	}
+	if pageSize > maxPageSize {
+		return maxPageSize
+	}
+	return pageSize
+}
+
+func decodePageToken(token string, pageToken *types.PageToken) error {
+	if token != "" {
+		tokenBytes, err := base64.StdEncoding.DecodeString(token)
+		if err != nil {
+			return status.Errorf(codes.InvalidArgument, "bad page token: %v", err)
+		}
+		if err := proto.Unmarshal(tokenBytes, pageToken); err != nil {
+			return status.Errorf(codes.InvalidArgument, "bad page token: %v", err)
+		}
+	}
+	return nil
+}
+
+func encodePageToken(pageToken *types.PageToken) (string, error) {
+	if pageToken != nil {
+		tokenBytes, err := proto.Marshal(pageToken)
+		if err != nil {
+			return "", status.Errorf(codes.Unknown, "unable to create page token: %v", err)
+		}
+		return base64.StdEncoding.EncodeToString(tokenBytes), nil
+	}
+	return "", nil
 }

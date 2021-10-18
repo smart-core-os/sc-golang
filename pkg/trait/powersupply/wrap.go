@@ -36,18 +36,6 @@ func (w *wrapper) PullPowerCapacity(ctx context.Context, in *traits.PullPowerCap
 	return client, nil
 }
 
-func (w *wrapper) CreateDrawNotification(ctx context.Context, in *traits.CreateDrawNotificationRequest, _ ...grpc.CallOption) (*traits.DrawNotification, error) {
-	return w.server.CreateDrawNotification(ctx, in)
-}
-
-func (w *wrapper) UpdateDrawNotification(ctx context.Context, in *traits.UpdateDrawNotificationRequest, _ ...grpc.CallOption) (*traits.DrawNotification, error) {
-	return w.server.UpdateDrawNotification(ctx, in)
-}
-
-func (w *wrapper) DeleteDrawNotification(ctx context.Context, in *traits.DeleteDrawNotificationRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
-	return w.server.DeleteDrawNotification(ctx, in)
-}
-
 type pullPowerCapacityClientWrapper struct {
 	grpc.ClientStream
 }
@@ -65,5 +53,52 @@ type pullPowerCapacityServerWrapper struct {
 }
 
 func (s *pullPowerCapacityServerWrapper) Send(response *traits.PullPowerCapacityResponse) error {
+	return s.ServerStream.SendMsg(response)
+}
+
+func (w *wrapper) ListDrawNotifications(ctx context.Context, in *traits.ListDrawNotificationsRequest, _ ...grpc.CallOption) (*traits.ListDrawNotificationsResponse, error) {
+	return w.server.ListDrawNotifications(ctx, in)
+}
+
+func (w *wrapper) CreateDrawNotification(ctx context.Context, in *traits.CreateDrawNotificationRequest, _ ...grpc.CallOption) (*traits.DrawNotification, error) {
+	return w.server.CreateDrawNotification(ctx, in)
+}
+
+func (w *wrapper) UpdateDrawNotification(ctx context.Context, in *traits.UpdateDrawNotificationRequest, _ ...grpc.CallOption) (*traits.DrawNotification, error) {
+	return w.server.UpdateDrawNotification(ctx, in)
+}
+
+func (w *wrapper) DeleteDrawNotification(ctx context.Context, in *traits.DeleteDrawNotificationRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	return w.server.DeleteDrawNotification(ctx, in)
+}
+
+func (w *wrapper) PullDrawNotifications(ctx context.Context, in *traits.PullDrawNotificationsRequest, _ ...grpc.CallOption) (traits.PowerSupplyApi_PullDrawNotificationsClient, error) {
+	stream := wrap.NewClientServerStream(ctx)
+	server := &pullDrawNotificationsServerWrapper{stream.Server()}
+	client := &pullDrawNotificationsClientWrapper{stream.Client()}
+	go func() {
+		err := w.server.PullDrawNotifications(in, server)
+		stream.Close(err)
+	}()
+	return client, nil
+}
+
+type pullDrawNotificationsClientWrapper struct {
+	grpc.ClientStream
+}
+
+func (c *pullDrawNotificationsClientWrapper) Recv() (*traits.PullDrawNotificationsResponse, error) {
+	m := new(traits.PullDrawNotificationsResponse)
+	if err := c.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+type pullDrawNotificationsServerWrapper struct {
+	grpc.ServerStream
+}
+
+func (s *pullDrawNotificationsServerWrapper) Send(response *traits.PullDrawNotificationsResponse) error {
 	return s.ServerStream.SendMsg(response)
 }

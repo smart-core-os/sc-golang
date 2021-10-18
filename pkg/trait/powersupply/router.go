@@ -144,6 +144,15 @@ func (r *Router) PullPowerCapacity(request *traits.PullPowerCapacityRequest, ser
 	}
 }
 
+func (r *Router) ListDrawNotifications(ctx context.Context, request *traits.ListDrawNotificationsRequest) (*traits.ListDrawNotificationsResponse, error) {
+	child, err := r.Get(request.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	return child.ListDrawNotifications(ctx, request)
+}
+
 func (r *Router) CreateDrawNotification(ctx context.Context, request *traits.CreateDrawNotificationRequest) (*traits.DrawNotification, error) {
 	child, err := r.Get(request.Name)
 	if err != nil {
@@ -169,4 +178,63 @@ func (r *Router) DeleteDrawNotification(ctx context.Context, request *traits.Del
 	}
 
 	return child.DeleteDrawNotification(ctx, request)
+}
+
+func (r *Router) PullDrawNotifications(request *traits.PullDrawNotificationsRequest, server traits.PowerSupplyApi_PullDrawNotificationsServer) error {
+	child, err := r.Get(request.Name)
+	if err != nil {
+		return err
+	}
+
+	// so we can cancel our forwarding request if we can't send responses to our caller
+	reqCtx, reqDone := context.WithCancel(server.Context())
+	// issue the request
+	stream, err := child.PullDrawNotifications(reqCtx, request)
+	if err != nil {
+		return err
+	}
+
+	// send the stream header
+	header, err := stream.Header()
+	if err != nil {
+		return err
+	}
+	if err = server.SendHeader(header); err != nil {
+		return err
+	}
+
+	// send all the messages
+	// false means the error is from the child, true means the error is from the caller
+	var callerError bool
+	for {
+		// Impl note: we could improve throughput here by issuing the Recv and Send in different goroutines, but we're doing
+		// it synchronously until we have a need to change the behaviour
+
+		var msg *traits.PullDrawNotificationsResponse
+		msg, err = stream.Recv()
+		if err != nil {
+			break
+		}
+
+		err = server.Send(msg)
+		if err != nil {
+			callerError = true
+			break
+		}
+	}
+
+	// err is guaranteed to be non-nil as it's the only way to exit the loop
+	if callerError {
+		// cancel the request
+		reqDone()
+		return err
+	} else {
+		if trailer := stream.Trailer(); trailer != nil {
+			server.SetTrailer(trailer)
+		}
+		if err == io.EOF {
+			return nil
+		}
+		return err
+	}
 }

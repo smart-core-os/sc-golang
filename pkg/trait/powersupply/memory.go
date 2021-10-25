@@ -168,7 +168,9 @@ func (s *MemoryDevice) CreateDrawNotification(_ context.Context, request *traits
 
 	log.Printf("CreateDrawNotification")
 	n := request.DrawNotification
-	s.normaliseMaxDraw(n)
+	if !n.Force {
+		s.normaliseMaxDraw(n)
+	}
 	s.normaliseRampDuration(n)
 	n.NotificationTime = timestamppb.Now()
 
@@ -205,7 +207,9 @@ func (s *MemoryDevice) UpdateDrawNotification(ctx context.Context, request *trai
 	}
 
 	n := request.DrawNotification
-	s.normaliseMaxDraw(n)
+	if !n.Force {
+		s.normaliseMaxDraw(n)
+	}
 	s.normaliseRampDuration(n)
 
 	if n.MaxDraw == 0 {

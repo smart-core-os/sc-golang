@@ -3,6 +3,8 @@ package powersupply
 import (
 	"context"
 	"fmt"
+	"github.com/smart-core-os/sc-golang/pkg/masks"
+	"google.golang.org/protobuf/proto"
 	"log"
 	"math/rand"
 	"sort"
@@ -168,8 +170,10 @@ func (s *MemoryDevice) CreateDrawNotification(_ context.Context, request *traits
 
 	log.Printf("CreateDrawNotification")
 	n := request.DrawNotification
-	if !n.Force {
-		s.normaliseMaxDraw(n)
+	if !n.Force && !n.Pending {
+		if ok := s.normaliseMaxDraw(n, 0); !ok {
+			return nil, status.Error(codes.OutOfRange, "insufficient power available")
+		}
 	}
 	s.normaliseRampDuration(n)
 	n.NotificationTime = timestamppb.Now()
@@ -182,11 +186,18 @@ func (s *MemoryDevice) CreateDrawNotification(_ context.Context, request *traits
 	s.notificationsByIdMu.Lock()
 	defer s.notificationsByIdMu.Unlock()
 
+	if err := validateNotification(n); err != nil {
+		return nil, err
+	}
+
 	notifiedValue := n.MaxDraw
 	if err := s.generateId(n); err != nil {
 		return nil, err
 	}
 	s.addNotified(notifiedValue)
+	if n.Pending {
+		s.addPending(notifiedValue)
+	}
 
 	n, err := s.setDrawNotification(n)
 	if err != nil {
@@ -206,33 +217,71 @@ func (s *MemoryDevice) UpdateDrawNotification(ctx context.Context, request *trai
 		return nil, err
 	}
 
-	n := request.DrawNotification
-	if !n.Force {
-		s.normaliseMaxDraw(n)
-	}
-	s.normaliseRampDuration(n)
-
-	if n.MaxDraw == 0 {
-		if _, err := s.DeleteDrawNotification(ctx, &traits.DeleteDrawNotificationRequest{Name: request.Name, Id: n.Id, AllowMissing: true}); err != nil {
-			return nil, err
-		}
-		return n, nil
+	// validate the set of fields to be updated
+	fieldUpdater := masks.NewFieldUpdater(
+		masks.WithWritableFields(memoryDeviceWriteable),
+		masks.WithUpdateMask(request.Fields),
+	)
+	if err := fieldUpdater.Validate(request.DrawNotification); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid field(s) for update: %v", err)
 	}
 
+	// calculate the new record value by merging the updated fields into (a copy of) the old record
 	s.notificationsByIdMu.Lock()
 	defer s.notificationsByIdMu.Unlock()
-
-	notifiedValue := n.MaxDraw
-	oldRecord, ok := s.notificationsById[n.Id]
+	id := request.DrawNotification.Id
+	oldRecord, ok := s.notificationsById[id]
 	if !ok {
-		return nil, status.Error(codes.NotFound, fmt.Sprintf("Notification %v not found, it may have expired. Try creating a new one", n.Id))
+		return nil, status.Error(codes.NotFound,
+			fmt.Sprintf("Notification %v not found, it may have expired. Try creating a new one", id))
+	}
+	updated := proto.Clone(oldRecord.notification).(*traits.DrawNotification)
+	fieldUpdater.Merge(updated, request.DrawNotification)
+
+	if fieldUpdater.Contains("ramp_duration") {
+		s.normaliseRampDuration(updated)
 	}
 
-	// adjust the notified value of the capacity to match the new value
-	oldRecord.abort()
-	s.addNotified(notifiedValue - oldRecord.notification.MaxDraw)
+	if updated.MaxDraw == 0 {
+		if _, err := s.DeleteDrawNotification(ctx, &traits.DeleteDrawNotificationRequest{Name: request.Name, Id: updated.Id, AllowMissing: true}); err != nil {
+			return nil, err
+		}
+		return updated, nil
+	}
 
-	n, err := s.setDrawNotification(n)
+	// if we change from forced to unforced, or from pending to active, we should normalise the max draw too
+	forcedUnset := oldRecord.notification.Force && !updated.Force
+	pendingUnset := oldRecord.notification.Pending && !updated.Pending
+	// adjust the notified value of the capacity to match the new value
+	if fieldUpdater.Contains("max_draw") || forcedUnset || pendingUnset {
+		if !updated.Force && !updated.Pending {
+			// normalise the MaxDraw to be capped by what's available.
+			// ok will be false if less than MinDraw is available
+			if ok := s.normaliseMaxDraw(updated, oldRecord.notification.MaxDraw); !ok {
+				return nil, status.Error(codes.OutOfRange, "insufficient power available")
+			}
+		}
+
+		deltaNotify := updated.MaxDraw - oldRecord.notification.MaxDraw
+		s.addNotified(deltaNotify)
+
+		// handle the cases we are changing if the notification is pending too
+		var deltaPending float32
+		if oldRecord.notification.Pending {
+			deltaPending -= oldRecord.notification.MaxDraw
+		}
+		if updated.Pending {
+			deltaPending += updated.MaxDraw
+		}
+		s.addPending(deltaPending)
+	}
+
+	if err := validateNotification(updated); err != nil {
+		return nil, err
+	}
+
+	oldRecord.abort()
+	updated, err := s.setDrawNotification(updated)
 	if err != nil {
 		return nil, err
 	}
@@ -241,9 +290,9 @@ func (s *MemoryDevice) UpdateDrawNotification(ctx context.Context, request *trai
 		ChangeTime: timestamppb.Now(),
 		Type:       types.ChangeType_UPDATE,
 		OldValue:   oldRecord.notification,
-		NewValue:   n,
+		NewValue:   updated,
 	})
-	return n, err
+	return updated, err
 }
 
 func (s *MemoryDevice) DeleteDrawNotification(_ context.Context, request *traits.DeleteDrawNotificationRequest) (*emptypb.Empty, error) {
@@ -290,3 +339,7 @@ func (s *MemoryDevice) PullDrawNotifications(req *traits.PullDrawNotificationsRe
 		}
 	}
 }
+
+var memoryDeviceWriteable = &fieldmaskpb.FieldMask{Paths: []string{
+	"max_draw", "ramp_duration", "min_draw", "force", "pending",
+}}

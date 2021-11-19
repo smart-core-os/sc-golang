@@ -34,19 +34,31 @@ func (s *MemoryDevice) addNotified(notified float32) {
 	)
 }
 
-func (s *MemoryDevice) normaliseMaxDraw(n *traits.DrawNotification) {
+func (s *MemoryDevice) addPending(pending float32) {
+	log.Printf("addPending(%f)", pending)
+	_, _ = s.powerCapacity.Set(
+		&traits.PowerCapacity{},
+		memory.WithUpdatePaths("pending"),
+		memory.InterceptBefore(func(old, new proto.Message) {
+			new.(*traits.PowerCapacity).Pending = old.(*traits.PowerCapacity).Pending + pending
+		}),
+	)
+}
+
+func (s *MemoryDevice) normaliseMaxDraw(n *traits.DrawNotification, oldDraw float32) (ok bool) {
 	capacity := s.powerCapacity.Get().(*traits.PowerCapacity)
-	available := capacity.Free - capacity.Notified
+	available := capacity.Free - capacity.Notified + oldDraw
 	if available < 0 {
 		available = 0
 	}
 	if n.MaxDraw > available { // can't satisfy the full requested power
 		if n.MinDraw == 0 || n.MinDraw > available { // can't satisfy the minimum requested power
-			n.MaxDraw = 0
+			return false
 		} else {
 			n.MaxDraw = available
 		}
 	}
+	return true
 }
 
 func (s *MemoryDevice) normaliseRampDuration(n *traits.DrawNotification) {
@@ -149,6 +161,14 @@ func validateUpdateRequest(request *traits.UpdateDrawNotificationRequest) error 
 	if request.DrawNotification.Id == "" {
 		return status.Error(codes.InvalidArgument, "Id must be set on update")
 	}
+	return nil
+}
+
+func validateNotification(notification *traits.DrawNotification) error {
+	if notification.Force && notification.Pending {
+		return status.Error(codes.InvalidArgument, "A notification cannot be both forced and pending")
+	}
+
 	return nil
 }
 

@@ -96,6 +96,16 @@ func (f *FieldUpdater) Merge(dst, src proto.Message) {
 	return
 }
 
+// Contains returns true if this updater is configured to update the field with the given name.
+func (f *FieldUpdater) Contains(fieldName string) bool {
+	for _, candidate := range f.fullMask().Paths {
+		if candidate == fieldName {
+			return true
+		}
+	}
+	return false
+}
+
 func pruneEmpty(dst, src proto.Message, mask fmutils.NestedMask) {
 	dstPr := dst.ProtoReflect()
 	srcPr := src.ProtoReflect()

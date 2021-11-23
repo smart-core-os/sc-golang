@@ -103,6 +103,9 @@ func (s *MemoryDevice) setDrawNotification(n *traits.DrawNotification) (*traits.
 			log.Printf("reset after CreateDrawNotification")
 			// clean up state changes
 			s.addNotified(-notifiedValue)
+			if n.Pending {
+				s.addPending(-notifiedValue)
+			}
 			// clean up the entry in the map
 			s.notificationsByIdMu.Lock()
 			defer s.notificationsByIdMu.Unlock()

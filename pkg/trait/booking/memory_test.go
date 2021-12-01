@@ -5,12 +5,12 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/google/go-cmp/cmp"
 	"github.com/smart-core-os/sc-api/go/traits"
 	scTime "github.com/smart-core-os/sc-api/go/types/time"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var randIds = []string{
@@ -27,8 +27,8 @@ func TestBookingApi_CreateBooking(t *testing.T) {
 			Bookable: "room1",
 			Title:    "My Bookings",
 			Booked: &scTime.Period{
-				StartTime: &timestamp.Timestamp{},
-				EndTime:   &timestamp.Timestamp{},
+				StartTime: &timestamppb.Timestamp{},
+				EndTime:   &timestamppb.Timestamp{},
 			},
 		},
 	})
@@ -52,8 +52,8 @@ func TestBookingApi_CheckInBooking(t *testing.T) {
 			Bookable: "room1",
 			Title:    "My Bookings",
 			Booked: &scTime.Period{
-				StartTime: &timestamp.Timestamp{},
-				EndTime:   &timestamp.Timestamp{},
+				StartTime: &timestamppb.Timestamp{},
+				EndTime:   &timestamppb.Timestamp{},
 			},
 		},
 	})
@@ -65,7 +65,7 @@ func TestBookingApi_CheckInBooking(t *testing.T) {
 	_, err = api.CheckInBooking(ctx, &traits.CheckInBookingRequest{
 		Name:      "room1",
 		BookingId: createRes.BookingId,
-		Time:      &timestamp.Timestamp{Seconds: 5},
+		Time:      &timestamppb.Timestamp{Seconds: 5},
 	})
 
 	if err != nil {
@@ -83,8 +83,8 @@ func TestBookingApi_CheckOutBooking(t *testing.T) {
 			Bookable: "room1",
 			Title:    "My Bookings",
 			Booked: &scTime.Period{
-				StartTime: &timestamp.Timestamp{},
-				EndTime:   &timestamp.Timestamp{},
+				StartTime: &timestamppb.Timestamp{},
+				EndTime:   &timestamppb.Timestamp{},
 			},
 		},
 	})
@@ -96,7 +96,7 @@ func TestBookingApi_CheckOutBooking(t *testing.T) {
 	_, err = api.CheckOutBooking(ctx, &traits.CheckOutBookingRequest{
 		Name:      "room1",
 		BookingId: createRes.BookingId,
-		Time:      &timestamp.Timestamp{Seconds: 5},
+		Time:      &timestamppb.Timestamp{Seconds: 5},
 	})
 
 	if err != nil {
@@ -112,8 +112,8 @@ func TestBookingApi_UpdateBooking(t *testing.T) {
 		Bookable: "room1",
 		Title:    "My Bookings",
 		Booked: &scTime.Period{
-			StartTime: &timestamp.Timestamp{},
-			EndTime:   &timestamp.Timestamp{},
+			StartTime: &timestamppb.Timestamp{},
+			EndTime:   &timestamppb.Timestamp{},
 		},
 	}
 	createRes, err := api.CreateBooking(ctx, &traits.CreateBookingRequest{
@@ -130,8 +130,8 @@ func TestBookingApi_UpdateBooking(t *testing.T) {
 		Booking: &traits.Booking{
 			Id: createRes.BookingId,
 			Booked: &scTime.Period{
-				StartTime: &timestamp.Timestamp{Seconds: 5},
-				EndTime:   &timestamp.Timestamp{Seconds: 10},
+				StartTime: &timestamppb.Timestamp{Seconds: 5},
+				EndTime:   &timestamppb.Timestamp{Seconds: 10},
 			},
 		},
 		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{
@@ -151,8 +151,8 @@ func TestBookingApi_UpdateBooking(t *testing.T) {
 		Title:    "My Bookings",
 		Id:       createRes.BookingId,
 		Booked: &scTime.Period{
-			StartTime: &timestamp.Timestamp{Seconds: 5},
-			EndTime:   &timestamp.Timestamp{Seconds: 10},
+			StartTime: &timestamppb.Timestamp{Seconds: 5},
+			EndTime:   &timestamppb.Timestamp{Seconds: 10},
 		},
 	}
 
@@ -170,8 +170,8 @@ func TestBookingApi_ListBookings(t *testing.T) {
 		Bookable: "room1",
 		Title:    "My Bookings",
 		Booked: &scTime.Period{
-			StartTime: &timestamp.Timestamp{},
-			EndTime:   &timestamp.Timestamp{},
+			StartTime: &timestamppb.Timestamp{},
+			EndTime:   &timestamppb.Timestamp{},
 		},
 	}
 	b2 := &traits.Booking{
@@ -179,8 +179,8 @@ func TestBookingApi_ListBookings(t *testing.T) {
 		Bookable: "room1",
 		Title:    "My Bookings",
 		Booked: &scTime.Period{
-			StartTime: &timestamp.Timestamp{Seconds: 5},
-			EndTime:   &timestamp.Timestamp{Seconds: 10},
+			StartTime: &timestamppb.Timestamp{Seconds: 5},
+			EndTime:   &timestamppb.Timestamp{Seconds: 10},
 		},
 	}
 	b3 := &traits.Booking{
@@ -188,8 +188,8 @@ func TestBookingApi_ListBookings(t *testing.T) {
 		Bookable: "room1",
 		Title:    "My Bookings",
 		Booked: &scTime.Period{
-			StartTime: &timestamp.Timestamp{Seconds: 6},
-			EndTime:   &timestamp.Timestamp{Seconds: 15},
+			StartTime: &timestamppb.Timestamp{Seconds: 6},
+			EndTime:   &timestamppb.Timestamp{Seconds: 15},
 		},
 	}
 	_, err := api.CreateBooking(ctx, &traits.CreateBookingRequest{
@@ -212,8 +212,8 @@ func TestBookingApi_ListBookings(t *testing.T) {
 	res, err := api.ListBookings(ctx, &traits.ListBookingsRequest{
 		Name: "room1",
 		BookingIntersects: &scTime.Period{
-			StartTime: &timestamp.Timestamp{Seconds: 2},
-			EndTime:   &timestamp.Timestamp{Seconds: 6},
+			StartTime: &timestamppb.Timestamp{Seconds: 2},
+			EndTime:   &timestamppb.Timestamp{Seconds: 6},
 		},
 	})
 	expected := []*traits.Booking{

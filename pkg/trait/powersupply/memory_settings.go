@@ -1,6 +1,6 @@
 package powersupply
 
-//go:generate protoc -I. --go_out=paths=source_relative:. --go-grpc_out=paths=source_relative:. memory_settings.proto
+//go:generate protoc -I../../../ --go_out=paths=source_relative:../../../ --go-grpc_out=paths=source_relative:../../../ pkg/trait/powersupply/memory_settings.proto
 
 import (
 	"context"

@@ -197,5 +197,5 @@ var MemorySettingsApi_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "memory_settings.proto",
+	Metadata: "pkg/trait/powersupply/memory_settings.proto",
 }

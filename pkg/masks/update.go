@@ -149,6 +149,8 @@ var DefaultFieldUpdateOptions = []FieldUpdaterOption{
 var emptyFieldUpdaterOption FieldUpdaterOption = func(_ *FieldUpdater) {
 }
 
+// WithWritableFields configures the FieldUpdater to validate that no non-writable fields are being written.
+// A nil writableFields means all fields are writable.
 func WithWritableFields(writableFields *fieldmaskpb.FieldMask) FieldUpdaterOption {
 	if writableFields == nil {
 		return emptyFieldUpdaterOption
@@ -158,6 +160,8 @@ func WithWritableFields(writableFields *fieldmaskpb.FieldMask) FieldUpdaterOptio
 	}
 }
 
+// WithUpdateMask configures the FieldUpdater to only apply values for the mentioned fields.
+// A nil updateMask represents all writable fields.
 func WithUpdateMask(updateMask *fieldmaskpb.FieldMask) FieldUpdaterOption {
 	if updateMask == nil {
 		return emptyFieldUpdaterOption
@@ -167,18 +171,23 @@ func WithUpdateMask(updateMask *fieldmaskpb.FieldMask) FieldUpdaterOption {
 	}
 }
 
+// WithUpdateMaskFieldName configures the name of the field that holds the update mask.
+// Will be used when constructing error messages.
+// Defaults to "update_mask".
 func WithUpdateMaskFieldName(name string) FieldUpdaterOption {
 	return func(updater *FieldUpdater) {
 		updater.updateMaskFieldName = name
 	}
 }
 
+// WithResetMask configures the FieldUpdater to clear the values mentioned in the mask.
 func WithResetMask(resetMask *fieldmaskpb.FieldMask) FieldUpdaterOption {
 	return func(updater *FieldUpdater) {
 		updater.resetMask = resetMask
 	}
 }
 
+// WithResetPaths is like WithResetMask but accepts paths.
 func WithResetPaths(paths ...string) FieldUpdaterOption {
 	return WithResetMask(&fieldmaskpb.FieldMask{Paths: paths})
 }

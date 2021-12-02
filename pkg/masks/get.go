@@ -38,6 +38,9 @@ func (r *ResponseFilter) Filter(msg proto.Message) {
 	if r.fields == nil {
 		return
 	}
+	if msg == nil {
+		return
+	}
 	if len(r.fields.GetPaths()) == 0 {
 		proto.Reset(msg)
 		return
@@ -48,6 +51,9 @@ func (r *ResponseFilter) Filter(msg proto.Message) {
 // FilterClone is like Filter but clones and returns a new msg instead of modifying the original.
 func (r *ResponseFilter) FilterClone(msg proto.Message) proto.Message {
 	if r.fields == nil {
+		return msg
+	}
+	if msg == nil {
 		return msg
 	}
 	if len(r.fields.GetPaths()) == 0 {

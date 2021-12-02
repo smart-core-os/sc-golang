@@ -7,6 +7,7 @@ const (
 	BrightnessSensor = "smartcore.traits.BrightnessSensor"
 	Channel          = "smartcore.traits.Channel"
 	Count            = "smartcore.traits.Count"
+	Electric         = "smartcore.traits.Electric"
 	Emergency        = "smartcore.traits.Emergency"
 	ExtendRetract    = "smartcore.traits.ExtendRetract"
 	InputSelect      = "smartcore.traits.InputSelect"

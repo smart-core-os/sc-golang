@@ -3,7 +3,6 @@ module github.com/smart-core-os/sc-golang
 go 1.14
 
 require (
-	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.6
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/kr/text v0.2.0 // indirect
@@ -22,3 +21,5 @@ require (
 	google.golang.org/protobuf v1.26.0
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
+
+replace github.com/smart-core-os/sc-api/go => github.com/smart-core-os/sc-api/go v1.0.0-beta.26.0.20211129083553-12fbc9816ef7

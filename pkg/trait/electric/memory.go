@@ -44,8 +44,8 @@ func (d *electricMode) key() string {
 
 func NewMemoryDevice() *MemoryDevice {
 	return &MemoryDevice{
-		demand:     memory.NewResource(),
-		activeMode: memory.NewResource(),
+		demand:     memory.NewResource(memory.WithInitialValue(&traits.ElectricDemand{Voltage: 240, Current: 0, Rating: 13})),
+		activeMode: memory.NewResource(memory.WithInitialValue(&traits.ElectricMode{})),
 		modesById:  map[string]*electricMode{},
 		bus:        &emitter.Emitter{},
 		Rng:        rand.New(rand.NewSource(rand.Int63())),

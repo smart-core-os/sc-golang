@@ -108,7 +108,7 @@ func pruneEmpty(dst, src proto.Message, mask fmutils.NestedMask) {
 			dstPr.Clear(d)
 			return true
 		}
-		if d.Kind() == protoreflect.MessageKind {
+		if d.Kind() == protoreflect.MessageKind && d.Cardinality() != protoreflect.Repeated {
 			pruneEmpty(dstPr.Get(d).Message().Interface(), srcPr.Get(d).Message().Interface(), fieldMask)
 		}
 		return true

@@ -9,7 +9,7 @@ require (
 	github.com/mennanov/fmutils v0.1.1
 	github.com/olebedev/emitter v0.0.0-20190110104742-e8d1457e6aee
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/smart-core-os/sc-api/go v1.0.0-beta.26
+	github.com/smart-core-os/sc-api/go v1.0.0-beta.27
 	github.com/tanema/gween v0.0.0-20200427131925-c89ae23cc63c
 	go.uber.org/atomic v1.8.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
@@ -21,5 +21,3 @@ require (
 	google.golang.org/protobuf v1.26.0
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
-
-replace github.com/smart-core-os/sc-api/go => github.com/smart-core-os/sc-api/go v1.0.0-beta.26.0.20211129083553-12fbc9816ef7

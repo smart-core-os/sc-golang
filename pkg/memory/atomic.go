@@ -8,6 +8,9 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// CreateFn is called to generate a message based on the ID the message is going to have.
+type CreateFn func(id string) proto.Message
+
 // GetFn is called to retrieve the message from the external store.
 type GetFn func() (item proto.Message, err error)
 

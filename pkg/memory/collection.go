@@ -1,18 +1,19 @@
 package memory
 
 import (
+	"context"
 	"github.com/smart-core-os/sc-golang/internal/clock"
 	"io"
 	"math/rand"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/olebedev/emitter"
 	"github.com/smart-core-os/sc-api/go/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type CollectionOption func(collection *Collection)
@@ -125,7 +126,8 @@ func (c *Collection) add(id string, create CreateFn) (proto.Message, string, err
 	body := create(id)
 	c.byId[id] = &item{body: body}
 	c.bus.Emit("change", Change{
-		ChangeTime: c.now(),
+		Id:         id,
+		ChangeTime: c.clock.Now(),
 		ChangeType: types.ChangeType_ADD,
 		NewValue:   body,
 	})
@@ -156,7 +158,8 @@ func (c *Collection) Update(id string, fn ChangeFn) (proto.Message, error) {
 		return nil, err
 	}
 	c.bus.Emit("change", Change{
-		ChangeTime: c.now(),
+		Id:         id,
+		ChangeTime: c.clock.Now(),
 		ChangeType: types.ChangeType_UPDATE,
 		OldValue:   oldValue,
 		NewValue:   newValue,
@@ -176,11 +179,35 @@ func (c *Collection) Delete(id string) proto.Message {
 	}
 	delete(c.byId, id)
 	c.bus.Emit("change", &Change{
-		ChangeTime: c.now(),
+		Id:         id,
+		ChangeTime: c.clock.Now(),
 		ChangeType: types.ChangeType_REMOVE,
 		OldValue:   oldVal.body,
 	})
 	return oldVal.body
+}
+
+func (c *Collection) PullChanges(ctx context.Context) (changes <-chan *Change, done func()) {
+	emit := c.bus.On("change")
+	send := make(chan *Change)
+	ctx, cancel := context.WithCancel(ctx)
+
+	go func() {
+		defer c.bus.Off("change", emit)
+		defer close(send)
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case event := <-emit:
+				change := event.Args[0].(*Change)
+				send <- change
+			}
+		}
+	}()
+
+	return send, cancel
 }
 
 func (c *Collection) genID() (string, error) {
@@ -190,16 +217,13 @@ func (c *Collection) genID() (string, error) {
 	})
 }
 
-func (c *Collection) now() *timestamppb.Timestamp {
-	return timestamppb.New(c.clock.Now())
-}
-
 type item struct {
 	body proto.Message
 }
 
 type Change struct {
-	ChangeTime *timestamppb.Timestamp
+	Id         string
+	ChangeTime time.Time
 	ChangeType types.ChangeType
 	OldValue   proto.Message
 	NewValue   proto.Message

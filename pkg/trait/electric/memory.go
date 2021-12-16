@@ -212,6 +212,7 @@ func (m *Memory) createMode(mode *traits.ElectricMode) (*traits.ElectricMode, er
 	}
 
 	msg, err := m.modes.AddFn(func(id string) proto.Message {
+		mode.Id = id
 		return mode
 	})
 	if err != nil {

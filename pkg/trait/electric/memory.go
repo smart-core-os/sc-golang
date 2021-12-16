@@ -74,8 +74,8 @@ func (m *Memory) Demand(mask *fieldmaskpb.FieldMask) *traits.ElectricDemand {
 	return m.demand.Get(memory.WithGetMask(mask)).(*traits.ElectricDemand)
 }
 
-func (m *Memory) PullDemand(ctx context.Context, mask *fieldmaskpb.FieldMask) (changes <-chan *traits.ElectricDemand, done func()) {
-	send := make(chan *traits.ElectricDemand)
+func (m *Memory) PullDemand(ctx context.Context, mask *fieldmaskpb.FieldMask) (changes <-chan PullDemandChange, done func()) {
+	send := make(chan PullDemandChange)
 
 	recv, done := m.demand.OnUpdate(ctx)
 	go func() {
@@ -83,7 +83,10 @@ func (m *Memory) PullDemand(ctx context.Context, mask *fieldmaskpb.FieldMask) (c
 
 		for change := range recv {
 			demand := filter.FilterClone(change.Value).(*traits.ElectricDemand)
-			send <- demand
+			send <- PullDemandChange{
+				Value:      demand,
+				ChangeTime: change.ChangeTime.AsTime(),
+			}
 		}
 	}()
 
@@ -91,12 +94,20 @@ func (m *Memory) PullDemand(ctx context.Context, mask *fieldmaskpb.FieldMask) (c
 	return send, done
 }
 
+func (m *Memory) UpdateDemand(update *traits.ElectricDemand, mask *fieldmaskpb.FieldMask) (*traits.ElectricDemand, error) {
+	updated, err := m.demand.Set(update, memory.WithUpdateMask(mask))
+	if err != nil {
+		return nil, err
+	}
+	return updated.(*traits.ElectricDemand), nil
+}
+
 func (m *Memory) ActiveMode(mask *fieldmaskpb.FieldMask) *traits.ElectricMode {
 	return m.activeMode.Get(memory.WithGetMask(mask)).(*traits.ElectricMode)
 }
 
-func (m *Memory) PullActiveMode(ctx context.Context, mask *fieldmaskpb.FieldMask) (changes <-chan *traits.ElectricMode, done func()) {
-	send := make(chan *traits.ElectricMode)
+func (m *Memory) PullActiveMode(ctx context.Context, mask *fieldmaskpb.FieldMask) (changes <-chan PullActiveModeChange, done func()) {
+	send := make(chan PullActiveModeChange)
 
 	recv, done := m.activeMode.OnUpdate(ctx)
 	go func() {
@@ -105,7 +116,10 @@ func (m *Memory) PullActiveMode(ctx context.Context, mask *fieldmaskpb.FieldMask
 
 		for change := range recv {
 			activeMode := filter.FilterClone(change.Value).(*traits.ElectricMode)
-			send <- activeMode
+			send <- PullActiveModeChange{
+				ActiveMode: activeMode,
+				ChangeTime: change.ChangeTime.AsTime(),
+			}
 		}
 	}()
 
@@ -122,12 +136,29 @@ func (m *Memory) ChangeActiveMode(id string) (*traits.ElectricMode, error) {
 		return nil, ErrModeNotFound
 	}
 
-	_, err := m.activeMode.Set(mode)
+	updated, err := m.activeMode.Set(mode)
 	if err != nil {
 		return nil, err
 	}
 
-	return mode, nil
+	return updated.(*traits.ElectricMode), nil
+}
+
+func (m *Memory) ChangeToNormalMode() (*traits.ElectricMode, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	normal, ok := m.normalMode()
+	if !ok {
+		return nil, ErrModeNotFound
+	}
+
+	updated, err := m.activeMode.Set(normal)
+	if err != nil {
+		return nil, err
+	}
+
+	return updated.(*traits.ElectricMode), nil
 }
 
 func (m *Memory) FindMode(id string) (*traits.ElectricMode, bool) {
@@ -145,12 +176,14 @@ func (m *Memory) findMode(id string) (*traits.ElectricMode, bool) {
 	return mode.(*traits.ElectricMode), true
 }
 
-func (m *Memory) Modes() []*traits.ElectricMode {
+func (m *Memory) Modes(mask *fieldmaskpb.FieldMask) []*traits.ElectricMode {
 	entries := m.modes.List()
+	filter := masks.NewResponseFilter(masks.WithFieldMask(mask))
 
 	var modes []*traits.ElectricMode
 	for _, entry := range entries {
-		modes = append(modes, entry.(*traits.ElectricMode))
+		mode := filter.FilterClone(entry)
+		modes = append(modes, mode.(*traits.ElectricMode))
 	}
 	return modes
 }
@@ -283,6 +316,16 @@ type PullModesChange struct {
 	Type       types.ChangeType
 	NewValue   *traits.ElectricMode
 	OldValue   *traits.ElectricMode
+	ChangeTime time.Time
+}
+
+type PullDemandChange struct {
+	Value      *traits.ElectricDemand
+	ChangeTime time.Time
+}
+
+type PullActiveModeChange struct {
+	ActiveMode *traits.ElectricMode
 	ChangeTime time.Time
 }
 

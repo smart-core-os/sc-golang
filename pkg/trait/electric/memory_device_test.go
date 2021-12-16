@@ -3,13 +3,15 @@ package electric
 import (
 	"context"
 	"fmt"
+	"github.com/smart-core-os/sc-golang/internal/clock"
 	"log"
 
 	"github.com/smart-core-os/sc-api/go/traits"
 )
 
 func ExampleMemoryDevice() {
-	device := NewMemoryDevice()
+	mem := NewMemory(clock.Real())
+	device := NewMemoryDevice(mem)
 
 	client := Wrap(device)
 	settings := WrapMemorySettings(device)

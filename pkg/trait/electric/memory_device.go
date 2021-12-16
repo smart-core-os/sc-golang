@@ -2,7 +2,6 @@ package electric
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"math/rand"
 	"sort"
@@ -31,15 +30,6 @@ type MemoryDevice struct {
 	modesByIdMu sync.RWMutex     // guards above
 	bus         *emitter.Emitter // "change" emits *traits.PullModesResponse_Change
 	Rng         *rand.Rand       // for generating mode ids
-}
-
-type electricMode struct {
-	msg        *traits.ElectricMode
-	createTime time.Time // use for deterministic sorting in combination with msg.Id
-}
-
-func (d *electricMode) key() string {
-	return fmt.Sprintf("%v-%v", d.createTime.Format(time.RFC3339), d.msg.Id)
 }
 
 func NewMemoryDevice() *MemoryDevice {

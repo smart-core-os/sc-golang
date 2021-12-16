@@ -2,12 +2,11 @@ package electric
 
 import (
 	"context"
-	"fmt"
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-api/go/types"
-	"github.com/smart-core-os/sc-golang/internal/clock"
 	"github.com/smart-core-os/sc-golang/pkg/masks"
 	"github.com/smart-core-os/sc-golang/pkg/memory"
+	"github.com/smart-core-os/sc-golang/pkg/time/clock"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -327,13 +326,4 @@ type PullDemandChange struct {
 type PullActiveModeChange struct {
 	ActiveMode *traits.ElectricMode
 	ChangeTime time.Time
-}
-
-type electricMode struct {
-	msg        *traits.ElectricMode
-	createTime time.Time // use for deterministic sorting in combination with msg.Id
-}
-
-func (d *electricMode) key() string {
-	return fmt.Sprintf("%v-%v", d.createTime.Format(time.RFC3339), d.msg.Id)
 }

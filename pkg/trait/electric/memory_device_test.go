@@ -3,7 +3,7 @@ package electric
 import (
 	"context"
 	"fmt"
-	"github.com/smart-core-os/sc-golang/internal/clock"
+	"github.com/smart-core-os/sc-golang/pkg/time/clock"
 	"log"
 
 	"github.com/smart-core-os/sc-api/go/traits"

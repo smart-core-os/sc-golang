@@ -2,7 +2,7 @@ package memory
 
 import (
 	"context"
-	"github.com/smart-core-os/sc-golang/internal/clock"
+	"github.com/smart-core-os/sc-golang/pkg/time/clock"
 	"io"
 	"math/rand"
 	"sort"

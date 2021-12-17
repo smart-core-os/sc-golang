@@ -2,13 +2,14 @@ package electric
 
 import (
 	"context"
+	"sort"
+
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-api/go/types"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"sort"
 )
 
 type MemoryDevice struct {
@@ -26,6 +27,7 @@ func NewMemoryDevice(mem *Memory) *MemoryDevice {
 
 func (d *MemoryDevice) Register(server *grpc.Server) {
 	traits.RegisterElectricApiServer(server, d)
+	RegisterMemorySettingsApiServer(server, d)
 }
 
 func (d *MemoryDevice) GetDemand(_ context.Context, request *traits.GetDemandRequest) (*traits.ElectricDemand, error) {

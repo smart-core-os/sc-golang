@@ -9,6 +9,7 @@ const (
 	Count            = "smartcore.traits.Count"
 	Electric         = "smartcore.traits.Electric"
 	Emergency        = "smartcore.traits.Emergency"
+	EnergyStorage    = "smartcore.traits.EnergyStorage"
 	ExtendRetract    = "smartcore.traits.ExtendRetract"
 	InputSelect      = "smartcore.traits.InputSelect"
 	Light            = "smartcore.traits.Light"

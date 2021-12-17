@@ -234,8 +234,8 @@ func (m *Memory) DeleteMode(id string) error {
 }
 
 func (m *Memory) deleteMode(id string) error {
-	norm, ok := m.normalMode()
-	if ok && id == norm.Id {
+	active := m.activeMode.Get().(*traits.ElectricMode)
+	if id == active.Id {
 		return ErrDeleteActiveMode
 	}
 

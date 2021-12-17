@@ -71,9 +71,9 @@ func NewModel(clk clock.Clock) *Model {
 }
 
 // Demand gets the demand stored in this Model.
-// The fields returned can be filtered by mask - if you want all fields, pass a nil mask.
-func (m *Model) Demand(mask *fieldmaskpb.FieldMask) *traits.ElectricDemand {
-	return m.demand.Get(memory.WithGetMask(mask)).(*traits.ElectricDemand)
+// The fields returned can be filtered by passing memory.WithGetMask.
+func (m *Model) Demand(opts ...memory.GetOption) *traits.ElectricDemand {
+	return m.demand.Get(opts...).(*traits.ElectricDemand)
 }
 
 // PullDemand subscribes to changes to the electricity demand on this device.
@@ -99,10 +99,11 @@ func (m *Model) PullDemand(ctx context.Context, mask *fieldmaskpb.FieldMask) (ch
 	return send, done
 }
 
-// UpdateDemand will update the stored traits.ElectricDemand associated with this device. The mask specifies which
-// fields will be modified. To modify all fields, pass a nil mask. The updated traits.ElectricDemand is returned.
-func (m *Model) UpdateDemand(update *traits.ElectricDemand, mask *fieldmaskpb.FieldMask) (*traits.ElectricDemand, error) {
-	updated, err := m.demand.Set(update, memory.WithUpdateMask(mask))
+// UpdateDemand will update the stored traits.ElectricDemand associated with this device.
+// The fields to update can be filtered by passing memory.WithUpdateMask.
+// The updated traits.ElectricDemand is returned.
+func (m *Model) UpdateDemand(update *traits.ElectricDemand, opts ...memory.UpdateOption) (*traits.ElectricDemand, error) {
+	updated, err := m.demand.Set(update, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -113,8 +114,9 @@ func (m *Model) UpdateDemand(update *traits.ElectricDemand, mask *fieldmaskpb.Fi
 // When the Model is first created, its active mode is a dummy mode with all-blank fields. After it is changed for
 // the first time, it will always correspond to one of the modes that can be listed by Modes.
 // The StartTime fields will reflect when the mode became active.
-func (m *Model) ActiveMode(mask *fieldmaskpb.FieldMask) *traits.ElectricMode {
-	return m.activeMode.Get(memory.WithGetMask(mask)).(*traits.ElectricMode)
+// The fields returned can be filtered using memory.WithGetMask
+func (m *Model) ActiveMode(opts ...memory.GetOption) *traits.ElectricMode {
+	return m.activeMode.Get(opts...).(*traits.ElectricMode)
 }
 
 // PullActiveMode subscribes to changes to the active mode. Whenever the active mode is changed (for example, by calling

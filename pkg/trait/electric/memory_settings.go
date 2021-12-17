@@ -8,12 +8,14 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
+
+	"github.com/smart-core-os/sc-golang/pkg/memory"
 )
 
 //go:generate protoc -I../../../ -I../../../.protomod -I../../../.protomod/github.com/smart-core-os/sc-api/protobuf --go_out=paths=source_relative:../../../ --go-grpc_out=paths=source_relative:../../../ pkg/trait/electric/memory_settings.proto
 
 func (d *ModelServer) UpdateDemand(_ context.Context, request *UpdateDemandRequest) (*traits.ElectricDemand, error) {
-	return d.model.UpdateDemand(request.Demand, request.UpdateMask)
+	return d.model.UpdateDemand(request.Demand, memory.WithUpdateMask(request.UpdateMask))
 }
 
 func (d *ModelServer) CreateMode(_ context.Context, request *CreateModeRequest) (*traits.ElectricMode, error) {

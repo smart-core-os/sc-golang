@@ -2,6 +2,10 @@ package electric
 
 import (
 	"context"
+	"math/rand"
+	"sync"
+	"time"
+
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-api/go/types"
 	"github.com/smart-core-os/sc-golang/pkg/masks"
@@ -12,9 +16,6 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"math/rand"
-	"sync"
-	"time"
 )
 
 var (
@@ -205,10 +206,10 @@ func (m *Memory) Modes(mask *fieldmaskpb.FieldMask) []*traits.ElectricMode {
 	entries := m.modes.List()
 	filter := masks.NewResponseFilter(masks.WithFieldMask(mask))
 
-	var modes []*traits.ElectricMode
-	for _, entry := range entries {
+	modes := make([]*traits.ElectricMode, len(entries))
+	for i, entry := range entries {
 		mode := filter.FilterClone(entry)
-		modes = append(modes, mode.(*traits.ElectricMode))
+		modes[i] = mode.(*traits.ElectricMode)
 	}
 	return modes
 }

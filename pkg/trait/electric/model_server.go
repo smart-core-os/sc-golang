@@ -12,30 +12,31 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type MemoryDevice struct {
+// ModelServer is an implementation of ElectricApiServer and MemorySettingsApiServer backed by a Model.
+type ModelServer struct {
 	traits.UnimplementedElectricApiServer
 	UnimplementedMemorySettingsApiServer
 
-	memory *Memory
+	model *Model
 }
 
-func NewMemoryDevice(mem *Memory) *MemoryDevice {
-	return &MemoryDevice{
-		memory: mem,
+func NewModelServer(model *Model) *ModelServer {
+	return &ModelServer{
+		model: model,
 	}
 }
 
-func (d *MemoryDevice) Register(server *grpc.Server) {
+func (d *ModelServer) Register(server *grpc.Server) {
 	traits.RegisterElectricApiServer(server, d)
 	RegisterMemorySettingsApiServer(server, d)
 }
 
-func (d *MemoryDevice) GetDemand(_ context.Context, request *traits.GetDemandRequest) (*traits.ElectricDemand, error) {
-	return d.memory.Demand(request.ReadMask), nil
+func (d *ModelServer) GetDemand(_ context.Context, request *traits.GetDemandRequest) (*traits.ElectricDemand, error) {
+	return d.model.Demand(request.ReadMask), nil
 }
 
-func (d *MemoryDevice) PullDemand(request *traits.PullDemandRequest, server traits.ElectricApi_PullDemandServer) error {
-	updates, done := d.memory.PullDemand(server.Context(), request.ReadMask)
+func (d *ModelServer) PullDemand(request *traits.PullDemandRequest, server traits.ElectricApi_PullDemandServer) error {
+	updates, done := d.model.PullDemand(server.Context(), request.ReadMask)
 	defer done()
 
 	for {
@@ -59,11 +60,11 @@ func (d *MemoryDevice) PullDemand(request *traits.PullDemandRequest, server trai
 	}
 }
 
-func (d *MemoryDevice) GetActiveMode(_ context.Context, request *traits.GetActiveModeRequest) (*traits.ElectricMode, error) {
-	return d.memory.ActiveMode(request.ReadMask), nil
+func (d *ModelServer) GetActiveMode(_ context.Context, request *traits.GetActiveModeRequest) (*traits.ElectricMode, error) {
+	return d.model.ActiveMode(request.ReadMask), nil
 }
 
-func (d *MemoryDevice) UpdateActiveMode(_ context.Context, request *traits.UpdateActiveModeRequest) (*traits.ElectricMode, error) {
+func (d *ModelServer) UpdateActiveMode(_ context.Context, request *traits.UpdateActiveModeRequest) (*traits.ElectricMode, error) {
 	mode := request.GetActiveMode()
 	// hydrate the mode using the list of known modes (by id)
 	id := mode.GetId()
@@ -71,15 +72,15 @@ func (d *MemoryDevice) UpdateActiveMode(_ context.Context, request *traits.Updat
 		return nil, status.Errorf(codes.InvalidArgument, "Id should be present during update")
 	}
 
-	return d.memory.ChangeActiveMode(id)
+	return d.model.ChangeActiveMode(id)
 }
 
-func (d *MemoryDevice) ClearActiveMode(_ context.Context, _ *traits.ClearActiveModeRequest) (*traits.ElectricMode, error) {
-	return d.memory.ChangeToNormalMode()
+func (d *ModelServer) ClearActiveMode(_ context.Context, _ *traits.ClearActiveModeRequest) (*traits.ElectricMode, error) {
+	return d.model.ChangeToNormalMode()
 }
 
-func (d *MemoryDevice) PullActiveMode(request *traits.PullActiveModeRequest, server traits.ElectricApi_PullActiveModeServer) error {
-	updates, done := d.memory.PullActiveMode(server.Context(), request.ReadMask)
+func (d *ModelServer) PullActiveMode(request *traits.PullActiveModeRequest, server traits.ElectricApi_PullActiveModeServer) error {
+	updates, done := d.model.PullActiveMode(server.Context(), request.ReadMask)
 	defer done()
 
 	for {
@@ -102,7 +103,7 @@ func (d *MemoryDevice) PullActiveMode(request *traits.PullActiveModeRequest, ser
 	}
 }
 
-func (d *MemoryDevice) ListModes(_ context.Context, request *traits.ListModesRequest) (*traits.ListModesResponse, error) {
+func (d *ModelServer) ListModes(_ context.Context, request *traits.ListModesRequest) (*traits.ListModesResponse, error) {
 	pageToken := &types.PageToken{}
 	if err := decodePageToken(request.PageToken, pageToken); err != nil {
 		return nil, err
@@ -111,7 +112,7 @@ func (d *MemoryDevice) ListModes(_ context.Context, request *traits.ListModesReq
 	lastKey := pageToken.GetLastResourceName() // the key() of the last item we sent
 	pageSize := capPageSize(int(request.GetPageSize()))
 
-	sortedModes := d.memory.Modes(request.ReadMask)
+	sortedModes := d.model.Modes(request.ReadMask)
 	nextIndex := 0
 	if lastKey != "" {
 		nextIndex = sort.Search(len(sortedModes), func(i int) bool {
@@ -141,8 +142,8 @@ func (d *MemoryDevice) ListModes(_ context.Context, request *traits.ListModesReq
 	return result, nil
 }
 
-func (d *MemoryDevice) PullModes(request *traits.PullModesRequest, server traits.ElectricApi_PullModesServer) error {
-	changes, done := d.memory.PullModes(server.Context(), request.ReadMask)
+func (d *ModelServer) PullModes(request *traits.PullModesRequest, server traits.ElectricApi_PullModesServer) error {
+	changes, done := d.model.PullModes(server.Context(), request.ReadMask)
 	defer done()
 
 	// watch for changes to the modes list and emit when one matches our query

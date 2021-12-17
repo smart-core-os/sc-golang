@@ -8,14 +8,15 @@ import (
 
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-api/go/types"
-	"github.com/smart-core-os/sc-golang/pkg/masks"
-	"github.com/smart-core-os/sc-golang/pkg/memory"
-	"github.com/smart-core-os/sc-golang/pkg/time/clock"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/smart-core-os/sc-golang/pkg/masks"
+	"github.com/smart-core-os/sc-golang/pkg/memory"
+	"github.com/smart-core-os/sc-golang/pkg/time/clock"
 )
 
 var (
@@ -24,14 +25,14 @@ var (
 	ErrDeleteActiveMode = status.Error(codes.FailedPrecondition, "attempt to delete active mode")
 )
 
-// Memory is a simple data store for electric devices. It simply stores the data given to it, and does not implement
+// Model is a simple data store for electric devices. It simply stores the data given to it, and does not implement
 // any business logic.
-// For the implementation of the gRPC trait based on Memory, see MemoryDevice.
+// For the implementation of the gRPC trait based on Model, see ModelServer.
 // Invariants:
 //   1. At most one mode has normal = true.
 //   2. The active mode cannot be deleted.
-//   3. Only a mode that exists can be active (except when the Memory is first created, when a dummy mode is active)
-type Memory struct {
+//   3. Only a mode that exists can be active (except when the Model is first created, when a dummy mode is active)
+type Model struct {
 	demand     *memory.Resource // of *traits.ElectricDemand
 	activeMode *memory.Resource // of *traits.ElectricMode
 	modes      *memory.Collection
@@ -42,12 +43,12 @@ type Memory struct {
 	Rng   *rand.Rand // for generating mode ids
 }
 
-// NewMemory constructs a Memory with default values:
+// NewModel constructs a Model with default values:
 //	 Current: 0
 //   Voltage: 240
 //   Rating: 13
 // No modes, active mode is empty.
-func NewMemory(clk clock.Clock) *Memory {
+func NewModel(clk clock.Clock) *Model {
 	var voltage float32 = 240
 	demand := &traits.ElectricDemand{
 		Current: 0,
@@ -58,7 +59,7 @@ func NewMemory(clk clock.Clock) *Memory {
 
 	mode := &traits.ElectricMode{}
 
-	mem := &Memory{
+	mem := &Model{
 		demand:     memory.NewResource(memory.WithInitialValue(demand)),
 		activeMode: memory.NewResource(memory.WithInitialValue(mode)),
 		modes:      memory.NewCollection(memory.WithClockCollection(clk)),
@@ -69,16 +70,16 @@ func NewMemory(clk clock.Clock) *Memory {
 	return mem
 }
 
-// Demand gets the demand stored in this Memory.
+// Demand gets the demand stored in this Model.
 // The fields returned can be filtered by mask - if you want all fields, pass a nil mask.
-func (m *Memory) Demand(mask *fieldmaskpb.FieldMask) *traits.ElectricDemand {
+func (m *Model) Demand(mask *fieldmaskpb.FieldMask) *traits.ElectricDemand {
 	return m.demand.Get(memory.WithGetMask(mask)).(*traits.ElectricDemand)
 }
 
 // PullDemand subscribes to changes to the electricity demand on this device.
 // The returned channel will be closed when done is called. You must call done after you are finished with the channel
 // to prevents leaks and/or deadlocks. The channel will also be closed if ctx is cancelled.
-func (m *Memory) PullDemand(ctx context.Context, mask *fieldmaskpb.FieldMask) (changes <-chan PullDemandChange, done func()) {
+func (m *Model) PullDemand(ctx context.Context, mask *fieldmaskpb.FieldMask) (changes <-chan PullDemandChange, done func()) {
 	send := make(chan PullDemandChange)
 
 	recv, done := m.demand.OnUpdate(ctx)
@@ -100,7 +101,7 @@ func (m *Memory) PullDemand(ctx context.Context, mask *fieldmaskpb.FieldMask) (c
 
 // UpdateDemand will update the stored traits.ElectricDemand associated with this device. The mask specifies which
 // fields will be modified. To modify all fields, pass a nil mask. The updated traits.ElectricDemand is returned.
-func (m *Memory) UpdateDemand(update *traits.ElectricDemand, mask *fieldmaskpb.FieldMask) (*traits.ElectricDemand, error) {
+func (m *Model) UpdateDemand(update *traits.ElectricDemand, mask *fieldmaskpb.FieldMask) (*traits.ElectricDemand, error) {
 	updated, err := m.demand.Set(update, memory.WithUpdateMask(mask))
 	if err != nil {
 		return nil, err
@@ -109,10 +110,10 @@ func (m *Memory) UpdateDemand(update *traits.ElectricDemand, mask *fieldmaskpb.F
 }
 
 // ActiveMode returns the electric mode that is currently active on this device.
-// When the Memory is first created, its active mode is a dummy mode with all-blank fields. After it is changed for
+// When the Model is first created, its active mode is a dummy mode with all-blank fields. After it is changed for
 // the first time, it will always correspond to one of the modes that can be listed by Modes.
 // The StartTime fields will reflect when the mode became active.
-func (m *Memory) ActiveMode(mask *fieldmaskpb.FieldMask) *traits.ElectricMode {
+func (m *Model) ActiveMode(mask *fieldmaskpb.FieldMask) *traits.ElectricMode {
 	return m.activeMode.Get(memory.WithGetMask(mask)).(*traits.ElectricMode)
 }
 
@@ -120,7 +121,7 @@ func (m *Memory) ActiveMode(mask *fieldmaskpb.FieldMask) *traits.ElectricMode {
 // ChangeActiveMode), the channel will send a notification.
 // The returned channel will be closed when done is called. You must call done after you are finished with the channel
 // to prevents leaks and/or deadlocks. The channel will also be closed if ctx is cancelled.
-func (m *Memory) PullActiveMode(ctx context.Context, mask *fieldmaskpb.FieldMask) (changes <-chan PullActiveModeChange, done func()) {
+func (m *Model) PullActiveMode(ctx context.Context, mask *fieldmaskpb.FieldMask) (changes <-chan PullActiveModeChange, done func()) {
 	send := make(chan PullActiveModeChange)
 
 	recv, done := m.activeMode.OnUpdate(ctx)
@@ -143,14 +144,14 @@ func (m *Memory) PullActiveMode(ctx context.Context, mask *fieldmaskpb.FieldMask
 
 // ChangeActiveMode will switch the active mode to a previously-defined mode with the given ID.
 // Attempting to change to a mode ID that does not exist on this device will result in an error.
-func (m *Memory) ChangeActiveMode(id string) (*traits.ElectricMode, error) {
+func (m *Model) ChangeActiveMode(id string) (*traits.ElectricMode, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	return m.changeActiveMode(id)
 }
 
-func (m *Memory) changeActiveMode(id string) (*traits.ElectricMode, error) {
+func (m *Model) changeActiveMode(id string) (*traits.ElectricMode, error) {
 	mode, ok := m.findMode(id)
 	if !ok {
 		return nil, ErrModeNotFound
@@ -171,7 +172,7 @@ func (m *Memory) changeActiveMode(id string) (*traits.ElectricMode, error) {
 // ChangeToNormalMode will (atomically) look up the device's normal mode (mode with Normal == true) and change to that
 // mode.
 // If this device does not have a normal mode, ErrModeNotFound is returned.
-func (m *Memory) ChangeToNormalMode() (*traits.ElectricMode, error) {
+func (m *Model) ChangeToNormalMode() (*traits.ElectricMode, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -186,14 +187,14 @@ func (m *Memory) ChangeToNormalMode() (*traits.ElectricMode, error) {
 // FindMode will attempt to retrieve the mode with the given ID.
 // If the mode was found, it is returned with ok == true.
 // Otherwise, the returned mode is unspecified and ok == false.
-func (m *Memory) FindMode(id string) (mode *traits.ElectricMode, ok bool) {
+func (m *Model) FindMode(id string) (mode *traits.ElectricMode, ok bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
 	return m.findMode(id)
 }
 
-func (m *Memory) findMode(id string) (*traits.ElectricMode, bool) {
+func (m *Model) findMode(id string) (*traits.ElectricMode, bool) {
 	mode, ok := m.modes.Get(id)
 	if !ok {
 		return nil, false
@@ -202,7 +203,7 @@ func (m *Memory) findMode(id string) (*traits.ElectricMode, bool) {
 }
 
 // Modes returns a list of all registered modes, sorted by their ID.
-func (m *Memory) Modes(mask *fieldmaskpb.FieldMask) []*traits.ElectricMode {
+func (m *Model) Modes(mask *fieldmaskpb.FieldMask) []*traits.ElectricMode {
 	entries := m.modes.List()
 	filter := masks.NewResponseFilter(masks.WithFieldMask(mask))
 
@@ -218,14 +219,14 @@ func (m *Memory) Modes(mask *fieldmaskpb.FieldMask) []*traits.ElectricMode {
 // The Id field on the mode must not be set, as the Id will be allocated by the device.
 // If mode has Normal == true, and the device already has a normal mode, then ErrNormalModeExists will result.
 // Returns the newly created mode, including its Id.
-func (m *Memory) CreateMode(mode *traits.ElectricMode) (*traits.ElectricMode, error) {
+func (m *Model) CreateMode(mode *traits.ElectricMode) (*traits.ElectricMode, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	return m.createMode(mode)
 }
 
-func (m *Memory) createMode(mode *traits.ElectricMode) (*traits.ElectricMode, error) {
+func (m *Model) createMode(mode *traits.ElectricMode) (*traits.ElectricMode, error) {
 	// clone mode to avoid mutating the caller's copy
 	mode = proto.Clone(mode).(*traits.ElectricMode)
 
@@ -258,13 +259,13 @@ func (m *Memory) createMode(mode *traits.ElectricMode) (*traits.ElectricMode, er
 // If the mode does not exist, then ErrModeNotFound is returned.
 // If the mode specified is the active mode, then ErrDeleteActiveMode is returned and the mode is not deleted.
 // Otherwise, the operation succeeded and nil is returned.
-func (m *Memory) DeleteMode(id string) error {
+func (m *Model) DeleteMode(id string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.deleteMode(id)
 }
 
-func (m *Memory) deleteMode(id string) error {
+func (m *Model) deleteMode(id string) error {
 	active := m.activeMode.Get().(*traits.ElectricMode)
 	if id == active.Id {
 		return ErrDeleteActiveMode
@@ -281,13 +282,13 @@ func (m *Memory) deleteMode(id string) error {
 // UpdateMode will modify one of the modes stored in this device.
 // The mode to be modified is specified by mode.Id, which must be set.
 // Fields to be modified can be selected using mask - to modify all fields, pass a nil mask.
-func (m *Memory) UpdateMode(mode *traits.ElectricMode, mask *fieldmaskpb.FieldMask) (*traits.ElectricMode, error) {
+func (m *Model) UpdateMode(mode *traits.ElectricMode, mask *fieldmaskpb.FieldMask) (*traits.ElectricMode, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.updateMode(mode, mask)
 }
 
-func (m *Memory) updateMode(mode *traits.ElectricMode, mask *fieldmaskpb.FieldMask) (*traits.ElectricMode, error) {
+func (m *Model) updateMode(mode *traits.ElectricMode, mask *fieldmaskpb.FieldMask) (*traits.ElectricMode, error) {
 	msg, err := m.modes.Update(mode.Id, func(oldMsg, updatedMsg proto.Message) error {
 		writer := masks.NewFieldUpdater(
 			masks.WithUpdateMask(mask),
@@ -309,7 +310,7 @@ func (m *Memory) updateMode(mode *traits.ElectricMode, mask *fieldmaskpb.FieldMa
 // a PullModesChange describing the event down the changes channel.
 // The returned channel will be closed when done is called. You must call done after you are finished with the channel
 // to prevents leaks and/or deadlocks. The channel will also be closed if ctx is cancelled.
-func (m *Memory) PullModes(ctx context.Context, mask *fieldmaskpb.FieldMask) (changes <-chan PullModesChange, done func()) {
+func (m *Model) PullModes(ctx context.Context, mask *fieldmaskpb.FieldMask) (changes <-chan PullModesChange, done func()) {
 	send := make(chan PullModesChange)
 	recv, done := m.modes.PullChanges(ctx)
 
@@ -337,13 +338,13 @@ func (m *Memory) PullModes(ctx context.Context, mask *fieldmaskpb.FieldMask) (ch
 
 // NormalMode returns the mode which has Normal == true. A device can have at most 1 such mode.
 // If there is no normal mode on this device, then (nil, false) is returned.
-func (m *Memory) NormalMode() (*traits.ElectricMode, bool) {
+func (m *Model) NormalMode() (*traits.ElectricMode, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.normalMode()
 }
 
-func (m *Memory) normalMode() (*traits.ElectricMode, bool) {
+func (m *Model) normalMode() (*traits.ElectricMode, bool) {
 	modes := m.modes.List()
 
 	for _, mode := range modes {

@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"math/rand"
 	"sync"
 	"time"
@@ -130,10 +131,18 @@ func (m *Memory) ChangeActiveMode(id string) (*traits.ElectricMode, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	return m.changeActiveMode(id)
+}
+
+func (m *Memory) changeActiveMode(id string) (*traits.ElectricMode, error) {
 	mode, ok := m.findMode(id)
 	if !ok {
 		return nil, ErrModeNotFound
 	}
+
+	// clone mode to prevent modifying shared copy accidentally
+	mode = proto.Clone(mode).(*traits.ElectricMode)
+	mode.StartTime = timestamppb.New(m.clock.Now()) // set the reference time
 
 	updated, err := m.activeMode.Set(mode)
 	if err != nil {
@@ -152,12 +161,7 @@ func (m *Memory) ChangeToNormalMode() (*traits.ElectricMode, error) {
 		return nil, ErrModeNotFound
 	}
 
-	updated, err := m.activeMode.Set(normal)
-	if err != nil {
-		return nil, err
-	}
-
-	return updated.(*traits.ElectricMode), nil
+	return m.changeActiveMode(normal.Id)
 }
 
 func (m *Memory) FindMode(id string) (*traits.ElectricMode, bool) {

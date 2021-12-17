@@ -69,11 +69,14 @@ func NewMemory(clk clock.Clock) *Memory {
 }
 
 // Demand gets the demand stored in this Memory.
-// The fields returned can be filtered by mask - if you want all fields, pass an empty mask.
+// The fields returned can be filtered by mask - if you want all fields, pass a nil mask.
 func (m *Memory) Demand(mask *fieldmaskpb.FieldMask) *traits.ElectricDemand {
 	return m.demand.Get(memory.WithGetMask(mask)).(*traits.ElectricDemand)
 }
 
+// PullDemand subscribes to changes to the electricity demand on this device.
+// The returned channel will be closed when done is called. You must call done after you are finished with the channel
+// to prevents leaks and/or deadlocks. The channel will also be closed if ctx is cancelled.
 func (m *Memory) PullDemand(ctx context.Context, mask *fieldmaskpb.FieldMask) (changes <-chan PullDemandChange, done func()) {
 	send := make(chan PullDemandChange)
 
@@ -94,6 +97,8 @@ func (m *Memory) PullDemand(ctx context.Context, mask *fieldmaskpb.FieldMask) (c
 	return send, done
 }
 
+// UpdateDemand will update the stored traits.ElectricDemand associated with this device. The mask specifies which
+// fields will be modified. To modify all fields, pass a nil mask. The updated traits.ElectricDemand is returned.
 func (m *Memory) UpdateDemand(update *traits.ElectricDemand, mask *fieldmaskpb.FieldMask) (*traits.ElectricDemand, error) {
 	updated, err := m.demand.Set(update, memory.WithUpdateMask(mask))
 	if err != nil {
@@ -102,10 +107,18 @@ func (m *Memory) UpdateDemand(update *traits.ElectricDemand, mask *fieldmaskpb.F
 	return updated.(*traits.ElectricDemand), nil
 }
 
+// ActiveMode returns the electric mode that is currently active on this device.
+// When the Memory is first created, its active mode is a dummy mode with all-blank fields. After it is changed for
+// the first time, it will always correspond to one of the modes that can be listed by Modes.
+// The StartTime fields will reflect when the mode became active.
 func (m *Memory) ActiveMode(mask *fieldmaskpb.FieldMask) *traits.ElectricMode {
 	return m.activeMode.Get(memory.WithGetMask(mask)).(*traits.ElectricMode)
 }
 
+// PullActiveMode subscribes to changes to the active mode. Whenever the active mode is changed (for example, by calling
+// ChangeActiveMode), the channel will send a notification.
+// The returned channel will be closed when done is called. You must call done after you are finished with the channel
+// to prevents leaks and/or deadlocks. The channel will also be closed if ctx is cancelled.
 func (m *Memory) PullActiveMode(ctx context.Context, mask *fieldmaskpb.FieldMask) (changes <-chan PullActiveModeChange, done func()) {
 	send := make(chan PullActiveModeChange)
 
@@ -127,6 +140,8 @@ func (m *Memory) PullActiveMode(ctx context.Context, mask *fieldmaskpb.FieldMask
 	return send, done
 }
 
+// ChangeActiveMode will switch the active mode to a previously-defined mode with the given ID.
+// Attempting to change to a mode ID that does not exist on this device will result in an error.
 func (m *Memory) ChangeActiveMode(id string) (*traits.ElectricMode, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -152,6 +167,9 @@ func (m *Memory) changeActiveMode(id string) (*traits.ElectricMode, error) {
 	return updated.(*traits.ElectricMode), nil
 }
 
+// ChangeToNormalMode will (atomically) look up the device's normal mode (mode with Normal == true) and change to that
+// mode.
+// If this device does not have a normal mode, ErrModeNotFound is returned.
 func (m *Memory) ChangeToNormalMode() (*traits.ElectricMode, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -164,7 +182,10 @@ func (m *Memory) ChangeToNormalMode() (*traits.ElectricMode, error) {
 	return m.changeActiveMode(normal.Id)
 }
 
-func (m *Memory) FindMode(id string) (*traits.ElectricMode, bool) {
+// FindMode will attempt to retrieve the mode with the given ID.
+// If the mode was found, it is returned with ok == true.
+// Otherwise, the returned mode is unspecified and ok == false.
+func (m *Memory) FindMode(id string) (mode *traits.ElectricMode, ok bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -179,6 +200,7 @@ func (m *Memory) findMode(id string) (*traits.ElectricMode, bool) {
 	return mode.(*traits.ElectricMode), true
 }
 
+// Modes returns a list of all registered modes, sorted by their ID.
 func (m *Memory) Modes(mask *fieldmaskpb.FieldMask) []*traits.ElectricMode {
 	entries := m.modes.List()
 	filter := masks.NewResponseFilter(masks.WithFieldMask(mask))
@@ -191,6 +213,10 @@ func (m *Memory) Modes(mask *fieldmaskpb.FieldMask) []*traits.ElectricMode {
 	return modes
 }
 
+// CreateMode adds a new mode to the device.
+// The Id field on the mode must not be set, as the Id will be allocated by the device.
+// If mode has Normal == true, and the device already has a normal mode, then ErrNormalModeExists will result.
+// Returns the newly created mode, including its Id.
 func (m *Memory) CreateMode(mode *traits.ElectricMode) (*traits.ElectricMode, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -227,6 +253,10 @@ func (m *Memory) createMode(mode *traits.ElectricMode) (*traits.ElectricMode, er
 	return mode, nil
 }
 
+// DeleteMode will remove the mode with the given Id from the device.
+// If the mode does not exist, then ErrModeNotFound is returned.
+// If the mode specified is the active mode, then ErrDeleteActiveMode is returned and the mode is not deleted.
+// Otherwise, the operation succeeded and nil is returned.
 func (m *Memory) DeleteMode(id string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -247,6 +277,9 @@ func (m *Memory) deleteMode(id string) error {
 	return nil
 }
 
+// UpdateMode will modify one of the modes stored in this device.
+// The mode to be modified is specified by mode.Id, which must be set.
+// Fields to be modified can be selected using mask - to modify all fields, pass a nil mask.
 func (m *Memory) UpdateMode(mode *traits.ElectricMode, mask *fieldmaskpb.FieldMask) (*traits.ElectricMode, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -271,6 +304,10 @@ func (m *Memory) updateMode(mode *traits.ElectricMode, mask *fieldmaskpb.FieldMa
 	return msg.(*traits.ElectricMode), nil
 }
 
+// PullModes subscribes to changes to modes. Creation, modification or deletion of a mode on this device will send
+// a PullModesChange describing the event down the changes channel.
+// The returned channel will be closed when done is called. You must call done after you are finished with the channel
+// to prevents leaks and/or deadlocks. The channel will also be closed if ctx is cancelled.
 func (m *Memory) PullModes(ctx context.Context, mask *fieldmaskpb.FieldMask) (changes <-chan PullModesChange, done func()) {
 	send := make(chan PullModesChange)
 	recv, done := m.modes.PullChanges(ctx)
@@ -297,6 +334,8 @@ func (m *Memory) PullModes(ctx context.Context, mask *fieldmaskpb.FieldMask) (ch
 	return send, done
 }
 
+// NormalMode returns the mode which has Normal == true. A device can have at most 1 such mode.
+// If there is no normal mode on this device, then (nil, false) is returned.
 func (m *Memory) NormalMode() (*traits.ElectricMode, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()

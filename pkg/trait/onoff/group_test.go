@@ -76,7 +76,7 @@ type onOffTester struct {
 func newOnOffTester(t *testing.T, members ...string) *onOffTester {
 	devices := NewRouter()
 	devices.Factory = func(name string) (traits.OnOffApiClient, error) {
-		return Wrap(NewMemoryDevice(traits.OnOff_UNKNOWN)), nil
+		return Wrap(NewModelServer(NewModel(traits.OnOff_UNKNOWN))), nil
 	}
 	impl := Wrap(devices)
 	group := NewGroup(impl, members...)

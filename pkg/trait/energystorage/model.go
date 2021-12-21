@@ -16,7 +16,7 @@ type Model struct {
 
 func NewModel() *Model {
 	return &Model{
-		energyLevel: memory.NewResource(),
+		energyLevel: memory.NewResource(memory.WithInitialValue(&traits.EnergyLevel{})),
 	}
 }
 

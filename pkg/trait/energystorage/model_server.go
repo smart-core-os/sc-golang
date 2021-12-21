@@ -6,6 +6,7 @@ import (
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-golang/pkg/memory"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -14,10 +15,16 @@ type ModelServer struct {
 	traits.UnimplementedEnergyStorageApiServer
 
 	model *Model
+
+	readOnly bool
 }
 
-func NewModelServer(model *Model) *ModelServer {
-	return &ModelServer{model: model}
+func NewModelServer(model *Model, opts ...ServerOption) *ModelServer {
+	s := &ModelServer{model: model}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
 }
 
 func (s *ModelServer) Register(server *grpc.Server) {
@@ -54,9 +61,21 @@ func (s *ModelServer) PullEnergyLevel(request *traits.PullEnergyLevelRequest, se
 }
 
 func (s *ModelServer) Charge(_ context.Context, request *traits.ChargeRequest) (*traits.ChargeResponse, error) {
+	if s.readOnly {
+		return nil, status.Errorf(codes.Unimplemented, "EnergyStorage.Charge")
+	}
+
 	_, err := s.model.UpdateEnergyLevel(&traits.EnergyLevel{Charging: request.GetCharge()}, memory.WithUpdatePaths("charging"))
 	if err != nil {
 		return nil, err
 	}
 	return &traits.ChargeResponse{}, nil
+}
+
+type ServerOption func(s *ModelServer)
+
+func ReadOnly() ServerOption {
+	return func(s *ModelServer) {
+		s.readOnly = true
+	}
 }

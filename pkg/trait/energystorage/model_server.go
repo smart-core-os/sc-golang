@@ -65,7 +65,13 @@ func (s *ModelServer) Charge(_ context.Context, request *traits.ChargeRequest) (
 		return nil, status.Errorf(codes.Unimplemented, "EnergyStorage.Charge")
 	}
 
-	_, err := s.model.UpdateEnergyLevel(&traits.EnergyLevel{Charging: request.GetCharge()}, memory.WithUpdatePaths("charging"))
+	level := traits.EnergyLevel{}
+	if request.GetCharge() {
+		level.Flow = &traits.EnergyLevel_Charge{}
+	} else {
+		level.Flow = &traits.EnergyLevel_Discharge{}
+	}
+	_, err := s.model.UpdateEnergyLevel(&level, memory.WithUpdatePaths("idle", "charge", "discharge"))
 	if err != nil {
 		return nil, err
 	}

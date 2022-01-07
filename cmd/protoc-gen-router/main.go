@@ -13,7 +13,7 @@ import (
 	"google.golang.org/protobuf/compiler/protogen"
 )
 
-//go:embed router.gotxt
+//go:embed router.go.gotxt
 var serviceTmplStr string
 var serviceTmpl *template.Template
 
@@ -53,20 +53,6 @@ func generateFile(plugin *protogen.Plugin, file *protogen.File) error {
 
 		g := plugin.NewGeneratedFile(filename, protogen.GoImportPath(fmt.Sprintf("github.com/smart-core-os/sc-golang/pkg/trait/%s", pkg)))
 		model := newServiceModel(g, service, file, pkg, routerName)
-		for _, method := range service.Methods {
-			model.Methods = append(model.Methods, ServiceMethod{
-				Method:    method,
-				Streaming: method.Desc.IsStreamingServer(),
-				QualifiedServerStream: g.QualifiedGoIdent(protogen.GoIdent{
-					GoName:       fmt.Sprintf("%s_%sServer", service.GoName, method.GoName),
-					GoImportPath: file.GoImportPath,
-				}),
-				GoInput:           method.Input.GoIdent.GoName,
-				QualifiedGoInput:  g.QualifiedGoIdent(method.Input.GoIdent),
-				GoOutput:          method.Output.GoIdent.GoName,
-				QualifiedGoOutput: g.QualifiedGoIdent(method.Output.GoIdent),
-			})
-		}
 		err := serviceTmpl.Execute(g, model)
 		if err != nil {
 			return err
@@ -76,7 +62,13 @@ func generateFile(plugin *protogen.Plugin, file *protogen.File) error {
 }
 
 func newServiceModel(g *protogen.GeneratedFile, service *protogen.Service, file *protogen.File, pkg, routerName string) ServiceModel {
-	return ServiceModel{
+	// imports required by all
+	g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "sync"})
+	g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "google.golang.org/grpc"})
+	g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "google.golang.org/grpc/codes"})
+	g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "google.golang.org/grpc/status"})
+
+	model := ServiceModel{
 		Service: service,
 		QualifiedServerName: g.QualifiedGoIdent(protogen.GoIdent{
 			GoName:       service.GoName + "Server",
@@ -97,6 +89,34 @@ func newServiceModel(g *protogen.GeneratedFile, service *protogen.Service, file 
 		PackageName: pkg,
 		RouterName:  routerName,
 	}
+
+	for _, method := range service.Methods {
+		// make sure the correct imports are available
+		g.QualifiedGoIdent(protogen.GoIdent{
+			GoName:       "Context",
+			GoImportPath: "context",
+		})
+		if method.Desc.IsStreamingServer() {
+			g.QualifiedGoIdent(protogen.GoIdent{
+				GoName:       "EOF",
+				GoImportPath: "io",
+			})
+		}
+
+		model.Methods = append(model.Methods, ServiceMethod{
+			Method:    method,
+			Streaming: method.Desc.IsStreamingServer(),
+			QualifiedServerStream: g.QualifiedGoIdent(protogen.GoIdent{
+				GoName:       fmt.Sprintf("%s_%sServer", service.GoName, method.GoName),
+				GoImportPath: file.GoImportPath,
+			}),
+			GoInput:           method.Input.GoIdent.GoName,
+			QualifiedGoInput:  g.QualifiedGoIdent(method.Input.GoIdent),
+			GoOutput:          method.Output.GoIdent.GoName,
+			QualifiedGoOutput: g.QualifiedGoIdent(method.Output.GoIdent),
+		})
+	}
+	return model
 }
 
 func trimPrefixIgnoreCase(s, prefix string) string {

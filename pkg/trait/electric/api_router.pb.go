@@ -3,21 +3,14 @@
 package electric
 
 import (
+	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
+	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
+	io "io"
+	sync "sync"
 )
-
-import (
-	"context"
-	"io"
-	"sync"
-
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-)
-
-var _ = io.EOF           // in case it's not used in streaming methods
-var _ = context.Canceled // in case it's not used in streaming methods
 
 // ApiRouter is a traits.ElectricApiServer that allows routing named requests to specific traits.ElectricApiClient
 type ApiRouter struct {

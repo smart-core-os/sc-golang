@@ -1,4 +1,4 @@
-// protoc-gen-router is a protoc plugin that generates a router for each service that exists in the proto files.
+// protoc-gen-wrapper is a protoc plugin that generates a wrapper for each service that exists in the proto files.
 //
 // This outputs to the {out}/pkg/trait/{trait name} package, it is intended to target the root of this project.
 package main

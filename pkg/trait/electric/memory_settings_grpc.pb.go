@@ -219,5 +219,5 @@ var MemorySettingsApi_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "pkg/trait/electric/memory_settings.proto",
+	Metadata: "memory_settings.proto",
 }

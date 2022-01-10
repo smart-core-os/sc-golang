@@ -12,7 +12,7 @@ import (
 	"github.com/smart-core-os/sc-golang/pkg/memory"
 )
 
-//go:generate protoc -I../../../ -I../../../.protomod -I../../../.protomod/github.com/smart-core-os/sc-api/protobuf --go_out=paths=source_relative:../../../ --go-grpc_out=paths=source_relative:../../../ pkg/trait/electric/memory_settings.proto
+//go:generate protomod protoc -- -I../../.. --go_out=paths=source_relative:../../../ --go-grpc_out=paths=source_relative:../../../ pkg/trait/electric/memory_settings.proto
 
 func (d *ModelServer) UpdateDemand(_ context.Context, request *UpdateDemandRequest) (*traits.ElectricDemand, error) {
 	return d.model.UpdateDemand(request.Demand, memory.WithUpdateMask(request.UpdateMask))

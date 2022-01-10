@@ -15,7 +15,7 @@ var ctx = context.Background()
 func powerSupplyClient() traits.PowerSupplyApiClient {
 	var device = NewMemoryDevice()
 	device.SetLoad(20)
-	var client = Wrap(device)
+	var client = WrapApi(device)
 	return client
 }
 

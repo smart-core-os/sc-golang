@@ -14,8 +14,8 @@ func ExampleModelServer() {
 	mem := NewModel(clock.Real())
 	device := NewModelServer(mem)
 
-	client := Wrap(device)
-	settings := WrapMemorySettings(device)
+	client := WrapApi(device)
+	settings := WrapMemorySettingsApi(device)
 
 	ctx := context.Background()
 	_, err := settings.CreateMode(ctx, &CreateModeRequest{

@@ -74,11 +74,11 @@ type onOffTester struct {
 }
 
 func newOnOffTester(t *testing.T, members ...string) *onOffTester {
-	devices := NewRouter()
+	devices := NewApiRouter()
 	devices.Factory = func(name string) (traits.OnOffApiClient, error) {
-		return Wrap(NewModelServer(NewModel(traits.OnOff_UNKNOWN))), nil
+		return WrapApi(NewModelServer(NewModel(traits.OnOff_UNKNOWN))), nil
 	}
-	impl := Wrap(devices)
+	impl := WrapApi(devices)
 	group := NewGroup(impl, members...)
 
 	// server and client setup

@@ -1,4 +1,4 @@
-package occupancy
+package occupancysensor
 
 import (
 	"context"

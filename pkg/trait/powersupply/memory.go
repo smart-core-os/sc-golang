@@ -21,8 +21,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-//go:generate protoc -I. --go_out=paths=source_relative:. --go-grpc_out=paths=source_relative:. page_token.proto
-
 // MemoryDevice is an in-memory implementation of PowerSupplyApiServer scoped to a single device.
 type MemoryDevice struct {
 	traits.UnimplementedPowerSupplyApiServer

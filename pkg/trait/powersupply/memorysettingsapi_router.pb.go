@@ -4,30 +4,33 @@ package powersupply
 
 import (
 	context "context"
+	router "github.com/smart-core-os/sc-golang/pkg/router"
 	grpc "google.golang.org/grpc"
-	codes "google.golang.org/grpc/codes"
-	status "google.golang.org/grpc/status"
 	io "io"
-	sync "sync"
 )
 
 // MemorySettingsApiRouter is a MemorySettingsApiServer that allows routing named requests to specific MemorySettingsApiClient
 type MemorySettingsApiRouter struct {
 	UnimplementedMemorySettingsApiServer
 
-	mu       sync.Mutex
-	registry map[string]MemorySettingsApiClient
-	// Factory can be used to dynamically create api clients if requests come in for devices we haven't seen.
-	Factory func(string) (MemorySettingsApiClient, error)
+	router *router.Router
 }
 
 // compile time check that we implement the interface we need
 var _ MemorySettingsApiServer = (*MemorySettingsApiRouter)(nil)
 
-func NewMemorySettingsApiRouter() *MemorySettingsApiRouter {
+func NewMemorySettingsApiRouter(opts ...router.Option) *MemorySettingsApiRouter {
 	return &MemorySettingsApiRouter{
-		registry: make(map[string]MemorySettingsApiClient),
+		router: router.NewRouter(opts...),
 	}
+}
+
+// WithMemorySettingsApiClientFactory instructs the router to create a new
+// client the first time Get is called for that name.
+func WithMemorySettingsApiClientFactory(f func(name string) (MemorySettingsApiClient, error)) router.Option {
+	return router.WithFactory(func(name string) (interface{}, error) {
+		return f(name)
+	})
 }
 
 func (r *MemorySettingsApiRouter) Register(server *grpc.Server) {
@@ -35,44 +38,34 @@ func (r *MemorySettingsApiRouter) Register(server *grpc.Server) {
 }
 
 func (r *MemorySettingsApiRouter) Add(name string, client MemorySettingsApiClient) MemorySettingsApiClient {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	old := r.registry[name]
-	r.registry[name] = client
-	return old
+	res := r.router.Add(name, client)
+	if res == nil {
+		return nil
+	}
+	return res.(MemorySettingsApiClient)
 }
 
 func (r *MemorySettingsApiRouter) Remove(name string) MemorySettingsApiClient {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	old := r.registry[name]
-	delete(r.registry, name)
-	return old
+	res := r.router.Remove(name)
+	if res == nil {
+		return nil
+	}
+	return res.(MemorySettingsApiClient)
 }
 
 func (r *MemorySettingsApiRouter) Has(name string) bool {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	_, exists := r.registry[name]
-	return exists
+	return r.router.Has(name)
 }
 
 func (r *MemorySettingsApiRouter) Get(name string) (MemorySettingsApiClient, error) {
-	r.mu.Lock()
-	child, exists := r.registry[name]
-	defer r.mu.Unlock()
-	if !exists {
-		if r.Factory != nil {
-			child, err := r.Factory(name)
-			if err != nil {
-				return nil, err
-			}
-			r.registry[name] = child
-			return child, nil
-		}
-		return nil, status.Error(codes.NotFound, name)
+	res, err := r.router.Get(name)
+	if err != nil {
+		return nil, err
 	}
-	return child, nil
+	if res == nil {
+		return nil, nil
+	}
+	return res.(MemorySettingsApiClient), nil
 }
 
 func (r *MemorySettingsApiRouter) GetSettings(ctx context.Context, request *GetMemorySettingsReq) (*MemorySettings, error) {

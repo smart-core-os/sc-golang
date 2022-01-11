@@ -5,31 +5,34 @@ package powersupply
 import (
 	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
+	router "github.com/smart-core-os/sc-golang/pkg/router"
 	grpc "google.golang.org/grpc"
-	codes "google.golang.org/grpc/codes"
-	status "google.golang.org/grpc/status"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	io "io"
-	sync "sync"
 )
 
 // ApiRouter is a traits.PowerSupplyApiServer that allows routing named requests to specific traits.PowerSupplyApiClient
 type ApiRouter struct {
 	traits.UnimplementedPowerSupplyApiServer
 
-	mu       sync.Mutex
-	registry map[string]traits.PowerSupplyApiClient
-	// Factory can be used to dynamically create api clients if requests come in for devices we haven't seen.
-	Factory func(string) (traits.PowerSupplyApiClient, error)
+	router *router.Router
 }
 
 // compile time check that we implement the interface we need
 var _ traits.PowerSupplyApiServer = (*ApiRouter)(nil)
 
-func NewApiRouter() *ApiRouter {
+func NewApiRouter(opts ...router.Option) *ApiRouter {
 	return &ApiRouter{
-		registry: make(map[string]traits.PowerSupplyApiClient),
+		router: router.NewRouter(opts...),
 	}
+}
+
+// WithPowerSupplyApiClientFactory instructs the router to create a new
+// client the first time Get is called for that name.
+func WithPowerSupplyApiClientFactory(f func(name string) (traits.PowerSupplyApiClient, error)) router.Option {
+	return router.WithFactory(func(name string) (interface{}, error) {
+		return f(name)
+	})
 }
 
 func (r *ApiRouter) Register(server *grpc.Server) {
@@ -37,44 +40,34 @@ func (r *ApiRouter) Register(server *grpc.Server) {
 }
 
 func (r *ApiRouter) Add(name string, client traits.PowerSupplyApiClient) traits.PowerSupplyApiClient {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	old := r.registry[name]
-	r.registry[name] = client
-	return old
+	res := r.router.Add(name, client)
+	if res == nil {
+		return nil
+	}
+	return res.(traits.PowerSupplyApiClient)
 }
 
 func (r *ApiRouter) Remove(name string) traits.PowerSupplyApiClient {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	old := r.registry[name]
-	delete(r.registry, name)
-	return old
+	res := r.router.Remove(name)
+	if res == nil {
+		return nil
+	}
+	return res.(traits.PowerSupplyApiClient)
 }
 
 func (r *ApiRouter) Has(name string) bool {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	_, exists := r.registry[name]
-	return exists
+	return r.router.Has(name)
 }
 
 func (r *ApiRouter) Get(name string) (traits.PowerSupplyApiClient, error) {
-	r.mu.Lock()
-	child, exists := r.registry[name]
-	defer r.mu.Unlock()
-	if !exists {
-		if r.Factory != nil {
-			child, err := r.Factory(name)
-			if err != nil {
-				return nil, err
-			}
-			r.registry[name] = child
-			return child, nil
-		}
-		return nil, status.Error(codes.NotFound, name)
+	res, err := r.router.Get(name)
+	if err != nil {
+		return nil, err
 	}
-	return child, nil
+	if res == nil {
+		return nil, nil
+	}
+	return res.(traits.PowerSupplyApiClient), nil
 }
 
 func (r *ApiRouter) GetPowerCapacity(ctx context.Context, request *traits.GetPowerCapacityRequest) (*traits.PowerCapacity, error) {

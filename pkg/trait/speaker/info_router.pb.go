@@ -5,29 +5,32 @@ package speaker
 import (
 	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
+	router "github.com/smart-core-os/sc-golang/pkg/router"
 	grpc "google.golang.org/grpc"
-	codes "google.golang.org/grpc/codes"
-	status "google.golang.org/grpc/status"
-	sync "sync"
 )
 
 // InfoRouter is a traits.SpeakerInfoServer that allows routing named requests to specific traits.SpeakerInfoClient
 type InfoRouter struct {
 	traits.UnimplementedSpeakerInfoServer
 
-	mu       sync.Mutex
-	registry map[string]traits.SpeakerInfoClient
-	// Factory can be used to dynamically create api clients if requests come in for devices we haven't seen.
-	Factory func(string) (traits.SpeakerInfoClient, error)
+	router *router.Router
 }
 
 // compile time check that we implement the interface we need
 var _ traits.SpeakerInfoServer = (*InfoRouter)(nil)
 
-func NewInfoRouter() *InfoRouter {
+func NewInfoRouter(opts ...router.Option) *InfoRouter {
 	return &InfoRouter{
-		registry: make(map[string]traits.SpeakerInfoClient),
+		router: router.NewRouter(opts...),
 	}
+}
+
+// WithSpeakerInfoClientFactory instructs the router to create a new
+// client the first time Get is called for that name.
+func WithSpeakerInfoClientFactory(f func(name string) (traits.SpeakerInfoClient, error)) router.Option {
+	return router.WithFactory(func(name string) (interface{}, error) {
+		return f(name)
+	})
 }
 
 func (r *InfoRouter) Register(server *grpc.Server) {
@@ -35,44 +38,34 @@ func (r *InfoRouter) Register(server *grpc.Server) {
 }
 
 func (r *InfoRouter) Add(name string, client traits.SpeakerInfoClient) traits.SpeakerInfoClient {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	old := r.registry[name]
-	r.registry[name] = client
-	return old
+	res := r.router.Add(name, client)
+	if res == nil {
+		return nil
+	}
+	return res.(traits.SpeakerInfoClient)
 }
 
 func (r *InfoRouter) Remove(name string) traits.SpeakerInfoClient {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	old := r.registry[name]
-	delete(r.registry, name)
-	return old
+	res := r.router.Remove(name)
+	if res == nil {
+		return nil
+	}
+	return res.(traits.SpeakerInfoClient)
 }
 
 func (r *InfoRouter) Has(name string) bool {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	_, exists := r.registry[name]
-	return exists
+	return r.router.Has(name)
 }
 
 func (r *InfoRouter) Get(name string) (traits.SpeakerInfoClient, error) {
-	r.mu.Lock()
-	child, exists := r.registry[name]
-	defer r.mu.Unlock()
-	if !exists {
-		if r.Factory != nil {
-			child, err := r.Factory(name)
-			if err != nil {
-				return nil, err
-			}
-			r.registry[name] = child
-			return child, nil
-		}
-		return nil, status.Error(codes.NotFound, name)
+	res, err := r.router.Get(name)
+	if err != nil {
+		return nil, err
 	}
-	return child, nil
+	if res == nil {
+		return nil, nil
+	}
+	return res.(traits.SpeakerInfoClient), nil
 }
 
 func (r *InfoRouter) DescribeVolume(ctx context.Context, request *traits.DescribeVolumeRequest) (*traits.VolumeSupport, error) {

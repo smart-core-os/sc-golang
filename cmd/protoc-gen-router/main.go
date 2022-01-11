@@ -65,26 +65,24 @@ func generateFile(plugin *protogen.Plugin, file *protogen.File) error {
 
 func newServiceModel(g *protogen.GeneratedFile, service *protogen.Service, file *protogen.File, pkg, routerName string) ServiceModel {
 	// imports required by all
-	g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "sync"})
 	g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "google.golang.org/grpc"})
-	g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "google.golang.org/grpc/codes"})
-	g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "google.golang.org/grpc/status"})
+	g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "github.com/smart-core-os/sc-golang/pkg/router"})
 
 	model := ServiceModel{
 		Service: service,
-		QualifiedServerName: g.QualifiedGoIdent(protogen.GoIdent{
+		ServerName: ident(g, protogen.GoIdent{
 			GoName:       service.GoName + "Server",
 			GoImportPath: file.GoImportPath,
 		}),
-		QualifiedClientName: g.QualifiedGoIdent(protogen.GoIdent{
+		ClientName: ident(g, protogen.GoIdent{
 			GoName:       service.GoName + "Client",
 			GoImportPath: file.GoImportPath,
 		}),
-		QualifiedUnimplementedServerName: g.QualifiedGoIdent(protogen.GoIdent{
+		UnimplementedServerName: ident(g, protogen.GoIdent{
 			GoName:       "Unimplemented" + service.GoName + "Server",
 			GoImportPath: file.GoImportPath,
 		}),
-		QualifiedRegisterService: g.QualifiedGoIdent(protogen.GoIdent{
+		RegisterService: ident(g, protogen.GoIdent{
 			GoName:       "Register" + service.GoName + "Server",
 			GoImportPath: file.GoImportPath,
 		}),
@@ -108,14 +106,12 @@ func newServiceModel(g *protogen.GeneratedFile, service *protogen.Service, file 
 		model.Methods = append(model.Methods, ServiceMethod{
 			Method:    method,
 			Streaming: method.Desc.IsStreamingServer(),
-			QualifiedServerStream: g.QualifiedGoIdent(protogen.GoIdent{
+			ServerStream: ident(g, protogen.GoIdent{
 				GoName:       fmt.Sprintf("%s_%sServer", service.GoName, method.GoName),
 				GoImportPath: file.GoImportPath,
 			}),
-			GoInput:           method.Input.GoIdent.GoName,
-			QualifiedGoInput:  g.QualifiedGoIdent(method.Input.GoIdent),
-			GoOutput:          method.Output.GoIdent.GoName,
-			QualifiedGoOutput: g.QualifiedGoIdent(method.Output.GoIdent),
+			GoInput:  ident(g, method.Input.GoIdent),
+			GoOutput: ident(g, method.Output.GoIdent),
 		})
 	}
 	return model
@@ -133,10 +129,10 @@ type ServiceModel struct {
 	PackageName string
 	RouterName  string
 
-	QualifiedServerName              string
-	QualifiedClientName              string
-	QualifiedUnimplementedServerName string
-	QualifiedRegisterService         string
+	ServerName              Ident
+	ClientName              Ident
+	UnimplementedServerName Ident
+	RegisterService         Ident
 
 	Methods []ServiceMethod
 }
@@ -144,11 +140,24 @@ type ServiceModel struct {
 type ServiceMethod struct {
 	*protogen.Method
 
-	Streaming             bool
-	QualifiedServerStream string
+	Streaming    bool
+	ServerStream Ident
 
-	GoInput           string
-	QualifiedGoInput  string
-	GoOutput          string
-	QualifiedGoOutput string
+	GoInput  Ident
+	GoOutput Ident
+}
+
+type Ident struct {
+	Exported  string
+	Private   string
+	Qualified string
+}
+
+func ident(g *protogen.GeneratedFile, n protogen.GoIdent) Ident {
+	first, rest := n.GoName[:1], n.GoName[1:]
+	return Ident{
+		Exported:  strings.ToUpper(first) + rest,
+		Private:   strings.ToLower(first) + rest,
+		Qualified: g.QualifiedGoIdent(n),
+	}
 }

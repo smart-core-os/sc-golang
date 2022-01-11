@@ -5,73 +5,68 @@ package {{.PackageName}}
 
 {{/*Imports handled by the invoker code*/}}
 
-// {{.RouterName}} is a {{.QualifiedServerName}} that allows routing named requests to specific {{.QualifiedClientName}}
+// {{.RouterName}} is a {{.ServerName.Qualified}} that allows routing named requests to specific {{.ClientName.Qualified}}
 type {{.RouterName}} struct {
-	{{.QualifiedUnimplementedServerName}}
+	{{.UnimplementedServerName.Qualified}}
 
-	mu       sync.Mutex
-	registry map[string]{{.QualifiedClientName}}
-	// Factory can be used to dynamically create api clients if requests come in for devices we haven't seen.
-	Factory func(string) ({{.QualifiedClientName}}, error)
+	router *router.Router
 }
 
 // compile time check that we implement the interface we need
-var _ {{.QualifiedServerName}} = (*{{.RouterName}})(nil)
+var _ {{.ServerName.Qualified}} = (*{{.RouterName}})(nil)
 
-func New{{.RouterName}}() *{{.RouterName}} {
+func New{{.RouterName}}(opts ...router.Option) *{{.RouterName}} {
 	return &{{.RouterName}}{
-		registry: make(map[string]{{.QualifiedClientName}}),
-	}
+    router: router.NewRouter(opts...),
+  }
+}
+
+// With{{.ClientName.Exported}}Factory instructs the router to create a new
+// client the first time Get is called for that name.
+func With{{.ClientName.Exported}}Factory(f func(name string) ({{.ClientName.Qualified}}, error)) router.Option {
+  return router.WithFactory(func(name string) (interface{}, error) {
+    return f(name)
+  })
 }
 
 func (r *{{.RouterName}}) Register(server *grpc.Server) {
-	{{.QualifiedRegisterService}}(server, r)
+	{{.RegisterService.Qualified}}(server, r)
 }
 
-func (r *{{.RouterName}}) Add(name string, client {{.QualifiedClientName}}) {{.QualifiedClientName}} {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	old := r.registry[name]
-	r.registry[name] = client
-	return old
+func (r *{{.RouterName}}) Add(name string, client {{.ClientName.Qualified}}) {{.ClientName.Qualified}} {
+	res := r.router.Add(name, client)
+	if res == nil {
+		return nil
+	}
+	return res.({{.ClientName.Qualified}})
 }
 
-func (r *{{.RouterName}}) Remove(name string) {{.QualifiedClientName}} {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	old := r.registry[name]
-	delete(r.registry, name)
-	return old
+func (r *{{.RouterName}}) Remove(name string) {{.ClientName.Qualified}} {
+	res := r.router.Remove(name)
+	if res == nil {
+		return nil
+	}
+	return res.({{.ClientName.Qualified}})
 }
 
 func (r *{{.RouterName}}) Has(name string) bool {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	_, exists := r.registry[name]
-	return exists
+	return r.router.Has(name)
 }
 
-func (r *{{.RouterName}}) Get(name string) ({{.QualifiedClientName}}, error) {
-	r.mu.Lock()
-	child, exists := r.registry[name]
-	defer r.mu.Unlock()
-	if !exists {
-		if r.Factory != nil {
-			child, err := r.Factory(name)
-			if err != nil {
-				return nil, err
-			}
-			r.registry[name] = child
-			return child, nil
-		}
-		return nil, status.Error(codes.NotFound, name)
+func (r *{{.RouterName}}) Get(name string) ({{.ClientName.Qualified}}, error) {
+	res, err := r.router.Get(name)
+	if err != nil {
+		return nil, err
 	}
-	return child, nil
+	if res == nil {
+		return nil, nil
+	}
+	return res.({{.ClientName.Qualified}}), nil
 }
 
 {{range .Methods}}
 {{if .Desc.IsStreamingServer}}
-func (r *{{$.RouterName}}) {{.GoName}}(request *{{.QualifiedGoInput}}, server {{.QualifiedServerStream}}) error {
+func (r *{{$.RouterName}}) {{.GoName}}(request *{{.GoInput.Qualified}}, server {{.ServerStream.Qualified}}) error {
 	child, err := r.Get(request.Name)
 	if err != nil {
 		return err
@@ -101,7 +96,7 @@ func (r *{{$.RouterName}}) {{.GoName}}(request *{{.QualifiedGoInput}}, server {{
 		// Impl note: we could improve throughput here by issuing the Recv and Send in different goroutines, but we're doing
 		// it synchronously until we have a need to change the behaviour
 
-		var msg *{{.QualifiedGoOutput}}
+		var msg *{{.GoOutput.Qualified}}
 		msg, err = stream.Recv()
 		if err != nil {
 			break
@@ -130,7 +125,7 @@ func (r *{{$.RouterName}}) {{.GoName}}(request *{{.QualifiedGoInput}}, server {{
 	}
 }
 {{else}}
-func (r *{{$.RouterName}}) {{.GoName}}(ctx context.Context, request *{{.QualifiedGoInput}}) (*{{.QualifiedGoOutput}}, error) {
+func (r *{{$.RouterName}}) {{.GoName}}(ctx context.Context, request *{{.GoInput.Qualified}}) (*{{.GoOutput.Qualified}}, error) {
 	child, err := r.Get(request.Name)
 	if err != nil {
 		return nil, err

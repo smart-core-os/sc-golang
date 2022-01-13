@@ -2,12 +2,13 @@ package memory
 
 import (
 	"context"
-	"github.com/smart-core-os/sc-golang/pkg/time/clock"
 	"io"
 	"math/rand"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/smart-core-os/sc-golang/pkg/time/clock"
 
 	"github.com/olebedev/emitter"
 	"github.com/smart-core-os/sc-api/go/types"
@@ -187,10 +188,9 @@ func (c *Collection) Delete(id string) proto.Message {
 	return oldVal.body
 }
 
-func (c *Collection) PullChanges(ctx context.Context) (changes <-chan *Change, done func()) {
+func (c *Collection) PullChanges(ctx context.Context) <-chan *Change {
 	emit := c.bus.On("change")
 	send := make(chan *Change)
-	ctx, cancel := context.WithCancel(ctx)
 
 	go func() {
 		defer c.bus.Off("change", emit)
@@ -207,7 +207,7 @@ func (c *Collection) PullChanges(ctx context.Context) (changes <-chan *Change, d
 		}
 	}()
 
-	return send, cancel
+	return send
 }
 
 func (c *Collection) genID() (string, error) {

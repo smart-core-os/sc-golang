@@ -145,14 +145,15 @@ func (d *ModelServer) ListModes(_ context.Context, request *traits.ListModesRequ
 }
 
 func (d *ModelServer) PullModes(request *traits.PullModesRequest, server traits.ElectricApi_PullModesServer) error {
-	changes, done := d.model.PullModes(server.Context(), request.ReadMask)
+	ctx, done := context.WithCancel(server.Context())
+	changes := d.model.PullModes(ctx, request.ReadMask)
 	defer done()
 
 	// watch for changes to the modes list and emit when one matches our query
 	for {
 		select {
-		case <-server.Context().Done():
-			return status.FromContextError(server.Context().Err()).Err()
+		case <-ctx.Done():
+			return status.FromContextError(ctx.Err()).Err()
 		case change := <-changes:
 			err := server.Send(&traits.PullModesResponse{Changes: []*traits.PullModesResponse_Change{
 				{

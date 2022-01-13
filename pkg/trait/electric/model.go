@@ -312,9 +312,9 @@ func (m *Model) updateMode(mode *traits.ElectricMode, mask *fieldmaskpb.FieldMas
 // a PullModesChange describing the event down the changes channel.
 // The returned channel will be closed when done is called. You must call done after you are finished with the channel
 // to prevents leaks and/or deadlocks. The channel will also be closed if ctx is cancelled.
-func (m *Model) PullModes(ctx context.Context, mask *fieldmaskpb.FieldMask) (changes <-chan PullModesChange, done func()) {
+func (m *Model) PullModes(ctx context.Context, mask *fieldmaskpb.FieldMask) <-chan PullModesChange {
 	send := make(chan PullModesChange)
-	recv, done := m.modes.PullChanges(ctx)
+	recv := m.modes.PullChanges(ctx)
 
 	go func() {
 		defer close(send)
@@ -335,7 +335,7 @@ func (m *Model) PullModes(ctx context.Context, mask *fieldmaskpb.FieldMask) (cha
 	}()
 
 	// when the caller invokes done, then recv will automatically be closed
-	return send, done
+	return send
 }
 
 // NormalMode returns the mode which has Normal == true. A device can have at most 1 such mode.

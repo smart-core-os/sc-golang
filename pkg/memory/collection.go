@@ -138,16 +138,32 @@ func (c *Collection) add(id string, create CreateFn) (proto.Message, string, err
 
 // Update allows the given ChangeFn to update the item with the given id.
 func (c *Collection) Update(id string, fn ChangeFn) (proto.Message, error) {
+	return c.UpdateOrCreate(id, fn, func(id string) proto.Message {
+		return nil // nil means do not create, and results in NOT_FOUND error
+	})
+}
+
+// UpdateOrCreate allows the given ChangeFn to update the item with the given id, creating a new item if needed.
+// If CreateFn returns nil, and no existing value with id, an error representing NotFound will be returned.
+func (c *Collection) UpdateOrCreate(id string, change ChangeFn, create CreateFn) (proto.Message, error) {
+	var created proto.Message // so multiple gets return the same instance
 	oldValue, newValue, err := GetAndUpdate(
 		&c.mu,
 		func() (proto.Message, error) {
+			if created != nil {
+				return created, nil
+			}
 			val, exists := c.byId[id]
 			if !exists {
-				return nil, status.Errorf(codes.NotFound, "id %v not found", id)
+				created = create(id)
+				if created == nil {
+					return nil, status.Errorf(codes.NotFound, "id %v not found", id)
+				}
+				return created, nil
 			}
 			return val.body, nil
 		},
-		fn,
+		change,
 		func(message proto.Message) {
 			c.byId[id] = &item{body: message}
 		})
@@ -158,10 +174,14 @@ func (c *Collection) Update(id string, fn ChangeFn) (proto.Message, error) {
 		}
 		return nil, err
 	}
-	c.bus.Emit("change", Change{
+	changeType := types.ChangeType_UPDATE
+	if oldValue == nil {
+		changeType = types.ChangeType_ADD
+	}
+	c.bus.Emit("change", &Change{
 		Id:         id,
 		ChangeTime: c.clock.Now(),
-		ChangeType: types.ChangeType_UPDATE,
+		ChangeType: changeType,
 		OldValue:   oldValue,
 		NewValue:   newValue,
 	})

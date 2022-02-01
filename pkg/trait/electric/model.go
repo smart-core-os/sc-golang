@@ -8,15 +8,14 @@ import (
 
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-api/go/types"
+	"github.com/smart-core-os/sc-golang/pkg/masks"
+	"github.com/smart-core-os/sc-golang/pkg/memory"
+	"github.com/smart-core-os/sc-golang/pkg/time/clock"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
-
-	"github.com/smart-core-os/sc-golang/pkg/masks"
-	"github.com/smart-core-os/sc-golang/pkg/memory"
-	"github.com/smart-core-os/sc-golang/pkg/time/clock"
 )
 
 var (
@@ -144,8 +143,23 @@ func (m *Model) PullActiveMode(ctx context.Context, mask *fieldmaskpb.FieldMask)
 	return send, done
 }
 
+// SetActiveMode updates the active mode to the one specified.
+// The mode.Id should exist in the known Modes of this model or an error will be returned.
+// The mode.StartTime will not be set for you.
+func (m *Model) SetActiveMode(mode *traits.ElectricMode) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.findMode(mode.Id); !ok {
+		return ErrModeNotFound
+	}
+
+	_, err := m.activeMode.Set(mode)
+	return err
+}
+
 // ChangeActiveMode will switch the active mode to a previously-defined mode with the given ID.
 // Attempting to change to a mode ID that does not exist on this device will result in an error.
+// Updates the StartTime of the mode to the current time if the mode changes.
 func (m *Model) ChangeActiveMode(id string) (*traits.ElectricMode, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -159,11 +173,13 @@ func (m *Model) changeActiveMode(id string) (*traits.ElectricMode, error) {
 		return nil, ErrModeNotFound
 	}
 
-	// clone mode to prevent modifying shared copy accidentally
-	mode = proto.Clone(mode).(*traits.ElectricMode)
-	mode.StartTime = timestamppb.New(m.clock.Now()) // set the reference time
-
-	updated, err := m.activeMode.Set(mode)
+	updated, err := m.activeMode.Set(mode, memory.InterceptAfter(func(old, new proto.Message) {
+		oldMode := old.(*traits.ElectricMode)
+		newMode := new.(*traits.ElectricMode)
+		if oldMode.Id != newMode.Id {
+			newMode.StartTime = timestamppb.New(m.clock.Now())
+		}
+	}))
 	if err != nil {
 		return nil, err
 	}
@@ -174,6 +190,7 @@ func (m *Model) changeActiveMode(id string) (*traits.ElectricMode, error) {
 // ChangeToNormalMode will (atomically) look up the device's normal mode (mode with Normal == true) and change to that
 // mode.
 // If this device does not have a normal mode, ErrModeNotFound is returned.
+// Updates the StartTime of the mode to the current time if the mode changes.
 func (m *Model) ChangeToNormalMode() (*traits.ElectricMode, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -222,20 +239,36 @@ func (m *Model) Modes(mask *fieldmaskpb.FieldMask) []*traits.ElectricMode {
 // If mode has Normal == true, and the device already has a normal mode, then ErrNormalModeExists will result.
 // Returns the newly created mode, including its Id.
 func (m *Model) CreateMode(mode *traits.ElectricMode) (*traits.ElectricMode, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	return m.createMode(mode)
-}
-
-func (m *Model) createMode(mode *traits.ElectricMode) (*traits.ElectricMode, error) {
-	// clone mode to avoid mutating the caller's copy
-	mode = proto.Clone(mode).(*traits.ElectricMode)
-
 	if mode.Id != "" {
 		// If the ID is set, this indicates a bug in the calling code
 		panic("ID field is set")
 	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	return m.createOrAddMode(mode)
+}
+
+// AddMode adds a new mode to the device using the modes Id.
+// The Id field on the mode must be set.
+// If mode has Normal == true, and the device already has a normal mode, then ErrNormalModeExists will result.
+func (m *Model) AddMode(mode *traits.ElectricMode) error {
+	if mode.Id == "" {
+		// If the ID is set, this indicates a bug in the calling code
+		panic("ID field is not set")
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	_, err := m.createOrAddMode(mode)
+	return err
+}
+
+func (m *Model) createOrAddMode(mode *traits.ElectricMode) (*traits.ElectricMode, error) {
+	// clone mode to avoid mutating the caller's copy
+	mode = proto.Clone(mode).(*traits.ElectricMode)
 
 	// if this mode is normal, check that there isn't another normal mode
 	if mode.Normal {
@@ -245,14 +278,20 @@ func (m *Model) createMode(mode *traits.ElectricMode) (*traits.ElectricMode, err
 		}
 	}
 
-	msg, err := m.modes.AddFn(func(id string) proto.Message {
-		mode.Id = id
-		return mode
-	})
-	if err != nil {
-		return nil, err
+	if mode.Id == "" {
+		msg, err := m.modes.AddFn(func(id string) proto.Message {
+			mode.Id = id
+			return mode
+		})
+		if err != nil {
+			return nil, err
+		}
+		mode = msg.(*traits.ElectricMode)
+	} else {
+		if _, err := m.modes.Add(mode.Id, mode); err != nil {
+			return nil, err
+		}
 	}
-	mode = msg.(*traits.ElectricMode)
 
 	return mode, nil
 }

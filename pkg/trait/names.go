@@ -1,25 +1,46 @@
 package trait
 
+import (
+	"strings"
+)
+
+type Name string
+
+// Local returns the last part of a fully qualified trait name.
+func (n Name) Local() string {
+	traitName := string(n)
+	lastDot := strings.LastIndex(traitName, ".")
+	if lastDot == -1 {
+		return traitName
+	}
+	return traitName[lastDot+1:]
+}
+
+func (n Name) String() string {
+	return string(n)
+}
+
 const (
-	AirQualitySensor = "smartcore.traits.AirQualitySensor"
-	AirTemperature   = "smartcore.traits.AirTemperature"
-	Booking          = "smartcore.traits.Booking"
-	BrightnessSensor = "smartcore.traits.BrightnessSensor"
-	Channel          = "smartcore.traits.Channel"
-	Count            = "smartcore.traits.Count"
-	Electric         = "smartcore.traits.Electric"
-	Emergency        = "smartcore.traits.Emergency"
-	EnergyStorage    = "smartcore.traits.EnergyStorage"
-	ExtendRetract    = "smartcore.traits.ExtendRetract"
-	InputSelect      = "smartcore.traits.InputSelect"
-	Light            = "smartcore.traits.Light"
-	Microphone       = "smartcore.traits.Microphone"
-	MotionSensor     = "smartcore.traits.MotionSensor"
-	OccupancySensor  = "smartcore.traits.OccupancySensor"
-	OnOff            = "smartcore.traits.OnOff"
-	OpenClose        = "smartcore.traits.OpenClose"
-	Parent           = "smartcore.traits.Parent"
-	PowerSupply      = "smartcore.traits.PowerSupply"
-	Ptz              = "smartcore.traits.Ptz"
-	Speaker          = "smartcore.traits.Speaker"
+	AirQualitySensor Name = "smartcore.traits.AirQualitySensor"
+	AirTemperature   Name = "smartcore.traits.AirTemperature"
+	Booking          Name = "smartcore.traits.Booking"
+	BrightnessSensor Name = "smartcore.traits.BrightnessSensor"
+	Channel          Name = "smartcore.traits.Channel"
+	Count            Name = "smartcore.traits.Count"
+	Electric         Name = "smartcore.traits.Electric"
+	Emergency        Name = "smartcore.traits.Emergency"
+	EnergyStorage    Name = "smartcore.traits.EnergyStorage"
+	ExtendRetract    Name = "smartcore.traits.ExtendRetract"
+	InputSelect      Name = "smartcore.traits.InputSelect"
+	Light            Name = "smartcore.traits.Light"
+	Metadata         Name = "smartcore.traits.Metadata"
+	Microphone       Name = "smartcore.traits.Microphone"
+	MotionSensor     Name = "smartcore.traits.MotionSensor"
+	OccupancySensor  Name = "smartcore.traits.OccupancySensor"
+	OnOff            Name = "smartcore.traits.OnOff"
+	OpenClose        Name = "smartcore.traits.OpenClose"
+	Parent           Name = "smartcore.traits.Parent"
+	PowerSupply      Name = "smartcore.traits.PowerSupply"
+	Ptz              Name = "smartcore.traits.Ptz"
+	Speaker          Name = "smartcore.traits.Speaker"
 )

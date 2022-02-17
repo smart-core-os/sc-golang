@@ -8,6 +8,7 @@ import (
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-golang/pkg/memory"
 	"github.com/smart-core-os/sc-golang/pkg/time/clock"
+	"github.com/smart-core-os/sc-golang/pkg/trait"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -49,7 +50,7 @@ func (m *Model) RemoveChildByName(name string) (child *traits.Child, existed boo
 // AddChildTrait ensures that a child with the given name and list of trait names exists in this model.
 // If no child with the given name is already know, one will be created.
 // If a child is already known with the given name, its traits will be unioned with the given trait names.
-func (m *Model) AddChildTrait(name string, traitName ...string) (child *traits.Child, created bool) {
+func (m *Model) AddChildTrait(name string, traitName ...trait.Name) (child *traits.Child, created bool) {
 	msg, err := m.children.UpdateOrCreate(name, func(old, new proto.Message) error {
 		oldChild := old.(*traits.Child)
 		newChild := new.(*traits.Child)
@@ -106,19 +107,20 @@ func childrenChangeToProto(change *memory.Change) *traits.PullChildrenResponse_C
 // traitUnion returns a slice containing the union of has and more (converted to *traits.Trait).
 // The has slice should be sorted in ascending order by Trait.Name.
 // The returned slice will be sorted in ascending order by Trait.Name.
-func traitUnion(has []*traits.Trait, more ...string) []*traits.Trait {
+func traitUnion(has []*traits.Trait, more ...trait.Name) []*traits.Trait {
 	// has should be sorted by Trait.Name
 	for _, t := range more {
+		ts := string(t)
 		insertIndex := sort.Search(len(has), func(i int) bool {
-			return has[i].Name >= t
+			return has[i].Name >= ts
 		})
 		switch {
 		case insertIndex == len(has): // append to end
-			has = append(has, &traits.Trait{Name: t})
-		case has[insertIndex].Name == t: // already exists, do nothing
+			has = append(has, &traits.Trait{Name: ts})
+		case has[insertIndex].Name == ts: // already exists, do nothing
 		default: // insert into slice
 			has = append(has[:insertIndex+1], has[insertIndex:]...)
-			has[insertIndex] = &traits.Trait{Name: t}
+			has[insertIndex] = &traits.Trait{Name: ts}
 		}
 	}
 	return has

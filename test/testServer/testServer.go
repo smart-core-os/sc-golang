@@ -34,7 +34,7 @@ func main() {
 	done := s.Startup(addr)
 
 	t1 := &info.Trait{
-		Name: trait.Light,
+		Name: string(trait.Light),
 	}
 
 	s.RegisterDevice(&info.Device{

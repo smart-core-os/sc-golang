@@ -74,10 +74,9 @@ type onOffTester struct {
 }
 
 func newOnOffTester(t *testing.T, members ...string) *onOffTester {
-	devices := NewApiRouter()
-	devices.Factory = func(name string) (traits.OnOffApiClient, error) {
+	devices := NewApiRouter(WithOnOffApiClientFactory(func(name string) (traits.OnOffApiClient, error) {
 		return WrapApi(NewModelServer(NewModel(traits.OnOff_UNKNOWN))), nil
-	}
+	}))
 	impl := WrapApi(devices)
 	group := NewGroup(impl, members...)
 

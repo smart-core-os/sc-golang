@@ -68,10 +68,9 @@ type brightnessTester struct {
 }
 
 func newBrightnessTester(t *testing.T, members ...string) *brightnessTester {
-	devices := NewApiRouter()
-	devices.Factory = func(name string) (traits.LightApiClient, error) {
+	devices := NewApiRouter(WithLightApiClientFactory(func(name string) (traits.LightApiClient, error) {
 		return WrapApi(NewMemoryDevice()), nil
-	}
+	}))
 	impl := WrapApi(devices)
 	group := NewGroup(impl, members...)
 

@@ -4,6 +4,7 @@ package electric
 
 import (
 	context "context"
+	fmt "fmt"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	router "github.com/smart-core-os/sc-golang/pkg/router"
 	grpc "google.golang.org/grpc"
@@ -14,7 +15,7 @@ import (
 type MemorySettingsApiRouter struct {
 	UnimplementedMemorySettingsApiServer
 
-	router *router.Router
+	router.Router
 }
 
 // compile time check that we implement the interface we need
@@ -22,7 +23,7 @@ var _ MemorySettingsApiServer = (*MemorySettingsApiRouter)(nil)
 
 func NewMemorySettingsApiRouter(opts ...router.Option) *MemorySettingsApiRouter {
 	return &MemorySettingsApiRouter{
-		router: router.NewRouter(opts...),
+		Router: router.NewRouter(opts...),
 	}
 }
 
@@ -38,28 +39,37 @@ func (r *MemorySettingsApiRouter) Register(server *grpc.Server) {
 	RegisterMemorySettingsApiServer(server, r)
 }
 
-func (r *MemorySettingsApiRouter) Add(name string, client MemorySettingsApiClient) MemorySettingsApiClient {
-	res := r.router.Add(name, client)
+// Add extends Router.Add to panic if client is not of type MemorySettingsApiClient.
+func (r *MemorySettingsApiRouter) Add(name string, client interface{}) interface{} {
+	if !r.HoldsType(client) {
+		panic(fmt.Sprintf("not correct type: client of type %T is not a MemorySettingsApiClient", client))
+	}
+	return r.Router.Add(name, client)
+}
+
+func (r *MemorySettingsApiRouter) HoldsType(client interface{}) bool {
+	_, ok := client.(MemorySettingsApiClient)
+	return ok
+}
+
+func (r *MemorySettingsApiRouter) AddMemorySettingsApiClient(name string, client MemorySettingsApiClient) MemorySettingsApiClient {
+	res := r.Add(name, client)
 	if res == nil {
 		return nil
 	}
 	return res.(MemorySettingsApiClient)
 }
 
-func (r *MemorySettingsApiRouter) Remove(name string) MemorySettingsApiClient {
-	res := r.router.Remove(name)
+func (r *MemorySettingsApiRouter) RemoveMemorySettingsApiClient(name string) MemorySettingsApiClient {
+	res := r.Remove(name)
 	if res == nil {
 		return nil
 	}
 	return res.(MemorySettingsApiClient)
 }
 
-func (r *MemorySettingsApiRouter) Has(name string) bool {
-	return r.router.Has(name)
-}
-
-func (r *MemorySettingsApiRouter) Get(name string) (MemorySettingsApiClient, error) {
-	res, err := r.router.Get(name)
+func (r *MemorySettingsApiRouter) GetMemorySettingsApiClient(name string) (MemorySettingsApiClient, error) {
+	res, err := r.Get(name)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +80,7 @@ func (r *MemorySettingsApiRouter) Get(name string) (MemorySettingsApiClient, err
 }
 
 func (r *MemorySettingsApiRouter) UpdateDemand(ctx context.Context, request *UpdateDemandRequest) (*traits.ElectricDemand, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetMemorySettingsApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +89,7 @@ func (r *MemorySettingsApiRouter) UpdateDemand(ctx context.Context, request *Upd
 }
 
 func (r *MemorySettingsApiRouter) CreateMode(ctx context.Context, request *CreateModeRequest) (*traits.ElectricMode, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetMemorySettingsApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +98,7 @@ func (r *MemorySettingsApiRouter) CreateMode(ctx context.Context, request *Creat
 }
 
 func (r *MemorySettingsApiRouter) UpdateMode(ctx context.Context, request *UpdateModeRequest) (*traits.ElectricMode, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetMemorySettingsApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +107,7 @@ func (r *MemorySettingsApiRouter) UpdateMode(ctx context.Context, request *Updat
 }
 
 func (r *MemorySettingsApiRouter) DeleteMode(ctx context.Context, request *DeleteModeRequest) (*emptypb.Empty, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetMemorySettingsApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}

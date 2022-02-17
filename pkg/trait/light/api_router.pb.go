@@ -4,6 +4,7 @@ package light
 
 import (
 	context "context"
+	fmt "fmt"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	router "github.com/smart-core-os/sc-golang/pkg/router"
 	grpc "google.golang.org/grpc"
@@ -14,7 +15,7 @@ import (
 type ApiRouter struct {
 	traits.UnimplementedLightApiServer
 
-	router *router.Router
+	router.Router
 }
 
 // compile time check that we implement the interface we need
@@ -22,7 +23,7 @@ var _ traits.LightApiServer = (*ApiRouter)(nil)
 
 func NewApiRouter(opts ...router.Option) *ApiRouter {
 	return &ApiRouter{
-		router: router.NewRouter(opts...),
+		Router: router.NewRouter(opts...),
 	}
 }
 
@@ -38,28 +39,37 @@ func (r *ApiRouter) Register(server *grpc.Server) {
 	traits.RegisterLightApiServer(server, r)
 }
 
-func (r *ApiRouter) Add(name string, client traits.LightApiClient) traits.LightApiClient {
-	res := r.router.Add(name, client)
+// Add extends Router.Add to panic if client is not of type traits.LightApiClient.
+func (r *ApiRouter) Add(name string, client interface{}) interface{} {
+	if !r.HoldsType(client) {
+		panic(fmt.Sprintf("not correct type: client of type %T is not a traits.LightApiClient", client))
+	}
+	return r.Router.Add(name, client)
+}
+
+func (r *ApiRouter) HoldsType(client interface{}) bool {
+	_, ok := client.(traits.LightApiClient)
+	return ok
+}
+
+func (r *ApiRouter) AddLightApiClient(name string, client traits.LightApiClient) traits.LightApiClient {
+	res := r.Add(name, client)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.LightApiClient)
 }
 
-func (r *ApiRouter) Remove(name string) traits.LightApiClient {
-	res := r.router.Remove(name)
+func (r *ApiRouter) RemoveLightApiClient(name string) traits.LightApiClient {
+	res := r.Remove(name)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.LightApiClient)
 }
 
-func (r *ApiRouter) Has(name string) bool {
-	return r.router.Has(name)
-}
-
-func (r *ApiRouter) Get(name string) (traits.LightApiClient, error) {
-	res, err := r.router.Get(name)
+func (r *ApiRouter) GetLightApiClient(name string) (traits.LightApiClient, error) {
+	res, err := r.Get(name)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +80,7 @@ func (r *ApiRouter) Get(name string) (traits.LightApiClient, error) {
 }
 
 func (r *ApiRouter) UpdateBrightness(ctx context.Context, request *traits.UpdateBrightnessRequest) (*traits.Brightness, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetLightApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +89,7 @@ func (r *ApiRouter) UpdateBrightness(ctx context.Context, request *traits.Update
 }
 
 func (r *ApiRouter) GetBrightness(ctx context.Context, request *traits.GetBrightnessRequest) (*traits.Brightness, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetLightApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +98,7 @@ func (r *ApiRouter) GetBrightness(ctx context.Context, request *traits.GetBright
 }
 
 func (r *ApiRouter) PullBrightness(request *traits.PullBrightnessRequest, server traits.LightApi_PullBrightnessServer) error {
-	child, err := r.Get(request.Name)
+	child, err := r.GetLightApiClient(request.Name)
 	if err != nil {
 		return err
 	}

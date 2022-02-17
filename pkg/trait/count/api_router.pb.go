@@ -4,6 +4,7 @@ package count
 
 import (
 	context "context"
+	fmt "fmt"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	router "github.com/smart-core-os/sc-golang/pkg/router"
 	grpc "google.golang.org/grpc"
@@ -14,7 +15,7 @@ import (
 type ApiRouter struct {
 	traits.UnimplementedCountApiServer
 
-	router *router.Router
+	router.Router
 }
 
 // compile time check that we implement the interface we need
@@ -22,7 +23,7 @@ var _ traits.CountApiServer = (*ApiRouter)(nil)
 
 func NewApiRouter(opts ...router.Option) *ApiRouter {
 	return &ApiRouter{
-		router: router.NewRouter(opts...),
+		Router: router.NewRouter(opts...),
 	}
 }
 
@@ -38,28 +39,37 @@ func (r *ApiRouter) Register(server *grpc.Server) {
 	traits.RegisterCountApiServer(server, r)
 }
 
-func (r *ApiRouter) Add(name string, client traits.CountApiClient) traits.CountApiClient {
-	res := r.router.Add(name, client)
+// Add extends Router.Add to panic if client is not of type traits.CountApiClient.
+func (r *ApiRouter) Add(name string, client interface{}) interface{} {
+	if !r.HoldsType(client) {
+		panic(fmt.Sprintf("not correct type: client of type %T is not a traits.CountApiClient", client))
+	}
+	return r.Router.Add(name, client)
+}
+
+func (r *ApiRouter) HoldsType(client interface{}) bool {
+	_, ok := client.(traits.CountApiClient)
+	return ok
+}
+
+func (r *ApiRouter) AddCountApiClient(name string, client traits.CountApiClient) traits.CountApiClient {
+	res := r.Add(name, client)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.CountApiClient)
 }
 
-func (r *ApiRouter) Remove(name string) traits.CountApiClient {
-	res := r.router.Remove(name)
+func (r *ApiRouter) RemoveCountApiClient(name string) traits.CountApiClient {
+	res := r.Remove(name)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.CountApiClient)
 }
 
-func (r *ApiRouter) Has(name string) bool {
-	return r.router.Has(name)
-}
-
-func (r *ApiRouter) Get(name string) (traits.CountApiClient, error) {
-	res, err := r.router.Get(name)
+func (r *ApiRouter) GetCountApiClient(name string) (traits.CountApiClient, error) {
+	res, err := r.Get(name)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +80,7 @@ func (r *ApiRouter) Get(name string) (traits.CountApiClient, error) {
 }
 
 func (r *ApiRouter) GetCount(ctx context.Context, request *traits.GetCountRequest) (*traits.Count, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetCountApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +89,7 @@ func (r *ApiRouter) GetCount(ctx context.Context, request *traits.GetCountReques
 }
 
 func (r *ApiRouter) ResetCount(ctx context.Context, request *traits.ResetCountRequest) (*traits.Count, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetCountApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +98,7 @@ func (r *ApiRouter) ResetCount(ctx context.Context, request *traits.ResetCountRe
 }
 
 func (r *ApiRouter) UpdateCount(ctx context.Context, request *traits.UpdateCountRequest) (*traits.Count, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetCountApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +107,7 @@ func (r *ApiRouter) UpdateCount(ctx context.Context, request *traits.UpdateCount
 }
 
 func (r *ApiRouter) PullCounts(request *traits.PullCountsRequest, server traits.CountApi_PullCountsServer) error {
-	child, err := r.Get(request.Name)
+	child, err := r.GetCountApiClient(request.Name)
 	if err != nil {
 		return err
 	}

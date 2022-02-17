@@ -9,7 +9,23 @@ import (
 
 // Router tracks a registry of gRPC clients.
 // Typically used by code generated via the protoc-gen-router plugin.
-type Router struct {
+type Router interface {
+	// Add adds a named client to this Router.
+	// Add returns the old client associated with this name, or nil if there wasn't one.
+	// If HoldsType returns false for the given client, this will panic.
+	Add(name string, client interface{}) interface{}
+	// HoldsType returns true if this Router holds clients of the specified type.
+	HoldsType(client interface{}) bool
+	// Remove removes and returns a named client.
+	Remove(name string) interface{}
+	// Has returns true if this Router has a client with the given name.
+	Has(name string) bool
+	// Get returns the client for the given name.
+	// An error will be returned if no such client exists.
+	Get(name string) (interface{}, error)
+}
+
+type router struct {
 	mu       sync.Mutex
 	registry map[string]interface{} // of type MyServiceClient
 	factory  Factory
@@ -17,8 +33,8 @@ type Router struct {
 type Factory func(string) (interface{}, error) // returns the type MyServiceClient
 
 // NewRouter creates a new instance of Router with the given options.
-func NewRouter(opts ...Option) *Router {
-	r := &Router{
+func NewRouter(opts ...Option) Router {
+	r := &router{
 		registry: make(map[string]interface{}),
 	}
 	for _, opt := range opts {
@@ -27,7 +43,7 @@ func NewRouter(opts ...Option) *Router {
 	return r
 }
 
-func (r *Router) Add(name string, client interface{}) interface{} {
+func (r *router) Add(name string, client interface{}) interface{} {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	old := r.registry[name]
@@ -35,7 +51,11 @@ func (r *Router) Add(name string, client interface{}) interface{} {
 	return old
 }
 
-func (r *Router) Remove(name string) interface{} {
+func (r *router) HoldsType(_ interface{}) bool {
+	return true
+}
+
+func (r *router) Remove(name string) interface{} {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	old := r.registry[name]
@@ -43,14 +63,14 @@ func (r *Router) Remove(name string) interface{} {
 	return old
 }
 
-func (r *Router) Has(name string) bool {
+func (r *router) Has(name string) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	_, exists := r.registry[name]
 	return exists
 }
 
-func (r *Router) Get(name string) (interface{}, error) {
+func (r *router) Get(name string) (child interface{}, err error) {
 	r.mu.Lock()
 	child, exists := r.registry[name]
 	defer r.mu.Unlock()
@@ -68,12 +88,12 @@ func (r *Router) Get(name string) (interface{}, error) {
 	return child, nil
 }
 
-type Option func(r *Router)
+type Option func(r *router)
 
 // WithFactory configures a Router to call the given function when Get is called and no existing client is known.
 // Prefer using the generated WithMyServiceClientFactory methods in the trait packages.
 func WithFactory(f Factory) Option {
-	return func(r *Router) {
+	return func(r *router) {
 		r.factory = f
 	}
 }

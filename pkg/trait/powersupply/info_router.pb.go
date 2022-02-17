@@ -4,6 +4,7 @@ package powersupply
 
 import (
 	context "context"
+	fmt "fmt"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	router "github.com/smart-core-os/sc-golang/pkg/router"
 	grpc "google.golang.org/grpc"
@@ -13,7 +14,7 @@ import (
 type InfoRouter struct {
 	traits.UnimplementedPowerSupplyInfoServer
 
-	router *router.Router
+	router.Router
 }
 
 // compile time check that we implement the interface we need
@@ -21,7 +22,7 @@ var _ traits.PowerSupplyInfoServer = (*InfoRouter)(nil)
 
 func NewInfoRouter(opts ...router.Option) *InfoRouter {
 	return &InfoRouter{
-		router: router.NewRouter(opts...),
+		Router: router.NewRouter(opts...),
 	}
 }
 
@@ -37,28 +38,37 @@ func (r *InfoRouter) Register(server *grpc.Server) {
 	traits.RegisterPowerSupplyInfoServer(server, r)
 }
 
-func (r *InfoRouter) Add(name string, client traits.PowerSupplyInfoClient) traits.PowerSupplyInfoClient {
-	res := r.router.Add(name, client)
+// Add extends Router.Add to panic if client is not of type traits.PowerSupplyInfoClient.
+func (r *InfoRouter) Add(name string, client interface{}) interface{} {
+	if !r.HoldsType(client) {
+		panic(fmt.Sprintf("not correct type: client of type %T is not a traits.PowerSupplyInfoClient", client))
+	}
+	return r.Router.Add(name, client)
+}
+
+func (r *InfoRouter) HoldsType(client interface{}) bool {
+	_, ok := client.(traits.PowerSupplyInfoClient)
+	return ok
+}
+
+func (r *InfoRouter) AddPowerSupplyInfoClient(name string, client traits.PowerSupplyInfoClient) traits.PowerSupplyInfoClient {
+	res := r.Add(name, client)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.PowerSupplyInfoClient)
 }
 
-func (r *InfoRouter) Remove(name string) traits.PowerSupplyInfoClient {
-	res := r.router.Remove(name)
+func (r *InfoRouter) RemovePowerSupplyInfoClient(name string) traits.PowerSupplyInfoClient {
+	res := r.Remove(name)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.PowerSupplyInfoClient)
 }
 
-func (r *InfoRouter) Has(name string) bool {
-	return r.router.Has(name)
-}
-
-func (r *InfoRouter) Get(name string) (traits.PowerSupplyInfoClient, error) {
-	res, err := r.router.Get(name)
+func (r *InfoRouter) GetPowerSupplyInfoClient(name string) (traits.PowerSupplyInfoClient, error) {
+	res, err := r.Get(name)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +79,7 @@ func (r *InfoRouter) Get(name string) (traits.PowerSupplyInfoClient, error) {
 }
 
 func (r *InfoRouter) DescribePowerCapacity(ctx context.Context, request *traits.DescribePowerCapacityRequest) (*traits.PowerCapacitySupport, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetPowerSupplyInfoClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +88,7 @@ func (r *InfoRouter) DescribePowerCapacity(ctx context.Context, request *traits.
 }
 
 func (r *InfoRouter) DescribeDrawNotification(ctx context.Context, request *traits.DescribeDrawNotificationRequest) (*traits.DrawNotificationSupport, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetPowerSupplyInfoClient(request.Name)
 	if err != nil {
 		return nil, err
 	}

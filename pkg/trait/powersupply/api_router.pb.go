@@ -4,6 +4,7 @@ package powersupply
 
 import (
 	context "context"
+	fmt "fmt"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	router "github.com/smart-core-os/sc-golang/pkg/router"
 	grpc "google.golang.org/grpc"
@@ -15,7 +16,7 @@ import (
 type ApiRouter struct {
 	traits.UnimplementedPowerSupplyApiServer
 
-	router *router.Router
+	router.Router
 }
 
 // compile time check that we implement the interface we need
@@ -23,7 +24,7 @@ var _ traits.PowerSupplyApiServer = (*ApiRouter)(nil)
 
 func NewApiRouter(opts ...router.Option) *ApiRouter {
 	return &ApiRouter{
-		router: router.NewRouter(opts...),
+		Router: router.NewRouter(opts...),
 	}
 }
 
@@ -39,28 +40,37 @@ func (r *ApiRouter) Register(server *grpc.Server) {
 	traits.RegisterPowerSupplyApiServer(server, r)
 }
 
-func (r *ApiRouter) Add(name string, client traits.PowerSupplyApiClient) traits.PowerSupplyApiClient {
-	res := r.router.Add(name, client)
+// Add extends Router.Add to panic if client is not of type traits.PowerSupplyApiClient.
+func (r *ApiRouter) Add(name string, client interface{}) interface{} {
+	if !r.HoldsType(client) {
+		panic(fmt.Sprintf("not correct type: client of type %T is not a traits.PowerSupplyApiClient", client))
+	}
+	return r.Router.Add(name, client)
+}
+
+func (r *ApiRouter) HoldsType(client interface{}) bool {
+	_, ok := client.(traits.PowerSupplyApiClient)
+	return ok
+}
+
+func (r *ApiRouter) AddPowerSupplyApiClient(name string, client traits.PowerSupplyApiClient) traits.PowerSupplyApiClient {
+	res := r.Add(name, client)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.PowerSupplyApiClient)
 }
 
-func (r *ApiRouter) Remove(name string) traits.PowerSupplyApiClient {
-	res := r.router.Remove(name)
+func (r *ApiRouter) RemovePowerSupplyApiClient(name string) traits.PowerSupplyApiClient {
+	res := r.Remove(name)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.PowerSupplyApiClient)
 }
 
-func (r *ApiRouter) Has(name string) bool {
-	return r.router.Has(name)
-}
-
-func (r *ApiRouter) Get(name string) (traits.PowerSupplyApiClient, error) {
-	res, err := r.router.Get(name)
+func (r *ApiRouter) GetPowerSupplyApiClient(name string) (traits.PowerSupplyApiClient, error) {
+	res, err := r.Get(name)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +81,7 @@ func (r *ApiRouter) Get(name string) (traits.PowerSupplyApiClient, error) {
 }
 
 func (r *ApiRouter) GetPowerCapacity(ctx context.Context, request *traits.GetPowerCapacityRequest) (*traits.PowerCapacity, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetPowerSupplyApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +90,7 @@ func (r *ApiRouter) GetPowerCapacity(ctx context.Context, request *traits.GetPow
 }
 
 func (r *ApiRouter) PullPowerCapacity(request *traits.PullPowerCapacityRequest, server traits.PowerSupplyApi_PullPowerCapacityServer) error {
-	child, err := r.Get(request.Name)
+	child, err := r.GetPowerSupplyApiClient(request.Name)
 	if err != nil {
 		return err
 	}
@@ -139,7 +149,7 @@ func (r *ApiRouter) PullPowerCapacity(request *traits.PullPowerCapacityRequest, 
 }
 
 func (r *ApiRouter) ListDrawNotifications(ctx context.Context, request *traits.ListDrawNotificationsRequest) (*traits.ListDrawNotificationsResponse, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetPowerSupplyApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +158,7 @@ func (r *ApiRouter) ListDrawNotifications(ctx context.Context, request *traits.L
 }
 
 func (r *ApiRouter) CreateDrawNotification(ctx context.Context, request *traits.CreateDrawNotificationRequest) (*traits.DrawNotification, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetPowerSupplyApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +167,7 @@ func (r *ApiRouter) CreateDrawNotification(ctx context.Context, request *traits.
 }
 
 func (r *ApiRouter) UpdateDrawNotification(ctx context.Context, request *traits.UpdateDrawNotificationRequest) (*traits.DrawNotification, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetPowerSupplyApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +176,7 @@ func (r *ApiRouter) UpdateDrawNotification(ctx context.Context, request *traits.
 }
 
 func (r *ApiRouter) DeleteDrawNotification(ctx context.Context, request *traits.DeleteDrawNotificationRequest) (*emptypb.Empty, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetPowerSupplyApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +185,7 @@ func (r *ApiRouter) DeleteDrawNotification(ctx context.Context, request *traits.
 }
 
 func (r *ApiRouter) PullDrawNotifications(request *traits.PullDrawNotificationsRequest, server traits.PowerSupplyApi_PullDrawNotificationsServer) error {
-	child, err := r.Get(request.Name)
+	child, err := r.GetPowerSupplyApiClient(request.Name)
 	if err != nil {
 		return err
 	}

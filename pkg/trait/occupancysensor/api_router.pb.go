@@ -4,6 +4,7 @@ package occupancysensor
 
 import (
 	context "context"
+	fmt "fmt"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	router "github.com/smart-core-os/sc-golang/pkg/router"
 	grpc "google.golang.org/grpc"
@@ -14,7 +15,7 @@ import (
 type ApiRouter struct {
 	traits.UnimplementedOccupancySensorApiServer
 
-	router *router.Router
+	router.Router
 }
 
 // compile time check that we implement the interface we need
@@ -22,7 +23,7 @@ var _ traits.OccupancySensorApiServer = (*ApiRouter)(nil)
 
 func NewApiRouter(opts ...router.Option) *ApiRouter {
 	return &ApiRouter{
-		router: router.NewRouter(opts...),
+		Router: router.NewRouter(opts...),
 	}
 }
 
@@ -38,28 +39,37 @@ func (r *ApiRouter) Register(server *grpc.Server) {
 	traits.RegisterOccupancySensorApiServer(server, r)
 }
 
-func (r *ApiRouter) Add(name string, client traits.OccupancySensorApiClient) traits.OccupancySensorApiClient {
-	res := r.router.Add(name, client)
+// Add extends Router.Add to panic if client is not of type traits.OccupancySensorApiClient.
+func (r *ApiRouter) Add(name string, client interface{}) interface{} {
+	if !r.HoldsType(client) {
+		panic(fmt.Sprintf("not correct type: client of type %T is not a traits.OccupancySensorApiClient", client))
+	}
+	return r.Router.Add(name, client)
+}
+
+func (r *ApiRouter) HoldsType(client interface{}) bool {
+	_, ok := client.(traits.OccupancySensorApiClient)
+	return ok
+}
+
+func (r *ApiRouter) AddOccupancySensorApiClient(name string, client traits.OccupancySensorApiClient) traits.OccupancySensorApiClient {
+	res := r.Add(name, client)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.OccupancySensorApiClient)
 }
 
-func (r *ApiRouter) Remove(name string) traits.OccupancySensorApiClient {
-	res := r.router.Remove(name)
+func (r *ApiRouter) RemoveOccupancySensorApiClient(name string) traits.OccupancySensorApiClient {
+	res := r.Remove(name)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.OccupancySensorApiClient)
 }
 
-func (r *ApiRouter) Has(name string) bool {
-	return r.router.Has(name)
-}
-
-func (r *ApiRouter) Get(name string) (traits.OccupancySensorApiClient, error) {
-	res, err := r.router.Get(name)
+func (r *ApiRouter) GetOccupancySensorApiClient(name string) (traits.OccupancySensorApiClient, error) {
+	res, err := r.Get(name)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +80,7 @@ func (r *ApiRouter) Get(name string) (traits.OccupancySensorApiClient, error) {
 }
 
 func (r *ApiRouter) GetOccupancy(ctx context.Context, request *traits.GetOccupancyRequest) (*traits.Occupancy, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetOccupancySensorApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +89,7 @@ func (r *ApiRouter) GetOccupancy(ctx context.Context, request *traits.GetOccupan
 }
 
 func (r *ApiRouter) PullOccupancy(request *traits.PullOccupancyRequest, server traits.OccupancySensorApi_PullOccupancyServer) error {
-	child, err := r.Get(request.Name)
+	child, err := r.GetOccupancySensorApiClient(request.Name)
 	if err != nil {
 		return err
 	}

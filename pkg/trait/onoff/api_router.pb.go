@@ -4,6 +4,7 @@ package onoff
 
 import (
 	context "context"
+	fmt "fmt"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	router "github.com/smart-core-os/sc-golang/pkg/router"
 	grpc "google.golang.org/grpc"
@@ -14,7 +15,7 @@ import (
 type ApiRouter struct {
 	traits.UnimplementedOnOffApiServer
 
-	router *router.Router
+	router.Router
 }
 
 // compile time check that we implement the interface we need
@@ -22,7 +23,7 @@ var _ traits.OnOffApiServer = (*ApiRouter)(nil)
 
 func NewApiRouter(opts ...router.Option) *ApiRouter {
 	return &ApiRouter{
-		router: router.NewRouter(opts...),
+		Router: router.NewRouter(opts...),
 	}
 }
 
@@ -38,28 +39,37 @@ func (r *ApiRouter) Register(server *grpc.Server) {
 	traits.RegisterOnOffApiServer(server, r)
 }
 
-func (r *ApiRouter) Add(name string, client traits.OnOffApiClient) traits.OnOffApiClient {
-	res := r.router.Add(name, client)
+// Add extends Router.Add to panic if client is not of type traits.OnOffApiClient.
+func (r *ApiRouter) Add(name string, client interface{}) interface{} {
+	if !r.HoldsType(client) {
+		panic(fmt.Sprintf("not correct type: client of type %T is not a traits.OnOffApiClient", client))
+	}
+	return r.Router.Add(name, client)
+}
+
+func (r *ApiRouter) HoldsType(client interface{}) bool {
+	_, ok := client.(traits.OnOffApiClient)
+	return ok
+}
+
+func (r *ApiRouter) AddOnOffApiClient(name string, client traits.OnOffApiClient) traits.OnOffApiClient {
+	res := r.Add(name, client)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.OnOffApiClient)
 }
 
-func (r *ApiRouter) Remove(name string) traits.OnOffApiClient {
-	res := r.router.Remove(name)
+func (r *ApiRouter) RemoveOnOffApiClient(name string) traits.OnOffApiClient {
+	res := r.Remove(name)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.OnOffApiClient)
 }
 
-func (r *ApiRouter) Has(name string) bool {
-	return r.router.Has(name)
-}
-
-func (r *ApiRouter) Get(name string) (traits.OnOffApiClient, error) {
-	res, err := r.router.Get(name)
+func (r *ApiRouter) GetOnOffApiClient(name string) (traits.OnOffApiClient, error) {
+	res, err := r.Get(name)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +80,7 @@ func (r *ApiRouter) Get(name string) (traits.OnOffApiClient, error) {
 }
 
 func (r *ApiRouter) GetOnOff(ctx context.Context, request *traits.GetOnOffRequest) (*traits.OnOff, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetOnOffApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +89,7 @@ func (r *ApiRouter) GetOnOff(ctx context.Context, request *traits.GetOnOffReques
 }
 
 func (r *ApiRouter) UpdateOnOff(ctx context.Context, request *traits.UpdateOnOffRequest) (*traits.OnOff, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetOnOffApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +98,7 @@ func (r *ApiRouter) UpdateOnOff(ctx context.Context, request *traits.UpdateOnOff
 }
 
 func (r *ApiRouter) PullOnOff(request *traits.PullOnOffRequest, server traits.OnOffApi_PullOnOffServer) error {
-	child, err := r.Get(request.Name)
+	child, err := r.GetOnOffApiClient(request.Name)
 	if err != nil {
 		return err
 	}

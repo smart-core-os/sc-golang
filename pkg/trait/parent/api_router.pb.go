@@ -4,6 +4,7 @@ package parent
 
 import (
 	context "context"
+	fmt "fmt"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	router "github.com/smart-core-os/sc-golang/pkg/router"
 	grpc "google.golang.org/grpc"
@@ -14,7 +15,7 @@ import (
 type ApiRouter struct {
 	traits.UnimplementedParentApiServer
 
-	router *router.Router
+	router.Router
 }
 
 // compile time check that we implement the interface we need
@@ -22,7 +23,7 @@ var _ traits.ParentApiServer = (*ApiRouter)(nil)
 
 func NewApiRouter(opts ...router.Option) *ApiRouter {
 	return &ApiRouter{
-		router: router.NewRouter(opts...),
+		Router: router.NewRouter(opts...),
 	}
 }
 
@@ -38,28 +39,37 @@ func (r *ApiRouter) Register(server *grpc.Server) {
 	traits.RegisterParentApiServer(server, r)
 }
 
-func (r *ApiRouter) Add(name string, client traits.ParentApiClient) traits.ParentApiClient {
-	res := r.router.Add(name, client)
+// Add extends Router.Add to panic if client is not of type traits.ParentApiClient.
+func (r *ApiRouter) Add(name string, client interface{}) interface{} {
+	if !r.HoldsType(client) {
+		panic(fmt.Sprintf("not correct type: client of type %T is not a traits.ParentApiClient", client))
+	}
+	return r.Router.Add(name, client)
+}
+
+func (r *ApiRouter) HoldsType(client interface{}) bool {
+	_, ok := client.(traits.ParentApiClient)
+	return ok
+}
+
+func (r *ApiRouter) AddParentApiClient(name string, client traits.ParentApiClient) traits.ParentApiClient {
+	res := r.Add(name, client)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.ParentApiClient)
 }
 
-func (r *ApiRouter) Remove(name string) traits.ParentApiClient {
-	res := r.router.Remove(name)
+func (r *ApiRouter) RemoveParentApiClient(name string) traits.ParentApiClient {
+	res := r.Remove(name)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.ParentApiClient)
 }
 
-func (r *ApiRouter) Has(name string) bool {
-	return r.router.Has(name)
-}
-
-func (r *ApiRouter) Get(name string) (traits.ParentApiClient, error) {
-	res, err := r.router.Get(name)
+func (r *ApiRouter) GetParentApiClient(name string) (traits.ParentApiClient, error) {
+	res, err := r.Get(name)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +80,7 @@ func (r *ApiRouter) Get(name string) (traits.ParentApiClient, error) {
 }
 
 func (r *ApiRouter) ListChildren(ctx context.Context, request *traits.ListChildrenRequest) (*traits.ListChildrenResponse, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetParentApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +89,7 @@ func (r *ApiRouter) ListChildren(ctx context.Context, request *traits.ListChildr
 }
 
 func (r *ApiRouter) PullChildren(request *traits.PullChildrenRequest, server traits.ParentApi_PullChildrenServer) error {
-	child, err := r.Get(request.Name)
+	child, err := r.GetParentApiClient(request.Name)
 	if err != nil {
 		return err
 	}

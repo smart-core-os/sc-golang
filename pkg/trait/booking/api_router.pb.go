@@ -4,6 +4,7 @@ package booking
 
 import (
 	context "context"
+	fmt "fmt"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	router "github.com/smart-core-os/sc-golang/pkg/router"
 	grpc "google.golang.org/grpc"
@@ -14,7 +15,7 @@ import (
 type ApiRouter struct {
 	traits.UnimplementedBookingApiServer
 
-	router *router.Router
+	router.Router
 }
 
 // compile time check that we implement the interface we need
@@ -22,7 +23,7 @@ var _ traits.BookingApiServer = (*ApiRouter)(nil)
 
 func NewApiRouter(opts ...router.Option) *ApiRouter {
 	return &ApiRouter{
-		router: router.NewRouter(opts...),
+		Router: router.NewRouter(opts...),
 	}
 }
 
@@ -38,28 +39,37 @@ func (r *ApiRouter) Register(server *grpc.Server) {
 	traits.RegisterBookingApiServer(server, r)
 }
 
-func (r *ApiRouter) Add(name string, client traits.BookingApiClient) traits.BookingApiClient {
-	res := r.router.Add(name, client)
+// Add extends Router.Add to panic if client is not of type traits.BookingApiClient.
+func (r *ApiRouter) Add(name string, client interface{}) interface{} {
+	if !r.HoldsType(client) {
+		panic(fmt.Sprintf("not correct type: client of type %T is not a traits.BookingApiClient", client))
+	}
+	return r.Router.Add(name, client)
+}
+
+func (r *ApiRouter) HoldsType(client interface{}) bool {
+	_, ok := client.(traits.BookingApiClient)
+	return ok
+}
+
+func (r *ApiRouter) AddBookingApiClient(name string, client traits.BookingApiClient) traits.BookingApiClient {
+	res := r.Add(name, client)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.BookingApiClient)
 }
 
-func (r *ApiRouter) Remove(name string) traits.BookingApiClient {
-	res := r.router.Remove(name)
+func (r *ApiRouter) RemoveBookingApiClient(name string) traits.BookingApiClient {
+	res := r.Remove(name)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.BookingApiClient)
 }
 
-func (r *ApiRouter) Has(name string) bool {
-	return r.router.Has(name)
-}
-
-func (r *ApiRouter) Get(name string) (traits.BookingApiClient, error) {
-	res, err := r.router.Get(name)
+func (r *ApiRouter) GetBookingApiClient(name string) (traits.BookingApiClient, error) {
+	res, err := r.Get(name)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +80,7 @@ func (r *ApiRouter) Get(name string) (traits.BookingApiClient, error) {
 }
 
 func (r *ApiRouter) ListBookings(ctx context.Context, request *traits.ListBookingsRequest) (*traits.ListBookingsResponse, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetBookingApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +89,7 @@ func (r *ApiRouter) ListBookings(ctx context.Context, request *traits.ListBookin
 }
 
 func (r *ApiRouter) CheckInBooking(ctx context.Context, request *traits.CheckInBookingRequest) (*traits.CheckInBookingResponse, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetBookingApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +98,7 @@ func (r *ApiRouter) CheckInBooking(ctx context.Context, request *traits.CheckInB
 }
 
 func (r *ApiRouter) CheckOutBooking(ctx context.Context, request *traits.CheckOutBookingRequest) (*traits.CheckOutBookingResponse, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetBookingApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +107,7 @@ func (r *ApiRouter) CheckOutBooking(ctx context.Context, request *traits.CheckOu
 }
 
 func (r *ApiRouter) CreateBooking(ctx context.Context, request *traits.CreateBookingRequest) (*traits.CreateBookingResponse, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetBookingApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +116,7 @@ func (r *ApiRouter) CreateBooking(ctx context.Context, request *traits.CreateBoo
 }
 
 func (r *ApiRouter) UpdateBooking(ctx context.Context, request *traits.UpdateBookingRequest) (*traits.UpdateBookingResponse, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetBookingApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +125,7 @@ func (r *ApiRouter) UpdateBooking(ctx context.Context, request *traits.UpdateBoo
 }
 
 func (r *ApiRouter) PullBookings(request *traits.ListBookingsRequest, server traits.BookingApi_PullBookingsServer) error {
-	child, err := r.Get(request.Name)
+	child, err := r.GetBookingApiClient(request.Name)
 	if err != nil {
 		return err
 	}

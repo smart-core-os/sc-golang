@@ -4,6 +4,7 @@ package onoff
 
 import (
 	context "context"
+	fmt "fmt"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	router "github.com/smart-core-os/sc-golang/pkg/router"
 	grpc "google.golang.org/grpc"
@@ -13,7 +14,7 @@ import (
 type InfoRouter struct {
 	traits.UnimplementedOnOffInfoServer
 
-	router *router.Router
+	router.Router
 }
 
 // compile time check that we implement the interface we need
@@ -21,7 +22,7 @@ var _ traits.OnOffInfoServer = (*InfoRouter)(nil)
 
 func NewInfoRouter(opts ...router.Option) *InfoRouter {
 	return &InfoRouter{
-		router: router.NewRouter(opts...),
+		Router: router.NewRouter(opts...),
 	}
 }
 
@@ -37,28 +38,37 @@ func (r *InfoRouter) Register(server *grpc.Server) {
 	traits.RegisterOnOffInfoServer(server, r)
 }
 
-func (r *InfoRouter) Add(name string, client traits.OnOffInfoClient) traits.OnOffInfoClient {
-	res := r.router.Add(name, client)
+// Add extends Router.Add to panic if client is not of type traits.OnOffInfoClient.
+func (r *InfoRouter) Add(name string, client interface{}) interface{} {
+	if !r.HoldsType(client) {
+		panic(fmt.Sprintf("not correct type: client of type %T is not a traits.OnOffInfoClient", client))
+	}
+	return r.Router.Add(name, client)
+}
+
+func (r *InfoRouter) HoldsType(client interface{}) bool {
+	_, ok := client.(traits.OnOffInfoClient)
+	return ok
+}
+
+func (r *InfoRouter) AddOnOffInfoClient(name string, client traits.OnOffInfoClient) traits.OnOffInfoClient {
+	res := r.Add(name, client)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.OnOffInfoClient)
 }
 
-func (r *InfoRouter) Remove(name string) traits.OnOffInfoClient {
-	res := r.router.Remove(name)
+func (r *InfoRouter) RemoveOnOffInfoClient(name string) traits.OnOffInfoClient {
+	res := r.Remove(name)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.OnOffInfoClient)
 }
 
-func (r *InfoRouter) Has(name string) bool {
-	return r.router.Has(name)
-}
-
-func (r *InfoRouter) Get(name string) (traits.OnOffInfoClient, error) {
-	res, err := r.router.Get(name)
+func (r *InfoRouter) GetOnOffInfoClient(name string) (traits.OnOffInfoClient, error) {
+	res, err := r.Get(name)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +79,7 @@ func (r *InfoRouter) Get(name string) (traits.OnOffInfoClient, error) {
 }
 
 func (r *InfoRouter) DescribeOnOff(ctx context.Context, request *traits.DescribeOnOffRequest) (*traits.OnOffSupport, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetOnOffInfoClient(request.Name)
 	if err != nil {
 		return nil, err
 	}

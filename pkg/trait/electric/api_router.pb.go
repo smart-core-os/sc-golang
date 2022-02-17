@@ -4,6 +4,7 @@ package electric
 
 import (
 	context "context"
+	fmt "fmt"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	router "github.com/smart-core-os/sc-golang/pkg/router"
 	grpc "google.golang.org/grpc"
@@ -14,7 +15,7 @@ import (
 type ApiRouter struct {
 	traits.UnimplementedElectricApiServer
 
-	router *router.Router
+	router.Router
 }
 
 // compile time check that we implement the interface we need
@@ -22,7 +23,7 @@ var _ traits.ElectricApiServer = (*ApiRouter)(nil)
 
 func NewApiRouter(opts ...router.Option) *ApiRouter {
 	return &ApiRouter{
-		router: router.NewRouter(opts...),
+		Router: router.NewRouter(opts...),
 	}
 }
 
@@ -38,28 +39,37 @@ func (r *ApiRouter) Register(server *grpc.Server) {
 	traits.RegisterElectricApiServer(server, r)
 }
 
-func (r *ApiRouter) Add(name string, client traits.ElectricApiClient) traits.ElectricApiClient {
-	res := r.router.Add(name, client)
+// Add extends Router.Add to panic if client is not of type traits.ElectricApiClient.
+func (r *ApiRouter) Add(name string, client interface{}) interface{} {
+	if !r.HoldsType(client) {
+		panic(fmt.Sprintf("not correct type: client of type %T is not a traits.ElectricApiClient", client))
+	}
+	return r.Router.Add(name, client)
+}
+
+func (r *ApiRouter) HoldsType(client interface{}) bool {
+	_, ok := client.(traits.ElectricApiClient)
+	return ok
+}
+
+func (r *ApiRouter) AddElectricApiClient(name string, client traits.ElectricApiClient) traits.ElectricApiClient {
+	res := r.Add(name, client)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.ElectricApiClient)
 }
 
-func (r *ApiRouter) Remove(name string) traits.ElectricApiClient {
-	res := r.router.Remove(name)
+func (r *ApiRouter) RemoveElectricApiClient(name string) traits.ElectricApiClient {
+	res := r.Remove(name)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.ElectricApiClient)
 }
 
-func (r *ApiRouter) Has(name string) bool {
-	return r.router.Has(name)
-}
-
-func (r *ApiRouter) Get(name string) (traits.ElectricApiClient, error) {
-	res, err := r.router.Get(name)
+func (r *ApiRouter) GetElectricApiClient(name string) (traits.ElectricApiClient, error) {
+	res, err := r.Get(name)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +80,7 @@ func (r *ApiRouter) Get(name string) (traits.ElectricApiClient, error) {
 }
 
 func (r *ApiRouter) GetDemand(ctx context.Context, request *traits.GetDemandRequest) (*traits.ElectricDemand, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetElectricApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +89,7 @@ func (r *ApiRouter) GetDemand(ctx context.Context, request *traits.GetDemandRequ
 }
 
 func (r *ApiRouter) PullDemand(request *traits.PullDemandRequest, server traits.ElectricApi_PullDemandServer) error {
-	child, err := r.Get(request.Name)
+	child, err := r.GetElectricApiClient(request.Name)
 	if err != nil {
 		return err
 	}
@@ -138,7 +148,7 @@ func (r *ApiRouter) PullDemand(request *traits.PullDemandRequest, server traits.
 }
 
 func (r *ApiRouter) GetActiveMode(ctx context.Context, request *traits.GetActiveModeRequest) (*traits.ElectricMode, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetElectricApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +157,7 @@ func (r *ApiRouter) GetActiveMode(ctx context.Context, request *traits.GetActive
 }
 
 func (r *ApiRouter) UpdateActiveMode(ctx context.Context, request *traits.UpdateActiveModeRequest) (*traits.ElectricMode, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetElectricApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +166,7 @@ func (r *ApiRouter) UpdateActiveMode(ctx context.Context, request *traits.Update
 }
 
 func (r *ApiRouter) ClearActiveMode(ctx context.Context, request *traits.ClearActiveModeRequest) (*traits.ElectricMode, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetElectricApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +175,7 @@ func (r *ApiRouter) ClearActiveMode(ctx context.Context, request *traits.ClearAc
 }
 
 func (r *ApiRouter) PullActiveMode(request *traits.PullActiveModeRequest, server traits.ElectricApi_PullActiveModeServer) error {
-	child, err := r.Get(request.Name)
+	child, err := r.GetElectricApiClient(request.Name)
 	if err != nil {
 		return err
 	}
@@ -224,7 +234,7 @@ func (r *ApiRouter) PullActiveMode(request *traits.PullActiveModeRequest, server
 }
 
 func (r *ApiRouter) ListModes(ctx context.Context, request *traits.ListModesRequest) (*traits.ListModesResponse, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetElectricApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +243,7 @@ func (r *ApiRouter) ListModes(ctx context.Context, request *traits.ListModesRequ
 }
 
 func (r *ApiRouter) PullModes(request *traits.PullModesRequest, server traits.ElectricApi_PullModesServer) error {
-	child, err := r.Get(request.Name)
+	child, err := r.GetElectricApiClient(request.Name)
 	if err != nil {
 		return err
 	}

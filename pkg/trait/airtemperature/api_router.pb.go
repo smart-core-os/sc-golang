@@ -4,6 +4,7 @@ package airtemperature
 
 import (
 	context "context"
+	fmt "fmt"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	router "github.com/smart-core-os/sc-golang/pkg/router"
 	grpc "google.golang.org/grpc"
@@ -14,7 +15,7 @@ import (
 type ApiRouter struct {
 	traits.UnimplementedAirTemperatureApiServer
 
-	router *router.Router
+	router.Router
 }
 
 // compile time check that we implement the interface we need
@@ -22,7 +23,7 @@ var _ traits.AirTemperatureApiServer = (*ApiRouter)(nil)
 
 func NewApiRouter(opts ...router.Option) *ApiRouter {
 	return &ApiRouter{
-		router: router.NewRouter(opts...),
+		Router: router.NewRouter(opts...),
 	}
 }
 
@@ -38,28 +39,37 @@ func (r *ApiRouter) Register(server *grpc.Server) {
 	traits.RegisterAirTemperatureApiServer(server, r)
 }
 
-func (r *ApiRouter) Add(name string, client traits.AirTemperatureApiClient) traits.AirTemperatureApiClient {
-	res := r.router.Add(name, client)
+// Add extends Router.Add to panic if client is not of type traits.AirTemperatureApiClient.
+func (r *ApiRouter) Add(name string, client interface{}) interface{} {
+	if !r.HoldsType(client) {
+		panic(fmt.Sprintf("not correct type: client of type %T is not a traits.AirTemperatureApiClient", client))
+	}
+	return r.Router.Add(name, client)
+}
+
+func (r *ApiRouter) HoldsType(client interface{}) bool {
+	_, ok := client.(traits.AirTemperatureApiClient)
+	return ok
+}
+
+func (r *ApiRouter) AddAirTemperatureApiClient(name string, client traits.AirTemperatureApiClient) traits.AirTemperatureApiClient {
+	res := r.Add(name, client)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.AirTemperatureApiClient)
 }
 
-func (r *ApiRouter) Remove(name string) traits.AirTemperatureApiClient {
-	res := r.router.Remove(name)
+func (r *ApiRouter) RemoveAirTemperatureApiClient(name string) traits.AirTemperatureApiClient {
+	res := r.Remove(name)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.AirTemperatureApiClient)
 }
 
-func (r *ApiRouter) Has(name string) bool {
-	return r.router.Has(name)
-}
-
-func (r *ApiRouter) Get(name string) (traits.AirTemperatureApiClient, error) {
-	res, err := r.router.Get(name)
+func (r *ApiRouter) GetAirTemperatureApiClient(name string) (traits.AirTemperatureApiClient, error) {
+	res, err := r.Get(name)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +80,7 @@ func (r *ApiRouter) Get(name string) (traits.AirTemperatureApiClient, error) {
 }
 
 func (r *ApiRouter) GetAirTemperature(ctx context.Context, request *traits.GetAirTemperatureRequest) (*traits.AirTemperature, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetAirTemperatureApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +89,7 @@ func (r *ApiRouter) GetAirTemperature(ctx context.Context, request *traits.GetAi
 }
 
 func (r *ApiRouter) UpdateAirTemperature(ctx context.Context, request *traits.UpdateAirTemperatureRequest) (*traits.AirTemperature, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetAirTemperatureApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +98,7 @@ func (r *ApiRouter) UpdateAirTemperature(ctx context.Context, request *traits.Up
 }
 
 func (r *ApiRouter) PullAirTemperature(request *traits.PullAirTemperatureRequest, server traits.AirTemperatureApi_PullAirTemperatureServer) error {
-	child, err := r.Get(request.Name)
+	child, err := r.GetAirTemperatureApiClient(request.Name)
 	if err != nil {
 		return err
 	}

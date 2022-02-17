@@ -4,6 +4,7 @@ package speaker
 
 import (
 	context "context"
+	fmt "fmt"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	types "github.com/smart-core-os/sc-api/go/types"
 	router "github.com/smart-core-os/sc-golang/pkg/router"
@@ -15,7 +16,7 @@ import (
 type ApiRouter struct {
 	traits.UnimplementedSpeakerApiServer
 
-	router *router.Router
+	router.Router
 }
 
 // compile time check that we implement the interface we need
@@ -23,7 +24,7 @@ var _ traits.SpeakerApiServer = (*ApiRouter)(nil)
 
 func NewApiRouter(opts ...router.Option) *ApiRouter {
 	return &ApiRouter{
-		router: router.NewRouter(opts...),
+		Router: router.NewRouter(opts...),
 	}
 }
 
@@ -39,28 +40,37 @@ func (r *ApiRouter) Register(server *grpc.Server) {
 	traits.RegisterSpeakerApiServer(server, r)
 }
 
-func (r *ApiRouter) Add(name string, client traits.SpeakerApiClient) traits.SpeakerApiClient {
-	res := r.router.Add(name, client)
+// Add extends Router.Add to panic if client is not of type traits.SpeakerApiClient.
+func (r *ApiRouter) Add(name string, client interface{}) interface{} {
+	if !r.HoldsType(client) {
+		panic(fmt.Sprintf("not correct type: client of type %T is not a traits.SpeakerApiClient", client))
+	}
+	return r.Router.Add(name, client)
+}
+
+func (r *ApiRouter) HoldsType(client interface{}) bool {
+	_, ok := client.(traits.SpeakerApiClient)
+	return ok
+}
+
+func (r *ApiRouter) AddSpeakerApiClient(name string, client traits.SpeakerApiClient) traits.SpeakerApiClient {
+	res := r.Add(name, client)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.SpeakerApiClient)
 }
 
-func (r *ApiRouter) Remove(name string) traits.SpeakerApiClient {
-	res := r.router.Remove(name)
+func (r *ApiRouter) RemoveSpeakerApiClient(name string) traits.SpeakerApiClient {
+	res := r.Remove(name)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.SpeakerApiClient)
 }
 
-func (r *ApiRouter) Has(name string) bool {
-	return r.router.Has(name)
-}
-
-func (r *ApiRouter) Get(name string) (traits.SpeakerApiClient, error) {
-	res, err := r.router.Get(name)
+func (r *ApiRouter) GetSpeakerApiClient(name string) (traits.SpeakerApiClient, error) {
+	res, err := r.Get(name)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +81,7 @@ func (r *ApiRouter) Get(name string) (traits.SpeakerApiClient, error) {
 }
 
 func (r *ApiRouter) GetVolume(ctx context.Context, request *traits.GetSpeakerVolumeRequest) (*types.AudioLevel, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetSpeakerApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +90,7 @@ func (r *ApiRouter) GetVolume(ctx context.Context, request *traits.GetSpeakerVol
 }
 
 func (r *ApiRouter) UpdateVolume(ctx context.Context, request *traits.UpdateSpeakerVolumeRequest) (*types.AudioLevel, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetSpeakerApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +99,7 @@ func (r *ApiRouter) UpdateVolume(ctx context.Context, request *traits.UpdateSpea
 }
 
 func (r *ApiRouter) PullVolume(request *traits.PullSpeakerVolumeRequest, server traits.SpeakerApi_PullVolumeServer) error {
-	child, err := r.Get(request.Name)
+	child, err := r.GetSpeakerApiClient(request.Name)
 	if err != nil {
 		return err
 	}

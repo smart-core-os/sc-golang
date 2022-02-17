@@ -3,6 +3,7 @@
 package electric
 
 import (
+	fmt "fmt"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	router "github.com/smart-core-os/sc-golang/pkg/router"
 	grpc "google.golang.org/grpc"
@@ -12,7 +13,7 @@ import (
 type InfoRouter struct {
 	traits.UnimplementedElectricInfoServer
 
-	router *router.Router
+	router.Router
 }
 
 // compile time check that we implement the interface we need
@@ -20,7 +21,7 @@ var _ traits.ElectricInfoServer = (*InfoRouter)(nil)
 
 func NewInfoRouter(opts ...router.Option) *InfoRouter {
 	return &InfoRouter{
-		router: router.NewRouter(opts...),
+		Router: router.NewRouter(opts...),
 	}
 }
 
@@ -36,28 +37,37 @@ func (r *InfoRouter) Register(server *grpc.Server) {
 	traits.RegisterElectricInfoServer(server, r)
 }
 
-func (r *InfoRouter) Add(name string, client traits.ElectricInfoClient) traits.ElectricInfoClient {
-	res := r.router.Add(name, client)
+// Add extends Router.Add to panic if client is not of type traits.ElectricInfoClient.
+func (r *InfoRouter) Add(name string, client interface{}) interface{} {
+	if !r.HoldsType(client) {
+		panic(fmt.Sprintf("not correct type: client of type %T is not a traits.ElectricInfoClient", client))
+	}
+	return r.Router.Add(name, client)
+}
+
+func (r *InfoRouter) HoldsType(client interface{}) bool {
+	_, ok := client.(traits.ElectricInfoClient)
+	return ok
+}
+
+func (r *InfoRouter) AddElectricInfoClient(name string, client traits.ElectricInfoClient) traits.ElectricInfoClient {
+	res := r.Add(name, client)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.ElectricInfoClient)
 }
 
-func (r *InfoRouter) Remove(name string) traits.ElectricInfoClient {
-	res := r.router.Remove(name)
+func (r *InfoRouter) RemoveElectricInfoClient(name string) traits.ElectricInfoClient {
+	res := r.Remove(name)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.ElectricInfoClient)
 }
 
-func (r *InfoRouter) Has(name string) bool {
-	return r.router.Has(name)
-}
-
-func (r *InfoRouter) Get(name string) (traits.ElectricInfoClient, error) {
-	res, err := r.router.Get(name)
+func (r *InfoRouter) GetElectricInfoClient(name string) (traits.ElectricInfoClient, error) {
+	res, err := r.Get(name)
 	if err != nil {
 		return nil, err
 	}

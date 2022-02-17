@@ -67,6 +67,7 @@ func newServiceModel(g *protogen.GeneratedFile, service *protogen.Service, file 
 	// imports required by all
 	g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "google.golang.org/grpc"})
 	g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "github.com/smart-core-os/sc-golang/pkg/router"})
+	g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "fmt"})
 
 	model := ServiceModel{
 		Service: service,

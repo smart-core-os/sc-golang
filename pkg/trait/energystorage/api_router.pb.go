@@ -4,6 +4,7 @@ package energystorage
 
 import (
 	context "context"
+	fmt "fmt"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	router "github.com/smart-core-os/sc-golang/pkg/router"
 	grpc "google.golang.org/grpc"
@@ -14,7 +15,7 @@ import (
 type ApiRouter struct {
 	traits.UnimplementedEnergyStorageApiServer
 
-	router *router.Router
+	router.Router
 }
 
 // compile time check that we implement the interface we need
@@ -22,7 +23,7 @@ var _ traits.EnergyStorageApiServer = (*ApiRouter)(nil)
 
 func NewApiRouter(opts ...router.Option) *ApiRouter {
 	return &ApiRouter{
-		router: router.NewRouter(opts...),
+		Router: router.NewRouter(opts...),
 	}
 }
 
@@ -38,28 +39,37 @@ func (r *ApiRouter) Register(server *grpc.Server) {
 	traits.RegisterEnergyStorageApiServer(server, r)
 }
 
-func (r *ApiRouter) Add(name string, client traits.EnergyStorageApiClient) traits.EnergyStorageApiClient {
-	res := r.router.Add(name, client)
+// Add extends Router.Add to panic if client is not of type traits.EnergyStorageApiClient.
+func (r *ApiRouter) Add(name string, client interface{}) interface{} {
+	if !r.HoldsType(client) {
+		panic(fmt.Sprintf("not correct type: client of type %T is not a traits.EnergyStorageApiClient", client))
+	}
+	return r.Router.Add(name, client)
+}
+
+func (r *ApiRouter) HoldsType(client interface{}) bool {
+	_, ok := client.(traits.EnergyStorageApiClient)
+	return ok
+}
+
+func (r *ApiRouter) AddEnergyStorageApiClient(name string, client traits.EnergyStorageApiClient) traits.EnergyStorageApiClient {
+	res := r.Add(name, client)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.EnergyStorageApiClient)
 }
 
-func (r *ApiRouter) Remove(name string) traits.EnergyStorageApiClient {
-	res := r.router.Remove(name)
+func (r *ApiRouter) RemoveEnergyStorageApiClient(name string) traits.EnergyStorageApiClient {
+	res := r.Remove(name)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.EnergyStorageApiClient)
 }
 
-func (r *ApiRouter) Has(name string) bool {
-	return r.router.Has(name)
-}
-
-func (r *ApiRouter) Get(name string) (traits.EnergyStorageApiClient, error) {
-	res, err := r.router.Get(name)
+func (r *ApiRouter) GetEnergyStorageApiClient(name string) (traits.EnergyStorageApiClient, error) {
+	res, err := r.Get(name)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +80,7 @@ func (r *ApiRouter) Get(name string) (traits.EnergyStorageApiClient, error) {
 }
 
 func (r *ApiRouter) GetEnergyLevel(ctx context.Context, request *traits.GetEnergyLevelRequest) (*traits.EnergyLevel, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetEnergyStorageApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +89,7 @@ func (r *ApiRouter) GetEnergyLevel(ctx context.Context, request *traits.GetEnerg
 }
 
 func (r *ApiRouter) PullEnergyLevel(request *traits.PullEnergyLevelRequest, server traits.EnergyStorageApi_PullEnergyLevelServer) error {
-	child, err := r.Get(request.Name)
+	child, err := r.GetEnergyStorageApiClient(request.Name)
 	if err != nil {
 		return err
 	}
@@ -138,7 +148,7 @@ func (r *ApiRouter) PullEnergyLevel(request *traits.PullEnergyLevelRequest, serv
 }
 
 func (r *ApiRouter) Charge(ctx context.Context, request *traits.ChargeRequest) (*traits.ChargeResponse, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetEnergyStorageApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}

@@ -4,6 +4,7 @@ package emergency
 
 import (
 	context "context"
+	fmt "fmt"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	router "github.com/smart-core-os/sc-golang/pkg/router"
 	grpc "google.golang.org/grpc"
@@ -14,7 +15,7 @@ import (
 type ApiRouter struct {
 	traits.UnimplementedEmergencyApiServer
 
-	router *router.Router
+	router.Router
 }
 
 // compile time check that we implement the interface we need
@@ -22,7 +23,7 @@ var _ traits.EmergencyApiServer = (*ApiRouter)(nil)
 
 func NewApiRouter(opts ...router.Option) *ApiRouter {
 	return &ApiRouter{
-		router: router.NewRouter(opts...),
+		Router: router.NewRouter(opts...),
 	}
 }
 
@@ -38,28 +39,37 @@ func (r *ApiRouter) Register(server *grpc.Server) {
 	traits.RegisterEmergencyApiServer(server, r)
 }
 
-func (r *ApiRouter) Add(name string, client traits.EmergencyApiClient) traits.EmergencyApiClient {
-	res := r.router.Add(name, client)
+// Add extends Router.Add to panic if client is not of type traits.EmergencyApiClient.
+func (r *ApiRouter) Add(name string, client interface{}) interface{} {
+	if !r.HoldsType(client) {
+		panic(fmt.Sprintf("not correct type: client of type %T is not a traits.EmergencyApiClient", client))
+	}
+	return r.Router.Add(name, client)
+}
+
+func (r *ApiRouter) HoldsType(client interface{}) bool {
+	_, ok := client.(traits.EmergencyApiClient)
+	return ok
+}
+
+func (r *ApiRouter) AddEmergencyApiClient(name string, client traits.EmergencyApiClient) traits.EmergencyApiClient {
+	res := r.Add(name, client)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.EmergencyApiClient)
 }
 
-func (r *ApiRouter) Remove(name string) traits.EmergencyApiClient {
-	res := r.router.Remove(name)
+func (r *ApiRouter) RemoveEmergencyApiClient(name string) traits.EmergencyApiClient {
+	res := r.Remove(name)
 	if res == nil {
 		return nil
 	}
 	return res.(traits.EmergencyApiClient)
 }
 
-func (r *ApiRouter) Has(name string) bool {
-	return r.router.Has(name)
-}
-
-func (r *ApiRouter) Get(name string) (traits.EmergencyApiClient, error) {
-	res, err := r.router.Get(name)
+func (r *ApiRouter) GetEmergencyApiClient(name string) (traits.EmergencyApiClient, error) {
+	res, err := r.Get(name)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +80,7 @@ func (r *ApiRouter) Get(name string) (traits.EmergencyApiClient, error) {
 }
 
 func (r *ApiRouter) GetEmergency(ctx context.Context, request *traits.GetEmergencyRequest) (*traits.Emergency, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetEmergencyApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +89,7 @@ func (r *ApiRouter) GetEmergency(ctx context.Context, request *traits.GetEmergen
 }
 
 func (r *ApiRouter) UpdateEmergency(ctx context.Context, request *traits.UpdateEmergencyRequest) (*traits.Emergency, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.GetEmergencyApiClient(request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +98,7 @@ func (r *ApiRouter) UpdateEmergency(ctx context.Context, request *traits.UpdateE
 }
 
 func (r *ApiRouter) PullEmergency(request *traits.PullEmergencyRequest, server traits.EmergencyApi_PullEmergencyServer) error {
-	child, err := r.Get(request.Name)
+	child, err := r.GetEmergencyApiClient(request.Name)
 	if err != nil {
 		return err
 	}

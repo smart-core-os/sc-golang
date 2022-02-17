@@ -9,7 +9,7 @@ package {{.PackageName}}
 type {{.RouterName}} struct {
 	{{.UnimplementedServerName.Qualified}}
 
-	router *router.Router
+  router.Router
 }
 
 // compile time check that we implement the interface we need
@@ -17,7 +17,7 @@ var _ {{.ServerName.Qualified}} = (*{{.RouterName}})(nil)
 
 func New{{.RouterName}}(opts ...router.Option) *{{.RouterName}} {
 	return &{{.RouterName}}{
-    router: router.NewRouter(opts...),
+    Router: router.NewRouter(opts...),
   }
 }
 
@@ -33,28 +33,37 @@ func (r *{{.RouterName}}) Register(server *grpc.Server) {
 	{{.RegisterService.Qualified}}(server, r)
 }
 
-func (r *{{.RouterName}}) Add(name string, client {{.ClientName.Qualified}}) {{.ClientName.Qualified}} {
-	res := r.router.Add(name, client)
+// Add extends Router.Add to panic if client is not of type {{.ClientName.Qualified}}.
+func (r *{{.RouterName}}) Add(name string, client interface{}) interface{} {
+  if !r.HoldsType(client) {
+    panic(fmt.Sprintf("not correct type: client of type %T is not a {{.ClientName.Qualified}}", client))
+  }
+  return r.Router.Add(name, client)
+}
+
+func (r *{{.RouterName}}) HoldsType(client interface{}) bool {
+  _, ok := client.({{.ClientName.Qualified}})
+	return ok
+}
+
+func (r *{{.RouterName}}) Add{{.ClientName.Exported}}(name string, client {{.ClientName.Qualified}}) {{.ClientName.Qualified}} {
+	res := r.Add(name, client)
 	if res == nil {
 		return nil
 	}
 	return res.({{.ClientName.Qualified}})
 }
 
-func (r *{{.RouterName}}) Remove(name string) {{.ClientName.Qualified}} {
-	res := r.router.Remove(name)
+func (r *{{.RouterName}}) Remove{{.ClientName.Exported}}(name string) {{.ClientName.Qualified}} {
+	res := r.Remove(name)
 	if res == nil {
 		return nil
 	}
 	return res.({{.ClientName.Qualified}})
 }
 
-func (r *{{.RouterName}}) Has(name string) bool {
-	return r.router.Has(name)
-}
-
-func (r *{{.RouterName}}) Get(name string) ({{.ClientName.Qualified}}, error) {
-	res, err := r.router.Get(name)
+func (r *{{.RouterName}}) Get{{.ClientName.Exported}}(name string) ({{.ClientName.Qualified}}, error) {
+	res, err := r.Get(name)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +76,7 @@ func (r *{{.RouterName}}) Get(name string) ({{.ClientName.Qualified}}, error) {
 {{range .Methods}}
 {{if .Desc.IsStreamingServer}}
 func (r *{{$.RouterName}}) {{.GoName}}(request *{{.GoInput.Qualified}}, server {{.ServerStream.Qualified}}) error {
-	child, err := r.Get(request.Name)
+	child, err := r.Get{{$.ClientName.Exported}}(request.Name)
 	if err != nil {
 		return err
 	}
@@ -126,7 +135,7 @@ func (r *{{$.RouterName}}) {{.GoName}}(request *{{.GoInput.Qualified}}, server {
 }
 {{else}}
 func (r *{{$.RouterName}}) {{.GoName}}(ctx context.Context, request *{{.GoInput.Qualified}}) (*{{.GoOutput.Qualified}}, error) {
-	child, err := r.Get(request.Name)
+	child, err := r.Get{{$.ClientName.Exported}}(request.Name)
 	if err != nil {
 		return nil, err
 	}

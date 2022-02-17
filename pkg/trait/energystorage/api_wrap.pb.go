@@ -9,7 +9,7 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-// Wrap Api	adapts a traits.EnergyStorageApiServer	and presents it as a traits.EnergyStorageApiClient
+// WrapApi	adapts a traits.EnergyStorageApiServer	and presents it as a traits.EnergyStorageApiClient
 func WrapApi(server traits.EnergyStorageApiServer) traits.EnergyStorageApiClient {
 	return &apiWrapper{server}
 }
@@ -20,6 +20,16 @@ type apiWrapper struct {
 
 // compile time check that we implement the interface we need
 var _ traits.EnergyStorageApiClient = (*apiWrapper)(nil)
+
+// UnwrapServer returns the underlying server instance.
+func (w *apiWrapper) UnwrapServer() traits.EnergyStorageApiServer {
+	return w.server
+}
+
+// Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
+func (w *apiWrapper) Unwrap() interface{} {
+	return w.UnwrapServer()
+}
 
 func (w *apiWrapper) GetEnergyLevel(ctx context.Context, req *traits.GetEnergyLevelRequest, _ ...grpc.CallOption) (*traits.EnergyLevel, error) {
 	return w.server.GetEnergyLevel(ctx, req)

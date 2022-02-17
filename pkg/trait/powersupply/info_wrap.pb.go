@@ -8,7 +8,7 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-// Wrap Info	adapts a traits.PowerSupplyInfoServer	and presents it as a traits.PowerSupplyInfoClient
+// WrapInfo	adapts a traits.PowerSupplyInfoServer	and presents it as a traits.PowerSupplyInfoClient
 func WrapInfo(server traits.PowerSupplyInfoServer) traits.PowerSupplyInfoClient {
 	return &infoWrapper{server}
 }
@@ -19,6 +19,16 @@ type infoWrapper struct {
 
 // compile time check that we implement the interface we need
 var _ traits.PowerSupplyInfoClient = (*infoWrapper)(nil)
+
+// UnwrapServer returns the underlying server instance.
+func (w *infoWrapper) UnwrapServer() traits.PowerSupplyInfoServer {
+	return w.server
+}
+
+// Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
+func (w *infoWrapper) Unwrap() interface{} {
+	return w.UnwrapServer()
+}
 
 func (w *infoWrapper) DescribePowerCapacity(ctx context.Context, req *traits.DescribePowerCapacityRequest, _ ...grpc.CallOption) (*traits.PowerCapacitySupport, error) {
 	return w.server.DescribePowerCapacity(ctx, req)

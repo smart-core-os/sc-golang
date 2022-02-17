@@ -9,7 +9,7 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-// Wrap Api	adapts a traits.ElectricApiServer	and presents it as a traits.ElectricApiClient
+// WrapApi	adapts a traits.ElectricApiServer	and presents it as a traits.ElectricApiClient
 func WrapApi(server traits.ElectricApiServer) traits.ElectricApiClient {
 	return &apiWrapper{server}
 }
@@ -20,6 +20,16 @@ type apiWrapper struct {
 
 // compile time check that we implement the interface we need
 var _ traits.ElectricApiClient = (*apiWrapper)(nil)
+
+// UnwrapServer returns the underlying server instance.
+func (w *apiWrapper) UnwrapServer() traits.ElectricApiServer {
+	return w.server
+}
+
+// Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
+func (w *apiWrapper) Unwrap() interface{} {
+	return w.UnwrapServer()
+}
 
 func (w *apiWrapper) GetDemand(ctx context.Context, req *traits.GetDemandRequest, _ ...grpc.CallOption) (*traits.ElectricDemand, error) {
 	return w.server.GetDemand(ctx, req)

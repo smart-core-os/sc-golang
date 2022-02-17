@@ -10,7 +10,7 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-// Wrap Api	adapts a traits.SpeakerApiServer	and presents it as a traits.SpeakerApiClient
+// WrapApi	adapts a traits.SpeakerApiServer	and presents it as a traits.SpeakerApiClient
 func WrapApi(server traits.SpeakerApiServer) traits.SpeakerApiClient {
 	return &apiWrapper{server}
 }
@@ -21,6 +21,16 @@ type apiWrapper struct {
 
 // compile time check that we implement the interface we need
 var _ traits.SpeakerApiClient = (*apiWrapper)(nil)
+
+// UnwrapServer returns the underlying server instance.
+func (w *apiWrapper) UnwrapServer() traits.SpeakerApiServer {
+	return w.server
+}
+
+// Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
+func (w *apiWrapper) Unwrap() interface{} {
+	return w.UnwrapServer()
+}
 
 func (w *apiWrapper) GetVolume(ctx context.Context, req *traits.GetSpeakerVolumeRequest, _ ...grpc.CallOption) (*types.AudioLevel, error) {
 	return w.server.GetVolume(ctx, req)

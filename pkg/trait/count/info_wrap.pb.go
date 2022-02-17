@@ -8,7 +8,7 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-// Wrap Info	adapts a traits.CountInfoServer	and presents it as a traits.CountInfoClient
+// WrapInfo	adapts a traits.CountInfoServer	and presents it as a traits.CountInfoClient
 func WrapInfo(server traits.CountInfoServer) traits.CountInfoClient {
 	return &infoWrapper{server}
 }
@@ -19,6 +19,16 @@ type infoWrapper struct {
 
 // compile time check that we implement the interface we need
 var _ traits.CountInfoClient = (*infoWrapper)(nil)
+
+// UnwrapServer returns the underlying server instance.
+func (w *infoWrapper) UnwrapServer() traits.CountInfoServer {
+	return w.server
+}
+
+// Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
+func (w *infoWrapper) Unwrap() interface{} {
+	return w.UnwrapServer()
+}
 
 func (w *infoWrapper) DescribeCount(ctx context.Context, req *traits.DescribeCountRequest, _ ...grpc.CallOption) (*traits.CountSupport, error) {
 	return w.server.DescribeCount(ctx, req)

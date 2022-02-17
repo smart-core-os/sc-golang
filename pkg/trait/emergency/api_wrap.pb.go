@@ -9,7 +9,7 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-// Wrap Api	adapts a traits.EmergencyApiServer	and presents it as a traits.EmergencyApiClient
+// WrapApi	adapts a traits.EmergencyApiServer	and presents it as a traits.EmergencyApiClient
 func WrapApi(server traits.EmergencyApiServer) traits.EmergencyApiClient {
 	return &apiWrapper{server}
 }
@@ -20,6 +20,16 @@ type apiWrapper struct {
 
 // compile time check that we implement the interface we need
 var _ traits.EmergencyApiClient = (*apiWrapper)(nil)
+
+// UnwrapServer returns the underlying server instance.
+func (w *apiWrapper) UnwrapServer() traits.EmergencyApiServer {
+	return w.server
+}
+
+// Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
+func (w *apiWrapper) Unwrap() interface{} {
+	return w.UnwrapServer()
+}
 
 func (w *apiWrapper) GetEmergency(ctx context.Context, req *traits.GetEmergencyRequest, _ ...grpc.CallOption) (*traits.Emergency, error) {
 	return w.server.GetEmergency(ctx, req)

@@ -9,7 +9,7 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-// Wrap Api	adapts a traits.LightApiServer	and presents it as a traits.LightApiClient
+// WrapApi	adapts a traits.LightApiServer	and presents it as a traits.LightApiClient
 func WrapApi(server traits.LightApiServer) traits.LightApiClient {
 	return &apiWrapper{server}
 }
@@ -20,6 +20,16 @@ type apiWrapper struct {
 
 // compile time check that we implement the interface we need
 var _ traits.LightApiClient = (*apiWrapper)(nil)
+
+// UnwrapServer returns the underlying server instance.
+func (w *apiWrapper) UnwrapServer() traits.LightApiServer {
+	return w.server
+}
+
+// Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
+func (w *apiWrapper) Unwrap() interface{} {
+	return w.UnwrapServer()
+}
 
 func (w *apiWrapper) UpdateBrightness(ctx context.Context, req *traits.UpdateBrightnessRequest, _ ...grpc.CallOption) (*traits.Brightness, error) {
 	return w.server.UpdateBrightness(ctx, req)

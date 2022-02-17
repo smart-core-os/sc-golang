@@ -9,7 +9,7 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-// Wrap Api	adapts a traits.BookingApiServer	and presents it as a traits.BookingApiClient
+// WrapApi	adapts a traits.BookingApiServer	and presents it as a traits.BookingApiClient
 func WrapApi(server traits.BookingApiServer) traits.BookingApiClient {
 	return &apiWrapper{server}
 }
@@ -20,6 +20,16 @@ type apiWrapper struct {
 
 // compile time check that we implement the interface we need
 var _ traits.BookingApiClient = (*apiWrapper)(nil)
+
+// UnwrapServer returns the underlying server instance.
+func (w *apiWrapper) UnwrapServer() traits.BookingApiServer {
+	return w.server
+}
+
+// Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
+func (w *apiWrapper) Unwrap() interface{} {
+	return w.UnwrapServer()
+}
 
 func (w *apiWrapper) ListBookings(ctx context.Context, req *traits.ListBookingsRequest, _ ...grpc.CallOption) (*traits.ListBookingsResponse, error) {
 	return w.server.ListBookings(ctx, req)

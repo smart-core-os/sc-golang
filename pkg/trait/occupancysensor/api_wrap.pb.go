@@ -9,7 +9,7 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-// Wrap Api	adapts a traits.OccupancySensorApiServer	and presents it as a traits.OccupancySensorApiClient
+// WrapApi	adapts a traits.OccupancySensorApiServer	and presents it as a traits.OccupancySensorApiClient
 func WrapApi(server traits.OccupancySensorApiServer) traits.OccupancySensorApiClient {
 	return &apiWrapper{server}
 }
@@ -20,6 +20,16 @@ type apiWrapper struct {
 
 // compile time check that we implement the interface we need
 var _ traits.OccupancySensorApiClient = (*apiWrapper)(nil)
+
+// UnwrapServer returns the underlying server instance.
+func (w *apiWrapper) UnwrapServer() traits.OccupancySensorApiServer {
+	return w.server
+}
+
+// Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
+func (w *apiWrapper) Unwrap() interface{} {
+	return w.UnwrapServer()
+}
 
 func (w *apiWrapper) GetOccupancy(ctx context.Context, req *traits.GetOccupancyRequest, _ ...grpc.CallOption) (*traits.Occupancy, error) {
 	return w.server.GetOccupancy(ctx, req)

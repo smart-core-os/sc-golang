@@ -8,7 +8,7 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-// Wrap Info	adapts a traits.EmergencyInfoServer	and presents it as a traits.EmergencyInfoClient
+// WrapInfo	adapts a traits.EmergencyInfoServer	and presents it as a traits.EmergencyInfoClient
 func WrapInfo(server traits.EmergencyInfoServer) traits.EmergencyInfoClient {
 	return &infoWrapper{server}
 }
@@ -19,6 +19,16 @@ type infoWrapper struct {
 
 // compile time check that we implement the interface we need
 var _ traits.EmergencyInfoClient = (*infoWrapper)(nil)
+
+// UnwrapServer returns the underlying server instance.
+func (w *infoWrapper) UnwrapServer() traits.EmergencyInfoServer {
+	return w.server
+}
+
+// Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
+func (w *infoWrapper) Unwrap() interface{} {
+	return w.UnwrapServer()
+}
 
 func (w *infoWrapper) DescribeEmergency(ctx context.Context, req *traits.DescribeEmergencyRequest, _ ...grpc.CallOption) (*traits.EmergencySupport, error) {
 	return w.server.DescribeEmergency(ctx, req)

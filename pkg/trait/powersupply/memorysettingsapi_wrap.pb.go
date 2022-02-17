@@ -8,7 +8,7 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-// Wrap MemorySettingsApi	adapts a MemorySettingsApiServer	and presents it as a MemorySettingsApiClient
+// WrapMemorySettingsApi	adapts a MemorySettingsApiServer	and presents it as a MemorySettingsApiClient
 func WrapMemorySettingsApi(server MemorySettingsApiServer) MemorySettingsApiClient {
 	return &memorySettingsApiWrapper{server}
 }
@@ -19,6 +19,16 @@ type memorySettingsApiWrapper struct {
 
 // compile time check that we implement the interface we need
 var _ MemorySettingsApiClient = (*memorySettingsApiWrapper)(nil)
+
+// UnwrapServer returns the underlying server instance.
+func (w *memorySettingsApiWrapper) UnwrapServer() MemorySettingsApiServer {
+	return w.server
+}
+
+// Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
+func (w *memorySettingsApiWrapper) Unwrap() interface{} {
+	return w.UnwrapServer()
+}
 
 func (w *memorySettingsApiWrapper) GetSettings(ctx context.Context, req *GetMemorySettingsReq, _ ...grpc.CallOption) (*MemorySettings, error) {
 	return w.server.GetSettings(ctx, req)

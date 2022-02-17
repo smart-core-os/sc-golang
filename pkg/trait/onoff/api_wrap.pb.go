@@ -9,7 +9,7 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-// Wrap Api	adapts a traits.OnOffApiServer	and presents it as a traits.OnOffApiClient
+// WrapApi	adapts a traits.OnOffApiServer	and presents it as a traits.OnOffApiClient
 func WrapApi(server traits.OnOffApiServer) traits.OnOffApiClient {
 	return &apiWrapper{server}
 }
@@ -20,6 +20,16 @@ type apiWrapper struct {
 
 // compile time check that we implement the interface we need
 var _ traits.OnOffApiClient = (*apiWrapper)(nil)
+
+// UnwrapServer returns the underlying server instance.
+func (w *apiWrapper) UnwrapServer() traits.OnOffApiServer {
+	return w.server
+}
+
+// Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
+func (w *apiWrapper) Unwrap() interface{} {
+	return w.UnwrapServer()
+}
 
 func (w *apiWrapper) GetOnOff(ctx context.Context, req *traits.GetOnOffRequest, _ ...grpc.CallOption) (*traits.OnOff, error) {
 	return w.server.GetOnOff(ctx, req)

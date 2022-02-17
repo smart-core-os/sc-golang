@@ -9,7 +9,7 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-// Wrap Api	adapts a traits.AirTemperatureApiServer	and presents it as a traits.AirTemperatureApiClient
+// WrapApi	adapts a traits.AirTemperatureApiServer	and presents it as a traits.AirTemperatureApiClient
 func WrapApi(server traits.AirTemperatureApiServer) traits.AirTemperatureApiClient {
 	return &apiWrapper{server}
 }
@@ -20,6 +20,16 @@ type apiWrapper struct {
 
 // compile time check that we implement the interface we need
 var _ traits.AirTemperatureApiClient = (*apiWrapper)(nil)
+
+// UnwrapServer returns the underlying server instance.
+func (w *apiWrapper) UnwrapServer() traits.AirTemperatureApiServer {
+	return w.server
+}
+
+// Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
+func (w *apiWrapper) Unwrap() interface{} {
+	return w.UnwrapServer()
+}
 
 func (w *apiWrapper) GetAirTemperature(ctx context.Context, req *traits.GetAirTemperatureRequest, _ ...grpc.CallOption) (*traits.AirTemperature, error) {
 	return w.server.GetAirTemperature(ctx, req)

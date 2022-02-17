@@ -8,7 +8,7 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-// Wrap Info	adapts a traits.OccupancySensorInfoServer	and presents it as a traits.OccupancySensorInfoClient
+// WrapInfo	adapts a traits.OccupancySensorInfoServer	and presents it as a traits.OccupancySensorInfoClient
 func WrapInfo(server traits.OccupancySensorInfoServer) traits.OccupancySensorInfoClient {
 	return &infoWrapper{server}
 }
@@ -19,6 +19,16 @@ type infoWrapper struct {
 
 // compile time check that we implement the interface we need
 var _ traits.OccupancySensorInfoClient = (*infoWrapper)(nil)
+
+// UnwrapServer returns the underlying server instance.
+func (w *infoWrapper) UnwrapServer() traits.OccupancySensorInfoServer {
+	return w.server
+}
+
+// Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
+func (w *infoWrapper) Unwrap() interface{} {
+	return w.UnwrapServer()
+}
 
 func (w *infoWrapper) DescribeOccupancy(ctx context.Context, req *traits.DescribeOccupancyRequest, _ ...grpc.CallOption) (*traits.OccupancySupport, error) {
 	return w.server.DescribeOccupancy(ctx, req)

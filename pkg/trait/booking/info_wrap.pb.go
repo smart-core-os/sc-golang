@@ -8,7 +8,7 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-// Wrap Info	adapts a traits.BookingInfoServer	and presents it as a traits.BookingInfoClient
+// WrapInfo	adapts a traits.BookingInfoServer	and presents it as a traits.BookingInfoClient
 func WrapInfo(server traits.BookingInfoServer) traits.BookingInfoClient {
 	return &infoWrapper{server}
 }
@@ -19,6 +19,16 @@ type infoWrapper struct {
 
 // compile time check that we implement the interface we need
 var _ traits.BookingInfoClient = (*infoWrapper)(nil)
+
+// UnwrapServer returns the underlying server instance.
+func (w *infoWrapper) UnwrapServer() traits.BookingInfoServer {
+	return w.server
+}
+
+// Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
+func (w *infoWrapper) Unwrap() interface{} {
+	return w.UnwrapServer()
+}
 
 func (w *infoWrapper) DescribeBooking(ctx context.Context, req *traits.DescribeBookingRequest, _ ...grpc.CallOption) (*traits.BookingSupport, error) {
 	return w.server.DescribeBooking(ctx, req)

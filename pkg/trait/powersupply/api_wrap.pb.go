@@ -10,7 +10,7 @@ import (
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
-// Wrap Api	adapts a traits.PowerSupplyApiServer	and presents it as a traits.PowerSupplyApiClient
+// WrapApi	adapts a traits.PowerSupplyApiServer	and presents it as a traits.PowerSupplyApiClient
 func WrapApi(server traits.PowerSupplyApiServer) traits.PowerSupplyApiClient {
 	return &apiWrapper{server}
 }
@@ -21,6 +21,16 @@ type apiWrapper struct {
 
 // compile time check that we implement the interface we need
 var _ traits.PowerSupplyApiClient = (*apiWrapper)(nil)
+
+// UnwrapServer returns the underlying server instance.
+func (w *apiWrapper) UnwrapServer() traits.PowerSupplyApiServer {
+	return w.server
+}
+
+// Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
+func (w *apiWrapper) Unwrap() interface{} {
+	return w.UnwrapServer()
+}
 
 func (w *apiWrapper) GetPowerCapacity(ctx context.Context, req *traits.GetPowerCapacityRequest, _ ...grpc.CallOption) (*traits.PowerCapacity, error) {
 	return w.server.GetPowerCapacity(ctx, req)

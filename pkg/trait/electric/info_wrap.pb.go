@@ -6,7 +6,7 @@ import (
 	traits "github.com/smart-core-os/sc-api/go/traits"
 )
 
-// Wrap Info	adapts a traits.ElectricInfoServer	and presents it as a traits.ElectricInfoClient
+// WrapInfo	adapts a traits.ElectricInfoServer	and presents it as a traits.ElectricInfoClient
 func WrapInfo(server traits.ElectricInfoServer) traits.ElectricInfoClient {
 	return &infoWrapper{server}
 }
@@ -17,3 +17,13 @@ type infoWrapper struct {
 
 // compile time check that we implement the interface we need
 var _ traits.ElectricInfoClient = (*infoWrapper)(nil)
+
+// UnwrapServer returns the underlying server instance.
+func (w *infoWrapper) UnwrapServer() traits.ElectricInfoServer {
+	return w.server
+}
+
+// Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
+func (w *infoWrapper) Unwrap() interface{} {
+	return w.UnwrapServer()
+}

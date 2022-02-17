@@ -9,7 +9,7 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-// Wrap Api	adapts a traits.CountApiServer	and presents it as a traits.CountApiClient
+// WrapApi	adapts a traits.CountApiServer	and presents it as a traits.CountApiClient
 func WrapApi(server traits.CountApiServer) traits.CountApiClient {
 	return &apiWrapper{server}
 }
@@ -20,6 +20,16 @@ type apiWrapper struct {
 
 // compile time check that we implement the interface we need
 var _ traits.CountApiClient = (*apiWrapper)(nil)
+
+// UnwrapServer returns the underlying server instance.
+func (w *apiWrapper) UnwrapServer() traits.CountApiServer {
+	return w.server
+}
+
+// Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
+func (w *apiWrapper) Unwrap() interface{} {
+	return w.UnwrapServer()
+}
 
 func (w *apiWrapper) GetCount(ctx context.Context, req *traits.GetCountRequest, _ ...grpc.CallOption) (*traits.Count, error) {
 	return w.server.GetCount(ctx, req)

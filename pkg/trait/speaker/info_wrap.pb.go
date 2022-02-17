@@ -8,7 +8,7 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-// Wrap Info	adapts a traits.SpeakerInfoServer	and presents it as a traits.SpeakerInfoClient
+// WrapInfo	adapts a traits.SpeakerInfoServer	and presents it as a traits.SpeakerInfoClient
 func WrapInfo(server traits.SpeakerInfoServer) traits.SpeakerInfoClient {
 	return &infoWrapper{server}
 }
@@ -19,6 +19,16 @@ type infoWrapper struct {
 
 // compile time check that we implement the interface we need
 var _ traits.SpeakerInfoClient = (*infoWrapper)(nil)
+
+// UnwrapServer returns the underlying server instance.
+func (w *infoWrapper) UnwrapServer() traits.SpeakerInfoServer {
+	return w.server
+}
+
+// Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
+func (w *infoWrapper) Unwrap() interface{} {
+	return w.UnwrapServer()
+}
 
 func (w *infoWrapper) DescribeVolume(ctx context.Context, req *traits.DescribeVolumeRequest, _ ...grpc.CallOption) (*traits.VolumeSupport, error) {
 	return w.server.DescribeVolume(ctx, req)

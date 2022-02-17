@@ -29,6 +29,7 @@ type router struct {
 	mu       sync.Mutex
 	registry map[string]interface{} // of type MyServiceClient
 	factory  Factory
+	fallback Factory
 }
 type Factory func(string) (interface{}, error) // returns the type MyServiceClient
 
@@ -75,17 +76,26 @@ func (r *router) Get(name string) (child interface{}, err error) {
 	child, exists := r.registry[name]
 	defer r.mu.Unlock()
 	if !exists {
-		if r.factory != nil {
-			child, err := r.factory(name)
-			if err != nil {
-				return nil, err
-			}
+		child, exists, err = invoke(name, r.fallback)
+	}
+	if !exists {
+		child, exists, err = invoke(name, r.factory)
+		if exists {
 			r.registry[name] = child
-			return child, nil
 		}
+	}
+
+	if !exists {
 		return nil, status.Error(codes.NotFound, name)
 	}
-	return child, nil
+	return
+}
+func invoke(name string, f Factory) (interface{}, bool, error) {
+	if f == nil {
+		return nil, false, nil
+	}
+	child, err := f(name)
+	return child, child != nil && err == nil, err
 }
 
 type Option func(r *router)
@@ -95,5 +105,14 @@ type Option func(r *router)
 func WithFactory(f Factory) Option {
 	return func(r *router) {
 		r.factory = f
+	}
+}
+
+// WithFallback configures a Router to ask the given function when Get is called and no existing client is known.
+// If WithFallback and WithFactory are both configured, WithFallback will be called first, only using WithFactory if
+// WithFallback returns nil or an error.
+func WithFallback(f Factory) Option {
+	return func(r *router) {
+		r.fallback = f
 	}
 }

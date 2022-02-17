@@ -27,6 +27,10 @@ func NewModelServer(model *Model, opts ...ServerOption) *ModelServer {
 	return s
 }
 
+func (s *ModelServer) Unwrap() interface{} {
+	return s.model
+}
+
 func (s *ModelServer) Register(server *grpc.Server) {
 	traits.RegisterEnergyStorageApiServer(server, s)
 }

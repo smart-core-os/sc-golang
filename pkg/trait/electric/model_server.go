@@ -28,17 +28,21 @@ func NewModelServer(model *Model) *ModelServer {
 	}
 }
 
-func (d *ModelServer) Register(server *grpc.Server) {
-	traits.RegisterElectricApiServer(server, d)
-	RegisterMemorySettingsApiServer(server, d)
+func (s *ModelServer) Unwrap() interface{} {
+	return s.model
 }
 
-func (d *ModelServer) GetDemand(_ context.Context, request *traits.GetDemandRequest) (*traits.ElectricDemand, error) {
-	return d.model.Demand(memory.WithGetMask(request.ReadMask)), nil
+func (s *ModelServer) Register(server *grpc.Server) {
+	traits.RegisterElectricApiServer(server, s)
+	RegisterMemorySettingsApiServer(server, s)
 }
 
-func (d *ModelServer) PullDemand(request *traits.PullDemandRequest, server traits.ElectricApi_PullDemandServer) error {
-	updates, done := d.model.PullDemand(server.Context(), request.ReadMask)
+func (s *ModelServer) GetDemand(_ context.Context, request *traits.GetDemandRequest) (*traits.ElectricDemand, error) {
+	return s.model.Demand(memory.WithGetMask(request.ReadMask)), nil
+}
+
+func (s *ModelServer) PullDemand(request *traits.PullDemandRequest, server traits.ElectricApi_PullDemandServer) error {
+	updates, done := s.model.PullDemand(server.Context(), request.ReadMask)
 	defer done()
 
 	for {
@@ -62,11 +66,11 @@ func (d *ModelServer) PullDemand(request *traits.PullDemandRequest, server trait
 	}
 }
 
-func (d *ModelServer) GetActiveMode(_ context.Context, request *traits.GetActiveModeRequest) (*traits.ElectricMode, error) {
-	return d.model.ActiveMode(memory.WithGetMask(request.ReadMask)), nil
+func (s *ModelServer) GetActiveMode(_ context.Context, request *traits.GetActiveModeRequest) (*traits.ElectricMode, error) {
+	return s.model.ActiveMode(memory.WithGetMask(request.ReadMask)), nil
 }
 
-func (d *ModelServer) UpdateActiveMode(_ context.Context, request *traits.UpdateActiveModeRequest) (*traits.ElectricMode, error) {
+func (s *ModelServer) UpdateActiveMode(_ context.Context, request *traits.UpdateActiveModeRequest) (*traits.ElectricMode, error) {
 	mode := request.GetActiveMode()
 	// hydrate the mode using the list of known modes (by id)
 	id := mode.GetId()
@@ -74,15 +78,15 @@ func (d *ModelServer) UpdateActiveMode(_ context.Context, request *traits.Update
 		return nil, status.Errorf(codes.InvalidArgument, "Id should be present during update")
 	}
 
-	return d.model.ChangeActiveMode(id)
+	return s.model.ChangeActiveMode(id)
 }
 
-func (d *ModelServer) ClearActiveMode(_ context.Context, _ *traits.ClearActiveModeRequest) (*traits.ElectricMode, error) {
-	return d.model.ChangeToNormalMode()
+func (s *ModelServer) ClearActiveMode(_ context.Context, _ *traits.ClearActiveModeRequest) (*traits.ElectricMode, error) {
+	return s.model.ChangeToNormalMode()
 }
 
-func (d *ModelServer) PullActiveMode(request *traits.PullActiveModeRequest, server traits.ElectricApi_PullActiveModeServer) error {
-	updates, done := d.model.PullActiveMode(server.Context(), request.ReadMask)
+func (s *ModelServer) PullActiveMode(request *traits.PullActiveModeRequest, server traits.ElectricApi_PullActiveModeServer) error {
+	updates, done := s.model.PullActiveMode(server.Context(), request.ReadMask)
 	defer done()
 
 	for {
@@ -105,7 +109,7 @@ func (d *ModelServer) PullActiveMode(request *traits.PullActiveModeRequest, serv
 	}
 }
 
-func (d *ModelServer) ListModes(_ context.Context, request *traits.ListModesRequest) (*traits.ListModesResponse, error) {
+func (s *ModelServer) ListModes(_ context.Context, request *traits.ListModesRequest) (*traits.ListModesResponse, error) {
 	pageToken := &types.PageToken{}
 	if err := decodePageToken(request.PageToken, pageToken); err != nil {
 		return nil, err
@@ -114,7 +118,7 @@ func (d *ModelServer) ListModes(_ context.Context, request *traits.ListModesRequ
 	lastKey := pageToken.GetLastResourceName() // the key() of the last item we sent
 	pageSize := capPageSize(int(request.GetPageSize()))
 
-	sortedModes := d.model.Modes(request.ReadMask)
+	sortedModes := s.model.Modes(request.ReadMask)
 	nextIndex := 0
 	if lastKey != "" {
 		nextIndex = sort.Search(len(sortedModes), func(i int) bool {
@@ -144,9 +148,9 @@ func (d *ModelServer) ListModes(_ context.Context, request *traits.ListModesRequ
 	return result, nil
 }
 
-func (d *ModelServer) PullModes(request *traits.PullModesRequest, server traits.ElectricApi_PullModesServer) error {
+func (s *ModelServer) PullModes(request *traits.PullModesRequest, server traits.ElectricApi_PullModesServer) error {
 	ctx, done := context.WithCancel(server.Context())
-	changes := d.model.PullModes(ctx, request.ReadMask)
+	changes := s.model.PullModes(ctx, request.ReadMask)
 	defer done()
 
 	// watch for changes to the modes list and emit when one matches our query

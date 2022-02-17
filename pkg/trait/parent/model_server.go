@@ -19,7 +19,11 @@ func NewModelServer(model *Model) *ModelServer {
 	return &ModelServer{model: model}
 }
 
-func (m *ModelServer) ListChildren(_ context.Context, request *traits.ListChildrenRequest) (*traits.ListChildrenResponse, error) {
+func (s *ModelServer) Unwrap() interface{} {
+	return s.model
+}
+
+func (s *ModelServer) ListChildren(_ context.Context, request *traits.ListChildrenRequest) (*traits.ListChildrenResponse, error) {
 	pageToken := &types.PageToken{}
 	if err := decodePageToken(request.PageToken, pageToken); err != nil {
 		return nil, err
@@ -28,7 +32,7 @@ func (m *ModelServer) ListChildren(_ context.Context, request *traits.ListChildr
 	lastKey := pageToken.GetLastResourceName() // the key() of the last item we sent
 	pageSize := capPageSize(int(request.GetPageSize()))
 
-	all := m.model.ListChildren()
+	all := s.model.ListChildren()
 	sort.Slice(all, func(i, j int) bool {
 		return all[i].Name < all[j].Name
 	})
@@ -72,9 +76,9 @@ func (m *ModelServer) ListChildren(_ context.Context, request *traits.ListChildr
 	return result, nil
 }
 
-func (m *ModelServer) PullChildren(request *traits.PullChildrenRequest, server traits.ParentApi_PullChildrenServer) error {
+func (s *ModelServer) PullChildren(request *traits.PullChildrenRequest, server traits.ParentApi_PullChildrenServer) error {
 	mask := masks.NewResponseFilter(masks.WithFieldMask(request.GetReadMask()))
-	for change := range m.model.PullChildren(server.Context()) {
+	for change := range s.model.PullChildren(server.Context()) {
 		oldValue := mask.FilterClone(change.OldValue)
 		newValue := mask.FilterClone(change.NewValue)
 		if oldValue == newValue {

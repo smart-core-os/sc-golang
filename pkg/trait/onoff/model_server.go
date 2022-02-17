@@ -18,6 +18,10 @@ func NewModelServer(model *Model) *ModelServer {
 	return &ModelServer{model: model}
 }
 
+func (s *ModelServer) Unwrap() interface{} {
+	return s.model
+}
+
 func (s *ModelServer) Register(server *grpc.Server) {
 	traits.RegisterOnOffApiServer(server, s)
 }

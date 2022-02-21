@@ -8,7 +8,7 @@ require (
 	github.com/mennanov/fmutils v0.1.1
 	github.com/olebedev/emitter v0.0.0-20190110104742-e8d1457e6aee
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/smart-core-os/sc-api/go v1.0.0-beta.29
+	github.com/smart-core-os/sc-api/go v1.0.0-beta.31
 	github.com/tanema/gween v0.0.0-20200427131925-c89ae23cc63c
 	go.uber.org/atomic v1.8.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect

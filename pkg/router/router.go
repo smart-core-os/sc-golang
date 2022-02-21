@@ -26,7 +26,7 @@ type Router interface {
 }
 
 type router struct {
-	mu       sync.Mutex
+	mu       sync.RWMutex
 	registry map[string]interface{} // of type MyServiceClient
 	factory  Factory
 	fallback Factory
@@ -65,23 +65,31 @@ func (r *router) Remove(name string) interface{} {
 }
 
 func (r *router) Has(name string) bool {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 	_, exists := r.registry[name]
 	return exists
 }
 
 func (r *router) Get(name string) (child interface{}, err error) {
-	r.mu.Lock()
+	r.mu.RLock()
 	child, exists := r.registry[name]
-	defer r.mu.Unlock()
+	r.mu.RUnlock()
 	if !exists {
 		child, exists, err = invoke(name, r.fallback)
 	}
 	if !exists {
 		child, exists, err = invoke(name, r.factory)
 		if exists {
-			r.registry[name] = child
+			r.mu.Lock()
+			// check again
+			child2, exists2 := r.registry[name]
+			if exists2 {
+				child = child2
+			} else {
+				r.registry[name] = child
+			}
+			r.mu.Unlock()
 		}
 	}
 

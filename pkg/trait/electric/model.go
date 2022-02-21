@@ -84,9 +84,14 @@ func (m *Model) PullDemand(ctx context.Context, mask *fieldmaskpb.FieldMask) (ch
 	recv, done := m.demand.OnUpdate(ctx)
 	go func() {
 		filter := masks.NewResponseFilter(masks.WithFieldMask(mask))
+		var lastSent *traits.ElectricDemand
 
 		for change := range recv {
 			demand := filter.FilterClone(change.Value).(*traits.ElectricDemand)
+			if proto.Equal(lastSent, demand) {
+				continue
+			}
+			lastSent = demand
 			send <- PullDemandChange{
 				Value:      demand,
 				ChangeTime: change.ChangeTime.AsTime(),
@@ -129,9 +134,14 @@ func (m *Model) PullActiveMode(ctx context.Context, mask *fieldmaskpb.FieldMask)
 	go func() {
 		defer close(send)
 		filter := masks.NewResponseFilter(masks.WithFieldMask(mask))
+		var lastSent *traits.ElectricMode
 
 		for change := range recv {
 			activeMode := filter.FilterClone(change.Value).(*traits.ElectricMode)
+			if proto.Equal(lastSent, activeMode) {
+				continue
+			}
+			lastSent = activeMode
 			send <- PullActiveModeChange{
 				ActiveMode: activeMode,
 				ChangeTime: change.ChangeTime.AsTime(),
@@ -363,6 +373,9 @@ func (m *Model) PullModes(ctx context.Context, mask *fieldmaskpb.FieldMask) <-ch
 		for change := range recv {
 			newValue := filter.FilterClone(change.NewValue)
 			oldValue := filter.FilterClone(change.OldValue)
+			if proto.Equal(newValue, oldValue) {
+				continue
+			}
 
 			send <- PullModesChange{
 				Type:       change.ChangeType,

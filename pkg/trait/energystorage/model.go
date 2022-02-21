@@ -7,6 +7,7 @@ import (
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-golang/pkg/masks"
 	"github.com/smart-core-os/sc-golang/pkg/memory"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
@@ -44,9 +45,14 @@ func (m *Model) PullEnergyLevel(ctx context.Context, mask *fieldmaskpb.FieldMask
 	recv, done := m.energyLevel.OnUpdate(ctx)
 	go func() {
 		filter := masks.NewResponseFilter(masks.WithFieldMask(mask))
+		var lastSent *traits.EnergyLevel
 
 		for change := range recv {
 			demand := filter.FilterClone(change.Value).(*traits.EnergyLevel)
+			if proto.Equal(lastSent, demand) {
+				continue
+			}
+			lastSent = demand
 			send <- PullEnergyLevelChange{
 				Value:      demand,
 				ChangeTime: change.ChangeTime.AsTime(),

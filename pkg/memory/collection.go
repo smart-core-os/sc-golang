@@ -126,7 +126,7 @@ func (c *Collection) add(id string, create CreateFn) (proto.Message, string, err
 
 	body := create(id)
 	c.byId[id] = &item{body: body}
-	c.bus.Emit("change", Change{
+	c.bus.Emit("change", &Change{
 		Id:         id,
 		ChangeTime: c.clock.Now(),
 		ChangeType: types.ChangeType_ADD,

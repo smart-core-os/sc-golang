@@ -377,12 +377,17 @@ func (m *Model) PullModes(ctx context.Context, mask *fieldmaskpb.FieldMask) <-ch
 				continue
 			}
 
-			send <- PullModesChange{
+			pullChange := PullModesChange{
 				Type:       change.ChangeType,
-				NewValue:   newValue.(*traits.ElectricMode),
-				OldValue:   oldValue.(*traits.ElectricMode),
 				ChangeTime: change.ChangeTime,
 			}
+			if newValue != nil {
+				pullChange.NewValue = change.NewValue.(*traits.ElectricMode)
+			}
+			if oldValue != nil {
+				pullChange.OldValue = change.OldValue.(*traits.ElectricMode)
+			}
+			send <- pullChange
 		}
 	}()
 

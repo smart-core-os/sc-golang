@@ -2,7 +2,6 @@ package memory
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/olebedev/emitter"
@@ -147,9 +146,6 @@ func (r *Resource) OnUpdate(ctx context.Context) (updates <-chan *ResourceChange
 				change := event.Args[0].(*ResourceChange)
 				if r.eq != nil && r.eq(last, change) {
 					continue
-				}
-				if r.eq != nil {
-					fmt.Printf("a != b, sending update: %v, %v\n", last, change)
 				}
 				last = change
 				select {

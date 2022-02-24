@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/smart-core-os/sc-golang/pkg/cmp"
 	"github.com/smart-core-os/sc-golang/pkg/time/clock"
 
 	"github.com/olebedev/emitter"
@@ -33,6 +34,8 @@ type Collection struct {
 	// "change" events contain a Change instance
 	bus   *emitter.Emitter
 	clock clock.Clock
+
+	eq EntryEquivalence
 }
 
 func NewCollection(options ...CollectionOption) *Collection {
@@ -215,6 +218,7 @@ func (c *Collection) PullChanges(ctx context.Context) <-chan *Change {
 	go func() {
 		defer c.bus.Off("change", emit)
 		defer close(send)
+		var last *Change
 
 		for {
 			select {
@@ -222,7 +226,16 @@ func (c *Collection) PullChanges(ctx context.Context) <-chan *Change {
 				return
 			case event := <-emit:
 				change := event.Args[0].(*Change)
-				send <- change
+				if c.eq != nil && c.eq(last, change) {
+					continue
+				}
+				last = change
+				select {
+				case send <- change:
+				case <-ctx.Done():
+					return
+				}
+
 			}
 		}
 	}()
@@ -247,6 +260,25 @@ type Change struct {
 	ChangeType types.ChangeType
 	OldValue   proto.Message
 	NewValue   proto.Message
+}
+
+type EntryEquivalence func(x, y *Change) bool
+
+// WithEntryEquivalence configures the collection to only send updates when eq returns false for consecutive updates.
+func WithEntryEquivalence(eq EntryEquivalence) CollectionOption {
+	return func(c *Collection) {
+		c.eq = eq
+	}
+}
+
+// WithEntryMessageEquivalence is like WithEntryEquivalence but compares x.OldValue with y.NewValue.
+func WithEntryMessageEquivalence(eq cmp.Message) CollectionOption {
+	return WithEntryEquivalence(func(x, y *Change) bool {
+		if x == nil || y == nil {
+			return x == nil && y == nil
+		}
+		return eq(x.OldValue, y.NewValue)
+	})
 }
 
 // TODO: figure out a way to resolve this naming collision

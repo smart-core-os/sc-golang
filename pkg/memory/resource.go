@@ -2,16 +2,17 @@ package memory
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/olebedev/emitter"
+	"github.com/smart-core-os/sc-golang/pkg/cmp"
+	"github.com/smart-core-os/sc-golang/pkg/masks"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
-
-	"github.com/smart-core-os/sc-golang/pkg/masks"
 )
 
 // Resource represents a simple state field in an object. Think Temperature or Volume or Occupancy. Use a Resource to
@@ -23,6 +24,8 @@ type Resource struct {
 	value proto.Message
 
 	bus *emitter.Emitter
+
+	eq ValueEquivalence
 }
 
 func NewResource(opts ...ResourceOption) *Resource {
@@ -132,6 +135,7 @@ func (r *Resource) OnUpdate(ctx context.Context) (updates <-chan *ResourceChange
 	typedEvents := make(chan *ResourceChange)
 	go func() {
 		defer close(typedEvents)
+		var last *ResourceChange
 		for {
 			select {
 			case <-ctx.Done():
@@ -140,10 +144,18 @@ func (r *Resource) OnUpdate(ctx context.Context) (updates <-chan *ResourceChange
 				if !ok {
 					return
 				}
+				change := event.Args[0].(*ResourceChange)
+				if r.eq != nil && r.eq(last, change) {
+					continue
+				}
+				if r.eq != nil {
+					fmt.Printf("a != b, sending update: %v, %v\n", last, change)
+				}
+				last = change
 				select {
 				case <-ctx.Done():
 					return // give up sending
-				case typedEvents <- event.Args[0].(*ResourceChange):
+				case typedEvents <- change:
 				}
 			}
 		}
@@ -167,6 +179,28 @@ func WithInitialValue(v proto.Message) ResourceOption {
 	return func(r *Resource) {
 		r.value = v
 	}
+}
+
+// ValueEquivalence returns true if x and y are equivalent.
+// Unlike proto.Equal, this may return true if the two messages are close enough, say 0.001 and 0.002 return true.
+type ValueEquivalence func(x, y *ResourceChange) bool
+
+// WithValueEquivalence configures how adjacent messages sent over a Pull stream are compared for equivalent.
+// Subsequent equivalent messages will not be sent.
+func WithValueEquivalence(equivalence ValueEquivalence) ResourceOption {
+	return func(r *Resource) {
+		r.eq = equivalence
+	}
+}
+
+// WithValueMessageEquivalence is like WithValueEquivalence and applies eq to ResourceOption.Value.
+func WithValueMessageEquivalence(eq cmp.Message) ResourceOption {
+	return WithValueEquivalence(func(x, y *ResourceChange) bool {
+		if x == nil || y == nil {
+			return x == nil && y == nil
+		}
+		return eq(x.Value, y.Value)
+	})
 }
 
 // WithWritablePaths sets the fields that can be modified via Update calls.

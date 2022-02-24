@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/smart-core-os/sc-api/go/traits"
+	"github.com/smart-core-os/sc-golang/pkg/cmp"
 	"github.com/smart-core-os/sc-golang/pkg/masks"
 	"github.com/smart-core-os/sc-golang/pkg/memory"
 	"google.golang.org/protobuf/proto"
@@ -16,8 +17,13 @@ type Model struct {
 }
 
 func NewModel() *Model {
+	eq := cmp.Equal(
+		cmp.FloatValueApprox(0, 0.1),
+		cmp.TimeValueWithin(1*time.Second),
+		cmp.DurationValueWithin(1*time.Second),
+	)
 	return &Model{
-		energyLevel: memory.NewResource(memory.WithInitialValue(&traits.EnergyLevel{})),
+		energyLevel: memory.NewResource(memory.WithInitialValue(&traits.EnergyLevel{}), memory.WithValueMessageEquivalence(eq)),
 	}
 }
 

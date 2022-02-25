@@ -4,11 +4,9 @@ import (
 	"context"
 	"sort"
 	"sync"
-	"time"
 
 	"github.com/olebedev/emitter"
 	"github.com/smart-core-os/sc-api/go/types"
-	"github.com/smart-core-os/sc-golang/pkg/masks"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -19,7 +17,7 @@ type Collection struct {
 
 	mu   sync.RWMutex // protects byId and rng from concurrent access
 	byId map[string]*item
-	// "change" events contain a Change instance
+	// "change" events contain a *CollectionChange instance
 	bus *emitter.Emitter
 }
 
@@ -114,7 +112,7 @@ func (c *Collection) add(id string, create CreateFn) (proto.Message, string, err
 
 	body := create(id)
 	c.byId[id] = &item{body: body}
-	c.bus.Emit("change", &Change{
+	c.bus.Emit("change", &CollectionChange{
 		Id:         id,
 		ChangeTime: c.clock.Now(),
 		ChangeType: types.ChangeType_ADD,
@@ -166,7 +164,7 @@ func (c *Collection) UpdateOrCreate(id string, change ChangeFn, create CreateFn)
 	if oldValue == nil {
 		changeType = types.ChangeType_ADD
 	}
-	c.bus.Emit("change", &Change{
+	c.bus.Emit("change", &CollectionChange{
 		Id:         id,
 		ChangeTime: c.clock.Now(),
 		ChangeType: changeType,
@@ -187,7 +185,7 @@ func (c *Collection) Delete(id string) proto.Message {
 		return nil
 	}
 	delete(c.byId, id)
-	c.bus.Emit("change", &Change{
+	c.bus.Emit("change", &CollectionChange{
 		Id:         id,
 		ChangeTime: c.clock.Now(),
 		ChangeType: types.ChangeType_REMOVE,
@@ -196,12 +194,12 @@ func (c *Collection) Delete(id string) proto.Message {
 	return oldVal.body
 }
 
-func (c *Collection) Pull(ctx context.Context, opts ...ReadOption) <-chan *Change {
+func (c *Collection) Pull(ctx context.Context, opts ...ReadOption) <-chan *CollectionChange {
 	readConfig := computeReadConfig(opts...)
 	filter := readConfig.ResponseFilter()
 
 	emit := c.bus.On("change")
-	send := make(chan *Change)
+	send := make(chan *CollectionChange)
 
 	go func() {
 		defer c.bus.Off("change", emit)
@@ -212,7 +210,7 @@ func (c *Collection) Pull(ctx context.Context, opts ...ReadOption) <-chan *Chang
 			case <-ctx.Done():
 				return
 			case event := <-emit:
-				change := event.Args[0].(*Change).filter(filter)
+				change := event.Args[0].(*CollectionChange).filter(filter)
 				if c.equivalence != nil && c.equivalence.Compare(change.OldValue, change.NewValue) {
 					continue
 				}
@@ -238,27 +236,4 @@ func (c *Collection) genID() (string, error) {
 
 type item struct {
 	body proto.Message
-}
-
-type Change struct {
-	Id         string
-	ChangeTime time.Time
-	ChangeType types.ChangeType
-	OldValue   proto.Message
-	NewValue   proto.Message
-}
-
-func (c *Change) filter(filter *masks.ResponseFilter) *Change {
-	newNewValue := filter.FilterClone(c.NewValue)
-	newOldValue := filter.FilterClone(c.OldValue)
-	if newNewValue == c.NewValue && newOldValue == c.OldValue {
-		return c
-	}
-	return &Change{
-		Id:         c.Id,
-		ChangeType: c.ChangeType,
-		ChangeTime: c.ChangeTime,
-		OldValue:   newOldValue,
-		NewValue:   newNewValue,
-	}
 }

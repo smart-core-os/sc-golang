@@ -10,7 +10,6 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Value represents a simple state field in an object. Think Temperature or Volume or Occupancy. Use a Value to
@@ -156,19 +155,6 @@ func (r *Value) Pull(ctx context.Context, opts ...ReadOption) <-chan *ValueChang
 		}
 	}()
 	return typedEvents
-}
-
-type ValueChange struct {
-	Value      proto.Message
-	ChangeTime *timestamppb.Timestamp
-}
-
-func (v *ValueChange) filter(filter *masks.ResponseFilter) *ValueChange {
-	newValue := filter.FilterClone(v.Value)
-	if newValue == v.Value {
-		return v
-	}
-	return &ValueChange{Value: newValue, ChangeTime: v.ChangeTime}
 }
 
 type UpdateInterceptor func(old, new proto.Message)

@@ -90,7 +90,7 @@ func (m *Model) PullChildren(ctx context.Context) <-chan *traits.PullChildrenRes
 	return out
 }
 
-func childrenChangeToProto(change *resource.Change) *traits.PullChildrenResponse_Change {
+func childrenChangeToProto(change *resource.CollectionChange) *traits.PullChildrenResponse_Change {
 	pChange := traits.PullChildrenResponse_Change{
 		Type:       change.ChangeType,
 		ChangeTime: timestamppb.New(change.ChangeTime),

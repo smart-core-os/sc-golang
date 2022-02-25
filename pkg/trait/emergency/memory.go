@@ -7,7 +7,6 @@ import (
 
 	"github.com/smart-core-os/sc-api/go/traits"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -49,24 +48,19 @@ func (t *MemoryDevice) UpdateEmergency(_ context.Context, request *traits.Update
 }
 
 func (t *MemoryDevice) PullEmergency(request *traits.PullEmergencyRequest, server traits.EmergencyApi_PullEmergencyServer) error {
-	changes := t.state.Pull(server.Context())
-
-	for {
-		select {
-		case <-server.Context().Done():
-			return status.FromContextError(server.Context().Err()).Err()
-		case event := <-changes:
-			change := &traits.PullEmergencyResponse_Change{
-				Name:       request.Name,
-				Emergency:  event.Value.(*traits.Emergency),
-				ChangeTime: event.ChangeTime,
-			}
-			err := server.Send(&traits.PullEmergencyResponse{
-				Changes: []*traits.PullEmergencyResponse_Change{change},
-			})
-			if err != nil {
-				return err
-			}
+	for event := range t.state.Pull(server.Context()) {
+		change := &traits.PullEmergencyResponse_Change{
+			Name:       request.Name,
+			Emergency:  event.Value.(*traits.Emergency),
+			ChangeTime: event.ChangeTime,
+		}
+		err := server.Send(&traits.PullEmergencyResponse{
+			Changes: []*traits.PullEmergencyResponse_Change{change},
+		})
+		if err != nil {
+			return err
 		}
 	}
+
+	return server.Context().Err()
 }

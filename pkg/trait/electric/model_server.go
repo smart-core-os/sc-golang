@@ -42,28 +42,21 @@ func (s *ModelServer) GetDemand(_ context.Context, request *traits.GetDemandRequ
 }
 
 func (s *ModelServer) PullDemand(request *traits.PullDemandRequest, server traits.ElectricApi_PullDemandServer) error {
-	updates, done := s.model.PullDemand(server.Context(), request.ReadMask)
-	defer done()
+	for update := range s.model.PullDemand(server.Context(), request.ReadMask) {
+		change := &traits.PullDemandResponse_Change{
+			Name:       request.Name,
+			ChangeTime: timestamppb.New(update.ChangeTime),
+			Demand:     update.Value,
+		}
 
-	for {
-		select {
-		case <-server.Context().Done():
-			return status.FromContextError(server.Context().Err()).Err()
-		case update := <-updates:
-			change := &traits.PullDemandResponse_Change{
-				Name:       request.Name,
-				ChangeTime: timestamppb.New(update.ChangeTime),
-				Demand:     update.Value,
-			}
-
-			err := server.Send(&traits.PullDemandResponse{
-				Changes: []*traits.PullDemandResponse_Change{change},
-			})
-			if err != nil {
-				return err
-			}
+		err := server.Send(&traits.PullDemandResponse{
+			Changes: []*traits.PullDemandResponse_Change{change},
+		})
+		if err != nil {
+			return err
 		}
 	}
+	return server.Context().Err()
 }
 
 func (s *ModelServer) GetActiveMode(_ context.Context, request *traits.GetActiveModeRequest) (*traits.ElectricMode, error) {
@@ -86,27 +79,21 @@ func (s *ModelServer) ClearActiveMode(_ context.Context, _ *traits.ClearActiveMo
 }
 
 func (s *ModelServer) PullActiveMode(request *traits.PullActiveModeRequest, server traits.ElectricApi_PullActiveModeServer) error {
-	updates, done := s.model.PullActiveMode(server.Context(), request.ReadMask)
-	defer done()
-
-	for {
-		select {
-		case <-server.Context().Done():
-			return status.FromContextError(server.Context().Err()).Err()
-		case event := <-updates:
-			change := &traits.PullActiveModeResponse_Change{
-				Name:       request.Name,
-				ActiveMode: event.ActiveMode,
-				ChangeTime: timestamppb.New(event.ChangeTime),
-			}
-			err := server.Send(&traits.PullActiveModeResponse{
-				Changes: []*traits.PullActiveModeResponse_Change{change},
-			})
-			if err != nil {
-				return err
-			}
+	for event := range s.model.PullActiveMode(server.Context(), request.ReadMask) {
+		change := &traits.PullActiveModeResponse_Change{
+			Name:       request.Name,
+			ActiveMode: event.ActiveMode,
+			ChangeTime: timestamppb.New(event.ChangeTime),
+		}
+		err := server.Send(&traits.PullActiveModeResponse{
+			Changes: []*traits.PullActiveModeResponse_Change{change},
+		})
+		if err != nil {
+			return err
 		}
 	}
+
+	return server.Context().Err()
 }
 
 func (s *ModelServer) ListModes(_ context.Context, request *traits.ListModesRequest) (*traits.ListModesResponse, error) {

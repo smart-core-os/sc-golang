@@ -85,26 +85,21 @@ func (s *MemoryDevice) GetPowerCapacity(_ context.Context, _ *traits.GetPowerCap
 }
 
 func (s *MemoryDevice) PullPowerCapacity(request *traits.PullPowerCapacityRequest, server traits.PowerSupplyApi_PullPowerCapacityServer) error {
-	changes := s.powerCapacity.Pull(server.Context())
-
-	for {
-		select {
-		case <-server.Context().Done():
-			return status.FromContextError(server.Context().Err()).Err()
-		case change := <-changes:
-			typedChange := &traits.PullPowerCapacityResponse_Change{
-				Name:              request.Name,
-				AvailableCapacity: change.Value.(*traits.PowerCapacity),
-				ChangeTime:        change.ChangeTime,
-			}
-			err := server.Send(&traits.PullPowerCapacityResponse{
-				Changes: []*traits.PullPowerCapacityResponse_Change{typedChange},
-			})
-			if err != nil {
-				return err
-			}
+	for change := range s.powerCapacity.Pull(server.Context()) {
+		typedChange := &traits.PullPowerCapacityResponse_Change{
+			Name:              request.Name,
+			AvailableCapacity: change.Value.(*traits.PowerCapacity),
+			ChangeTime:        change.ChangeTime,
+		}
+		err := server.Send(&traits.PullPowerCapacityResponse{
+			Changes: []*traits.PullPowerCapacityResponse_Change{typedChange},
+		})
+		if err != nil {
+			return err
 		}
 	}
+
+	return server.Context().Err()
 }
 
 func (s *MemoryDevice) ListDrawNotifications(_ context.Context, request *traits.ListDrawNotificationsRequest) (*traits.ListDrawNotificationsResponse, error) {

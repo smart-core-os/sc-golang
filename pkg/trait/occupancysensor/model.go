@@ -34,10 +34,9 @@ func (m *Model) GetOccupancy(opts ...resource.GetOption) (*traits.Occupancy, err
 	return m.occupancy.Get(opts...).(*traits.Occupancy), nil
 }
 
-func (m *Model) PullOccupancy(ctx context.Context, mask *fieldmaskpb.FieldMask) (changes <-chan PullOccupancyChange, done func()) {
+func (m *Model) PullOccupancy(ctx context.Context, mask *fieldmaskpb.FieldMask) <-chan PullOccupancyChange {
 	send := make(chan PullOccupancyChange)
 
-	ctx, done = context.WithCancel(ctx)
 	recv := m.occupancy.Pull(ctx)
 	go func() {
 		filter := masks.NewResponseFilter(masks.WithFieldMask(mask))
@@ -52,7 +51,7 @@ func (m *Model) PullOccupancy(ctx context.Context, mask *fieldmaskpb.FieldMask) 
 	}()
 
 	// when done is called, then the resource will close recv for us
-	return send, done
+	return send
 }
 
 type PullOccupancyChange struct {

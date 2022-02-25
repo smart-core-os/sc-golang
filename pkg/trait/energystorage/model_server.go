@@ -40,28 +40,22 @@ func (s *ModelServer) GetEnergyLevel(_ context.Context, request *traits.GetEnerg
 }
 
 func (s *ModelServer) PullEnergyLevel(request *traits.PullEnergyLevelRequest, server traits.EnergyStorageApi_PullEnergyLevelServer) error {
-	updates, done := s.model.PullEnergyLevel(server.Context(), request.GetFields())
-	defer done()
+	for update := range s.model.PullEnergyLevel(server.Context(), request.GetFields()) {
+		change := &traits.PullEnergyLevelResponse_Change{
+			Name:        request.Name,
+			ChangeTime:  timestamppb.New(update.ChangeTime),
+			EnergyLevel: update.Value,
+		}
 
-	for {
-		select {
-		case <-server.Context().Done():
-			return status.FromContextError(server.Context().Err()).Err()
-		case update := <-updates:
-			change := &traits.PullEnergyLevelResponse_Change{
-				Name:        request.Name,
-				ChangeTime:  timestamppb.New(update.ChangeTime),
-				EnergyLevel: update.Value,
-			}
-
-			err := server.Send(&traits.PullEnergyLevelResponse{
-				Changes: []*traits.PullEnergyLevelResponse_Change{change},
-			})
-			if err != nil {
-				return err
-			}
+		err := server.Send(&traits.PullEnergyLevelResponse{
+			Changes: []*traits.PullEnergyLevelResponse_Change{change},
+		})
+		if err != nil {
+			return err
 		}
 	}
+
+	return server.Context().Err()
 }
 
 func (s *ModelServer) Charge(_ context.Context, request *traits.ChargeRequest) (*traits.ChargeResponse, error) {

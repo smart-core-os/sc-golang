@@ -7,7 +7,6 @@ import (
 	"github.com/smart-core-os/sc-api/go/types"
 	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/status"
 )
 
 type MemoryDevice struct {
@@ -53,24 +52,18 @@ func (t *MemoryDevice) UpdateAirTemperature(_ context.Context, request *traits.U
 }
 
 func (t *MemoryDevice) PullAirTemperature(request *traits.PullAirTemperatureRequest, server traits.AirTemperatureApi_PullAirTemperatureServer) error {
-	changes := t.airTemperature.Pull(server.Context())
-
-	for {
-		select {
-		case <-server.Context().Done():
-			return status.FromContextError(server.Context().Err()).Err()
-		case event := <-changes:
-			change := &traits.PullAirTemperatureResponse_Change{
-				Name:       request.Name,
-				State:      event.Value.(*traits.AirTemperature),
-				ChangeTime: event.ChangeTime,
-			}
-			err := server.Send(&traits.PullAirTemperatureResponse{
-				Changes: []*traits.PullAirTemperatureResponse_Change{change},
-			})
-			if err != nil {
-				return err
-			}
+	for event := range t.airTemperature.Pull(server.Context()) {
+		change := &traits.PullAirTemperatureResponse_Change{
+			Name:       request.Name,
+			State:      event.Value.(*traits.AirTemperature),
+			ChangeTime: event.ChangeTime,
+		}
+		err := server.Send(&traits.PullAirTemperatureResponse{
+			Changes: []*traits.PullAirTemperatureResponse_Change{change},
+		})
+		if err != nil {
+			return err
 		}
 	}
+	return server.Context().Err()
 }

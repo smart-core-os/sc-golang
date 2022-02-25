@@ -5,7 +5,6 @@ import (
 
 	"github.com/smart-core-os/sc-api/go/traits"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -35,26 +34,20 @@ func (s *ModelServer) UpdateOnOff(_ context.Context, request *traits.UpdateOnOff
 }
 
 func (s *ModelServer) PullOnOff(request *traits.PullOnOffRequest, server traits.OnOffApi_PullOnOffServer) error {
-	updates, done := s.model.PullOnOff(server.Context(), nil)
-	defer done()
+	for update := range s.model.PullOnOff(server.Context(), nil) {
+		change := &traits.PullOnOffResponse_Change{
+			Name:       request.Name,
+			ChangeTime: timestamppb.New(update.ChangeTime),
+			OnOff:      update.Value,
+		}
 
-	for {
-		select {
-		case <-server.Context().Done():
-			return status.FromContextError(server.Context().Err()).Err()
-		case update := <-updates:
-			change := &traits.PullOnOffResponse_Change{
-				Name:       request.Name,
-				ChangeTime: timestamppb.New(update.ChangeTime),
-				OnOff:      update.Value,
-			}
-
-			err := server.Send(&traits.PullOnOffResponse{
-				Changes: []*traits.PullOnOffResponse_Change{change},
-			})
-			if err != nil {
-				return err
-			}
+		err := server.Send(&traits.PullOnOffResponse{
+			Changes: []*traits.PullOnOffResponse_Change{change},
+		})
+		if err != nil {
+			return err
 		}
 	}
+
+	return server.Context().Err()
 }

@@ -6,7 +6,6 @@ import (
 	"github.com/smart-core-os/sc-golang/pkg/resource"
 
 	"github.com/smart-core-os/sc-api/go/traits"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -61,23 +60,17 @@ func (t *MemoryDevice) UpdateCount(_ context.Context, request *traits.UpdateCoun
 }
 
 func (t *MemoryDevice) PullCounts(request *traits.PullCountsRequest, server traits.CountApi_PullCountsServer) error {
-	changes := t.count.Pull(server.Context())
-
-	for {
-		select {
-		case <-server.Context().Done():
-			return status.FromContextError(server.Context().Err()).Err()
-		case event := <-changes:
-			change := &traits.PullCountsResponse_Change{
-				Name:  request.Name,
-				Count: event.Value.(*traits.Count),
-			}
-			err := server.Send(&traits.PullCountsResponse{
-				Changes: []*traits.PullCountsResponse_Change{change},
-			})
-			if err != nil {
-				return err
-			}
+	for event := range t.count.Pull(server.Context()) {
+		change := &traits.PullCountsResponse_Change{
+			Name:  request.Name,
+			Count: event.Value.(*traits.Count),
+		}
+		err := server.Send(&traits.PullCountsResponse{
+			Changes: []*traits.PullCountsResponse_Change{change},
+		})
+		if err != nil {
+			return err
 		}
 	}
+	return server.Context().Err()
 }

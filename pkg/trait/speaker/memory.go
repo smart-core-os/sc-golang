@@ -8,7 +8,6 @@ import (
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-api/go/types"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -46,24 +45,19 @@ func (s *MemoryDevice) UpdateVolume(_ context.Context, request *traits.UpdateSpe
 }
 
 func (s *MemoryDevice) PullVolume(request *traits.PullSpeakerVolumeRequest, server traits.SpeakerApi_PullVolumeServer) error {
-	changes := s.volume.Pull(server.Context())
-
-	for {
-		select {
-		case <-server.Context().Done():
-			return status.FromContextError(server.Context().Err()).Err()
-		case change := <-changes:
-			typedChange := &types.AudioLevelChange{
-				Name:       request.Name,
-				Level:      change.Value.(*types.AudioLevel),
-				ChangeTime: change.ChangeTime,
-			}
-			err := server.Send(&traits.PullSpeakerVolumeResponse{
-				Changes: []*types.AudioLevelChange{typedChange},
-			})
-			if err != nil {
-				return err
-			}
+	for change := range s.volume.Pull(server.Context()) {
+		typedChange := &types.AudioLevelChange{
+			Name:       request.Name,
+			Level:      change.Value.(*types.AudioLevel),
+			ChangeTime: change.ChangeTime,
+		}
+		err := server.Send(&traits.PullSpeakerVolumeResponse{
+			Changes: []*types.AudioLevelChange{typedChange},
+		})
+		if err != nil {
+			return err
 		}
 	}
+
+	return server.Context().Err()
 }

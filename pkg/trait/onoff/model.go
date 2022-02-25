@@ -34,10 +34,9 @@ func (m *Model) UpdateOnOff(value *traits.OnOff, opts ...resource.UpdateOption) 
 	return res.(*traits.OnOff), nil
 }
 
-func (m *Model) PullOnOff(ctx context.Context, mask *fieldmaskpb.FieldMask) (changes <-chan PullOnOffChange, done func()) {
+func (m *Model) PullOnOff(ctx context.Context, mask *fieldmaskpb.FieldMask) <-chan PullOnOffChange {
 	send := make(chan PullOnOffChange)
 
-	ctx, done = context.WithCancel(ctx)
 	recv := m.onOff.Pull(ctx)
 	go func() {
 		filter := masks.NewResponseFilter(masks.WithFieldMask(mask))
@@ -52,7 +51,7 @@ func (m *Model) PullOnOff(ctx context.Context, mask *fieldmaskpb.FieldMask) (cha
 	}()
 
 	// when done is called, then the resource will close recv for us
-	return send, done
+	return send
 }
 
 type PullOnOffChange struct {

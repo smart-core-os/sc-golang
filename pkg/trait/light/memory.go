@@ -9,7 +9,6 @@ import (
 	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"github.com/tanema/gween"
 	"github.com/tanema/gween/ease"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -131,33 +130,28 @@ func (s *MemoryDevice) UpdateBrightness(ctx context.Context, request *traits.Upd
 }
 
 func (s *MemoryDevice) PullBrightness(request *traits.PullBrightnessRequest, server traits.LightApi_PullBrightnessServer) error {
-	changes := s.brightness.Pull(server.Context())
-
-	for {
-		select {
-		case <-server.Context().Done():
-			return status.FromContextError(server.Context().Err()).Err()
-		case event := <-changes:
-			brightness := event.Value.(*traits.Brightness)
-			// don't emit progress if the caller doesn't want it
-			if request.ExcludeRamping {
-				progress := brightness.GetBrightnessTween().GetProgress()
-				if progress != 0 && progress != 100 {
-					continue
-				}
-			}
-
-			change := &traits.PullBrightnessResponse_Change{
-				Name:       request.Name,
-				Brightness: brightness,
-				ChangeTime: event.ChangeTime,
-			}
-			err := server.Send(&traits.PullBrightnessResponse{
-				Changes: []*traits.PullBrightnessResponse_Change{change},
-			})
-			if err != nil {
-				return err
+	for event := range s.brightness.Pull(server.Context()) {
+		brightness := event.Value.(*traits.Brightness)
+		// don't emit progress if the caller doesn't want it
+		if request.ExcludeRamping {
+			progress := brightness.GetBrightnessTween().GetProgress()
+			if progress != 0 && progress != 100 {
+				continue
 			}
 		}
+
+		change := &traits.PullBrightnessResponse_Change{
+			Name:       request.Name,
+			Brightness: brightness,
+			ChangeTime: event.ChangeTime,
+		}
+		err := server.Send(&traits.PullBrightnessResponse{
+			Changes: []*traits.PullBrightnessResponse_Change{change},
+		})
+		if err != nil {
+			return err
+		}
 	}
+
+	return server.Context().Err()
 }

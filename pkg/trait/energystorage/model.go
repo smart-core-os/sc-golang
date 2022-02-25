@@ -45,10 +45,9 @@ type PullEnergyLevelChange struct {
 	ChangeTime time.Time
 }
 
-func (m *Model) PullEnergyLevel(ctx context.Context, mask *fieldmaskpb.FieldMask) (changes <-chan PullEnergyLevelChange, done func()) {
+func (m *Model) PullEnergyLevel(ctx context.Context, mask *fieldmaskpb.FieldMask) <-chan PullEnergyLevelChange {
 	send := make(chan PullEnergyLevelChange)
 
-	ctx, done = context.WithCancel(ctx)
 	recv := m.energyLevel.Pull(ctx)
 	go func() {
 		filter := masks.NewResponseFilter(masks.WithFieldMask(mask))
@@ -68,5 +67,5 @@ func (m *Model) PullEnergyLevel(ctx context.Context, mask *fieldmaskpb.FieldMask
 	}()
 
 	// when done is called, then the resource will close recv for us
-	return send, done
+	return send
 }

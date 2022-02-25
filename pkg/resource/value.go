@@ -129,6 +129,8 @@ func (r *Value) set(value proto.Message, request updateRequest) (proto.Message, 
 
 // Pull emits a ValueChange on the returned chan whenever the underlying value changes.
 // The changes emitted can be adjusted using WithEquivalence.
+// The returned chan will be closed when no more events will be emitted, either because ctx was cancelled or for other
+// reasons.
 func (r *Value) Pull(ctx context.Context) <-chan *ValueChange {
 	on := r.bus.On("update")
 	typedEvents := make(chan *ValueChange)

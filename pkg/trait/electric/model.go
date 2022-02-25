@@ -78,13 +78,11 @@ func (m *Model) Demand(opts ...resource.GetOption) *traits.ElectricDemand {
 // PullDemand subscribes to changes to the electricity demand on this device.
 // The returned channel will be closed when done is called. You must call done after you are finished with the channel
 // to prevents leaks and/or deadlocks. The channel will also be closed if ctx is cancelled.
-func (m *Model) PullDemand(ctx context.Context, mask *fieldmaskpb.FieldMask) (changes <-chan PullDemandChange, done func()) {
+func (m *Model) PullDemand(ctx context.Context, mask *fieldmaskpb.FieldMask) <-chan PullDemandChange {
 	send := make(chan PullDemandChange)
 
-	ctx, done = context.WithCancel(ctx)
 	recv := m.demand.Pull(ctx)
 	go func() {
-		defer done()
 		filter := masks.NewResponseFilter(masks.WithFieldMask(mask))
 		var lastSent *traits.ElectricDemand
 
@@ -102,7 +100,7 @@ func (m *Model) PullDemand(ctx context.Context, mask *fieldmaskpb.FieldMask) (ch
 	}()
 
 	// when done is called, then the resource will close recv for us
-	return send, done
+	return send
 }
 
 // UpdateDemand will update the stored traits.ElectricDemand associated with this device.
@@ -129,14 +127,12 @@ func (m *Model) ActiveMode(opts ...resource.GetOption) *traits.ElectricMode {
 // ChangeActiveMode), the channel will send a notification.
 // The returned channel will be closed when done is called. You must call done after you are finished with the channel
 // to prevents leaks and/or deadlocks. The channel will also be closed if ctx is cancelled.
-func (m *Model) PullActiveMode(ctx context.Context, mask *fieldmaskpb.FieldMask) (changes <-chan PullActiveModeChange, done func()) {
+func (m *Model) PullActiveMode(ctx context.Context, mask *fieldmaskpb.FieldMask) <-chan PullActiveModeChange {
 	send := make(chan PullActiveModeChange)
 
-	ctx, done = context.WithCancel(ctx)
 	recv := m.activeMode.Pull(ctx)
 	go func() {
 		defer close(send)
-		defer done()
 		filter := masks.NewResponseFilter(masks.WithFieldMask(mask))
 		var lastSent *traits.ElectricMode
 
@@ -154,7 +150,7 @@ func (m *Model) PullActiveMode(ctx context.Context, mask *fieldmaskpb.FieldMask)
 	}()
 
 	// when done is called, then the resource will close recv for us
-	return send, done
+	return send
 }
 
 // SetActiveMode updates the active mode to the one specified.

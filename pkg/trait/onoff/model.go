@@ -37,7 +37,8 @@ func (m *Model) UpdateOnOff(value *traits.OnOff, opts ...resource.UpdateOption) 
 func (m *Model) PullOnOff(ctx context.Context, mask *fieldmaskpb.FieldMask) (changes <-chan PullOnOffChange, done func()) {
 	send := make(chan PullOnOffChange)
 
-	recv, done := m.onOff.Pull(ctx)
+	ctx, done = context.WithCancel(ctx)
+	recv := m.onOff.Pull(ctx)
 	go func() {
 		filter := masks.NewResponseFilter(masks.WithFieldMask(mask))
 

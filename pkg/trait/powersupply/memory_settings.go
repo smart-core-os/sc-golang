@@ -41,8 +41,7 @@ func (s *MemoryDevice) UpdateSettings(_ context.Context, req *UpdateMemorySettin
 }
 
 func (s *MemoryDevice) PullSettings(req *PullMemorySettingsReq, server MemorySettingsApi_PullSettingsServer) error {
-	events, done := s.settings.Pull(server.Context())
-	defer done()
+	events := s.settings.Pull(server.Context())
 
 	var lastSentMsg *MemorySettings
 	filter := masks.NewResponseFilter(masks.WithFieldMask(req.Fields))

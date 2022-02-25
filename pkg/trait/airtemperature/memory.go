@@ -53,8 +53,7 @@ func (t *MemoryDevice) UpdateAirTemperature(_ context.Context, request *traits.U
 }
 
 func (t *MemoryDevice) PullAirTemperature(request *traits.PullAirTemperatureRequest, server traits.AirTemperatureApi_PullAirTemperatureServer) error {
-	changes, done := t.airTemperature.Pull(server.Context())
-	defer done()
+	changes := t.airTemperature.Pull(server.Context())
 
 	for {
 		select {

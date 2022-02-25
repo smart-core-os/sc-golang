@@ -85,8 +85,7 @@ func (s *MemoryDevice) GetPowerCapacity(_ context.Context, _ *traits.GetPowerCap
 }
 
 func (s *MemoryDevice) PullPowerCapacity(request *traits.PullPowerCapacityRequest, server traits.PowerSupplyApi_PullPowerCapacityServer) error {
-	changes, done := s.powerCapacity.Pull(server.Context())
-	defer done()
+	changes := s.powerCapacity.Pull(server.Context())
 
 	for {
 		select {

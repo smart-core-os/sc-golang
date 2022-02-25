@@ -58,23 +58,14 @@ func (m *Model) UpdateTraitMetadata(traitMetadata *traits.TraitMetadata, opts ..
 func (m *Model) PullMetadata(ctx context.Context) <-chan *traits.PullMetadataResponse_Change {
 	send := make(chan *traits.PullMetadataResponse_Change)
 
-	// when done is called, then the resource will close recv for us
-	recv, done := m.metadata.Pull(ctx)
+	// when ctx is cancelled, then the resource will close recv for us
+	recv := m.metadata.Pull(ctx)
 	go func() {
-		defer done()
-		for {
+		for change := range recv {
 			select {
 			case <-ctx.Done():
 				return
-			case change, ok := <-recv:
-				if !ok {
-					return
-				}
-				select {
-				case <-ctx.Done():
-					return
-				case send <- metadataChangeToProto(change):
-				}
+			case send <- metadataChangeToProto(change):
 			}
 		}
 	}()

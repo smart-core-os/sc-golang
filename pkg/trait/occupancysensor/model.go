@@ -37,7 +37,8 @@ func (m *Model) GetOccupancy(opts ...resource.GetOption) (*traits.Occupancy, err
 func (m *Model) PullOccupancy(ctx context.Context, mask *fieldmaskpb.FieldMask) (changes <-chan PullOccupancyChange, done func()) {
 	send := make(chan PullOccupancyChange)
 
-	recv, done := m.occupancy.Pull(ctx)
+	ctx, done = context.WithCancel(ctx)
+	recv := m.occupancy.Pull(ctx)
 	go func() {
 		filter := masks.NewResponseFilter(masks.WithFieldMask(mask))
 

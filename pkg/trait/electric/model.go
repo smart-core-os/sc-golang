@@ -81,8 +81,10 @@ func (m *Model) Demand(opts ...resource.GetOption) *traits.ElectricDemand {
 func (m *Model) PullDemand(ctx context.Context, mask *fieldmaskpb.FieldMask) (changes <-chan PullDemandChange, done func()) {
 	send := make(chan PullDemandChange)
 
-	recv, done := m.demand.Pull(ctx)
+	ctx, done = context.WithCancel(ctx)
+	recv := m.demand.Pull(ctx)
 	go func() {
+		defer done()
 		filter := masks.NewResponseFilter(masks.WithFieldMask(mask))
 		var lastSent *traits.ElectricDemand
 
@@ -130,9 +132,11 @@ func (m *Model) ActiveMode(opts ...resource.GetOption) *traits.ElectricMode {
 func (m *Model) PullActiveMode(ctx context.Context, mask *fieldmaskpb.FieldMask) (changes <-chan PullActiveModeChange, done func()) {
 	send := make(chan PullActiveModeChange)
 
-	recv, done := m.activeMode.Pull(ctx)
+	ctx, done = context.WithCancel(ctx)
+	recv := m.activeMode.Pull(ctx)
 	go func() {
 		defer close(send)
+		defer done()
 		filter := masks.NewResponseFilter(masks.WithFieldMask(mask))
 		var lastSent *traits.ElectricMode
 

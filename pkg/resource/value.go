@@ -127,11 +127,15 @@ func (r *Value) set(value proto.Message, request updateRequest) (proto.Message, 
 	return newValue, err
 }
 
-func (r *Value) Pull(ctx context.Context) (updates <-chan *ValueChange, done func()) {
+// Pull emits a ValueChange on the returned chan whenever the underlying value changes.
+// The changes emitted can be adjusted using WithEquivalence.
+func (r *Value) Pull(ctx context.Context) <-chan *ValueChange {
 	on := r.bus.On("update")
 	typedEvents := make(chan *ValueChange)
 	go func() {
 		defer close(typedEvents)
+		defer r.bus.Off("update", on)
+
 		var last proto.Message
 		for {
 			select {
@@ -139,7 +143,7 @@ func (r *Value) Pull(ctx context.Context) (updates <-chan *ValueChange, done fun
 				return
 			case event, ok := <-on:
 				if !ok {
-					return
+					return // the listener was cancelled
 				}
 				change := event.Args[0].(*ValueChange)
 				if r.equivalence != nil && r.equivalence.Compare(last, change.Value) {
@@ -154,10 +158,7 @@ func (r *Value) Pull(ctx context.Context) (updates <-chan *ValueChange, done fun
 			}
 		}
 	}()
-	return typedEvents, func() {
-		// note: causes the listener to close, which eventually closes the typedEvents chan too
-		r.bus.Off("update", on)
-	}
+	return typedEvents
 }
 
 type ValueChange struct {

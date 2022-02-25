@@ -49,8 +49,7 @@ func (t *MemoryDevice) UpdateEmergency(_ context.Context, request *traits.Update
 }
 
 func (t *MemoryDevice) PullEmergency(request *traits.PullEmergencyRequest, server traits.EmergencyApi_PullEmergencyServer) error {
-	changes, done := t.state.Pull(server.Context())
-	defer done()
+	changes := t.state.Pull(server.Context())
 
 	for {
 		select {

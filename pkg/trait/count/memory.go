@@ -61,8 +61,7 @@ func (t *MemoryDevice) UpdateCount(_ context.Context, request *traits.UpdateCoun
 }
 
 func (t *MemoryDevice) PullCounts(request *traits.PullCountsRequest, server traits.CountApi_PullCountsServer) error {
-	changes, done := t.count.Pull(server.Context())
-	defer done()
+	changes := t.count.Pull(server.Context())
 
 	for {
 		select {

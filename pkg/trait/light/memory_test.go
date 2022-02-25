@@ -1,6 +1,7 @@
 package light
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -18,7 +19,8 @@ func TestMemoryDevice_UpdateBrightness(t *testing.T) {
 	t.Run("tween", func(t *testing.T) {
 		api := NewMemoryDevice()
 		api.brightnessTick = 10 * time.Millisecond // give us a chance to see some updates
-		update, done := api.brightness.Pull(th.Ctx)
+		ctx, done := context.WithCancel(th.Ctx)
+		update := api.brightness.Pull(ctx)
 		t.Cleanup(done)
 		var updates []*resource.ValueChange
 		go func() {
@@ -96,7 +98,8 @@ func TestMemoryDevice_UpdateBrightness(t *testing.T) {
 	t.Run("tween interrupted", func(t *testing.T) {
 		api := NewMemoryDevice()
 		api.brightnessTick = 10 * time.Millisecond // give us a chance to see some updates
-		update, done := api.brightness.Pull(th.Ctx)
+		ctx, done := context.WithCancel(th.Ctx)
+		update := api.brightness.Pull(ctx)
 		t.Cleanup(done)
 
 		tweenStarted := make(chan struct{}, 3)

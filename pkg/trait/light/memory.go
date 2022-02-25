@@ -131,8 +131,7 @@ func (s *MemoryDevice) UpdateBrightness(ctx context.Context, request *traits.Upd
 }
 
 func (s *MemoryDevice) PullBrightness(request *traits.PullBrightnessRequest, server traits.LightApi_PullBrightnessServer) error {
-	changes, done := s.brightness.Pull(server.Context())
-	defer done()
+	changes := s.brightness.Pull(server.Context())
 
 	for {
 		select {

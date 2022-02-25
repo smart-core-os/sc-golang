@@ -48,7 +48,8 @@ type PullEnergyLevelChange struct {
 func (m *Model) PullEnergyLevel(ctx context.Context, mask *fieldmaskpb.FieldMask) (changes <-chan PullEnergyLevelChange, done func()) {
 	send := make(chan PullEnergyLevelChange)
 
-	recv, done := m.energyLevel.Pull(ctx)
+	ctx, done = context.WithCancel(ctx)
+	recv := m.energyLevel.Pull(ctx)
 	go func() {
 		filter := masks.NewResponseFilter(masks.WithFieldMask(mask))
 		var lastSent *traits.EnergyLevel

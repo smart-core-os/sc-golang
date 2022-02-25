@@ -46,8 +46,7 @@ func (s *MemoryDevice) UpdateVolume(_ context.Context, request *traits.UpdateSpe
 }
 
 func (s *MemoryDevice) PullVolume(request *traits.PullSpeakerVolumeRequest, server traits.SpeakerApi_PullVolumeServer) error {
-	changes, done := s.volume.Pull(server.Context())
-	defer done()
+	changes := s.volume.Pull(server.Context())
 
 	for {
 		select {

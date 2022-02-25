@@ -7,6 +7,7 @@ import (
 	"github.com/smart-core-os/sc-api/go/types"
 	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type MemoryDevice struct {
@@ -56,7 +57,7 @@ func (t *MemoryDevice) PullAirTemperature(request *traits.PullAirTemperatureRequ
 		change := &traits.PullAirTemperatureResponse_Change{
 			Name:       request.Name,
 			State:      event.Value.(*traits.AirTemperature),
-			ChangeTime: event.ChangeTime,
+			ChangeTime: timestamppb.New(event.ChangeTime),
 		}
 		err := server.Send(&traits.PullAirTemperatureResponse{
 			Changes: []*traits.PullAirTemperatureResponse_Change{change},

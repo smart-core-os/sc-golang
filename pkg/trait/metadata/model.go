@@ -6,6 +6,7 @@ import (
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type Model struct {
@@ -74,7 +75,7 @@ func (m *Model) PullMetadata(ctx context.Context) <-chan *traits.PullMetadataRes
 }
 func metadataChangeToProto(change *resource.ValueChange) *traits.PullMetadataResponse_Change {
 	return &traits.PullMetadataResponse_Change{
-		ChangeTime: change.ChangeTime,
+		ChangeTime: timestamppb.New(change.ChangeTime),
 		Metadata:   change.Value.(*traits.Metadata),
 	}
 }

@@ -6,7 +6,6 @@ import (
 	"github.com/smart-core-os/sc-api/go/types"
 	"github.com/smart-core-os/sc-golang/pkg/masks"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Comparer compares two messages for equivalence.
@@ -28,7 +27,7 @@ func (c ComparerFunc) Compare(x, y proto.Message) bool {
 // ValueChange contains information about a change to a Value.
 type ValueChange struct {
 	Value      proto.Message
-	ChangeTime *timestamppb.Timestamp
+	ChangeTime time.Time
 }
 
 func (v *ValueChange) filter(filter *masks.ResponseFilter) *ValueChange {

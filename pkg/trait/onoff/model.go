@@ -42,7 +42,7 @@ func (m *Model) PullOnOff(ctx context.Context, mask *fieldmaskpb.FieldMask) <-ch
 			value := change.Value.(*traits.OnOff)
 			send <- PullOnOffChange{
 				Value:      value,
-				ChangeTime: change.ChangeTime.AsTime(),
+				ChangeTime: change.ChangeTime,
 			}
 		}
 	}()

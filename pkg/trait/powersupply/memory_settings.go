@@ -6,6 +6,7 @@ import (
 	"context"
 
 	"github.com/smart-core-os/sc-golang/pkg/resource"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/smart-core-os/sc-api/go/traits"
 	"google.golang.org/protobuf/proto"
@@ -49,7 +50,7 @@ func (s *MemoryDevice) PullSettings(req *PullMemorySettingsReq, server MemorySet
 				{
 					Name:       req.Name,
 					Settings:   settings,
-					ChangeTime: event.ChangeTime,
+					ChangeTime: timestamppb.New(event.ChangeTime),
 				},
 			},
 		}

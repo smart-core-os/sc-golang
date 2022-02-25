@@ -89,7 +89,7 @@ func (m *Model) PullDemand(ctx context.Context, mask *fieldmaskpb.FieldMask) <-c
 			demand := change.Value.(*traits.ElectricDemand)
 			send <- PullDemandChange{
 				Value:      demand,
-				ChangeTime: change.ChangeTime.AsTime(),
+				ChangeTime: change.ChangeTime,
 			}
 		}
 	}()
@@ -132,7 +132,7 @@ func (m *Model) PullActiveMode(ctx context.Context, mask *fieldmaskpb.FieldMask)
 			activeMode := change.Value.(*traits.ElectricMode)
 			send <- PullActiveModeChange{
 				ActiveMode: activeMode,
-				ChangeTime: change.ChangeTime.AsTime(),
+				ChangeTime: change.ChangeTime,
 			}
 		}
 	}()

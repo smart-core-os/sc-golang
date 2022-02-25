@@ -10,6 +10,7 @@ import (
 	"github.com/tanema/gween"
 	"github.com/tanema/gween/ease"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // MemoryDevice implements the LightApiServer interface for a single device by storing state in memory.
@@ -143,7 +144,7 @@ func (s *MemoryDevice) PullBrightness(request *traits.PullBrightnessRequest, ser
 		change := &traits.PullBrightnessResponse_Change{
 			Name:       request.Name,
 			Brightness: brightness,
-			ChangeTime: event.ChangeTime,
+			ChangeTime: timestamppb.New(event.ChangeTime),
 		}
 		err := server.Send(&traits.PullBrightnessResponse{
 			Changes: []*traits.PullBrightnessResponse_Change{change},

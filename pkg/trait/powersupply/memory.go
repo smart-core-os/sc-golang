@@ -90,7 +90,7 @@ func (s *MemoryDevice) PullPowerCapacity(request *traits.PullPowerCapacityReques
 		typedChange := &traits.PullPowerCapacityResponse_Change{
 			Name:              request.Name,
 			AvailableCapacity: change.Value.(*traits.PowerCapacity),
-			ChangeTime:        change.ChangeTime,
+			ChangeTime:        timestamppb.New(change.ChangeTime),
 		}
 		err := server.Send(&traits.PullPowerCapacityResponse{
 			Changes: []*traits.PullPowerCapacityResponse_Change{typedChange},

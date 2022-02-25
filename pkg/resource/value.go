@@ -113,7 +113,7 @@ func (r *Value) set(value proto.Message, request updateRequest) (proto.Message, 
 
 	r.bus.Emit("update", &ValueChange{
 		Value:      newValue,
-		ChangeTime: serverTimestamp(),
+		ChangeTime: r.clock.Now(),
 	})
 
 	return newValue, err

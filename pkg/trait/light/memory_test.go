@@ -62,7 +62,7 @@ func TestMemoryDevice_UpdateBrightness(t *testing.T) {
 		for i, change := range updates[1 : len(updates)-1] {
 			lastChange := updates[i]
 			// changes happen in order
-			if !change.ChangeTime.AsTime().After(lastChange.ChangeTime.AsTime()) {
+			if !change.ChangeTime.After(lastChange.ChangeTime) {
 				t.Fatalf("changes out of order [%v] %v is after [%v] %v", i, lastChange, i+1, change)
 			}
 			// changes move the value closer to the target value

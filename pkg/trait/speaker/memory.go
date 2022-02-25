@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/smart-core-os/sc-golang/pkg/resource"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-api/go/types"
@@ -49,7 +50,7 @@ func (s *MemoryDevice) PullVolume(request *traits.PullSpeakerVolumeRequest, serv
 		typedChange := &types.AudioLevelChange{
 			Name:       request.Name,
 			Level:      change.Value.(*types.AudioLevel),
-			ChangeTime: change.ChangeTime,
+			ChangeTime: timestamppb.New(change.ChangeTime),
 		}
 		err := server.Send(&traits.PullSpeakerVolumeResponse{
 			Changes: []*types.AudioLevelChange{typedChange},

@@ -42,7 +42,7 @@ func (m *Model) PullOccupancy(ctx context.Context, mask *fieldmaskpb.FieldMask) 
 			value := change.Value.(*traits.Occupancy)
 			send <- PullOccupancyChange{
 				Value:      value,
-				ChangeTime: change.ChangeTime.AsTime(),
+				ChangeTime: change.ChangeTime,
 			}
 		}
 	}()

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/smart-core-os/sc-golang/pkg/resource"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/smart-core-os/sc-api/go/traits"
 	"google.golang.org/grpc"
@@ -52,7 +53,7 @@ func (t *MemoryDevice) PullEmergency(request *traits.PullEmergencyRequest, serve
 		change := &traits.PullEmergencyResponse_Change{
 			Name:       request.Name,
 			Emergency:  event.Value.(*traits.Emergency),
-			ChangeTime: event.ChangeTime,
+			ChangeTime: timestamppb.New(event.ChangeTime),
 		}
 		err := server.Send(&traits.PullEmergencyResponse{
 			Changes: []*traits.PullEmergencyResponse_Change{change},

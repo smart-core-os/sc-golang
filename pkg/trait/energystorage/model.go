@@ -52,7 +52,7 @@ func (m *Model) PullEnergyLevel(ctx context.Context, mask *fieldmaskpb.FieldMask
 			demand := change.Value.(*traits.EnergyLevel)
 			send <- PullEnergyLevelChange{
 				Value:      demand,
-				ChangeTime: change.ChangeTime.AsTime(),
+				ChangeTime: change.ChangeTime,
 			}
 		}
 	}()

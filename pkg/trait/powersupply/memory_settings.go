@@ -8,7 +8,6 @@ import (
 	"github.com/smart-core-os/sc-golang/pkg/resource"
 
 	"github.com/smart-core-os/sc-api/go/traits"
-	"github.com/smart-core-os/sc-golang/pkg/masks"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -41,16 +40,10 @@ func (s *MemoryDevice) UpdateSettings(_ context.Context, req *UpdateMemorySettin
 }
 
 func (s *MemoryDevice) PullSettings(req *PullMemorySettingsReq, server MemorySettingsApi_PullSettingsServer) error {
-	events := s.settings.Pull(server.Context())
+	events := s.settings.Pull(server.Context(), resource.WithReadMask(req.Fields))
 
-	var lastSentMsg *MemorySettings
-	filter := masks.NewResponseFilter(masks.WithFieldMask(req.Fields))
 	for event := range events {
-		settings := filter.FilterClone(event.Value).(*MemorySettings)
-		if lastSentMsg != nil && proto.Equal(lastSentMsg, settings) {
-			// nothing has changed, nothing to send
-			continue
-		}
+		settings := event.Value.(*MemorySettings)
 		res := &PullMemorySettingsRes{
 			Changes: []*PullMemorySettingsRes_Change{
 				{

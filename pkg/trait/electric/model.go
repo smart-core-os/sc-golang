@@ -8,6 +8,7 @@ import (
 
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-api/go/types"
+	"github.com/smart-core-os/sc-golang/pkg/cmp"
 	"github.com/smart-core-os/sc-golang/pkg/masks"
 	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"github.com/smart-core-os/sc-golang/pkg/time/clock"
@@ -59,9 +60,9 @@ func NewModel(clk clock.Clock) *Model {
 	mode := &traits.ElectricMode{}
 
 	mem := &Model{
-		demand:     resource.NewValue(resource.WithInitialValue(demand)),
-		activeMode: resource.NewValue(resource.WithInitialValue(mode)),
-		modes:      resource.NewCollection(resource.WithClock(clk)),
+		demand:     resource.NewValue(resource.WithInitialValue(demand), resource.WithMessageEquivalence(cmp.Equal(cmp.FloatValueApprox(0, 0.01)))),
+		activeMode: resource.NewValue(resource.WithInitialValue(mode), resource.WithNoDuplicates()),
+		modes:      resource.NewCollection(resource.WithClock(clk), resource.WithNoDuplicates()),
 		clock:      clk,
 		Rng:        rand.New(rand.NewSource(rand.Int63())),
 	}
@@ -81,17 +82,11 @@ func (m *Model) Demand(opts ...resource.ReadOption) *traits.ElectricDemand {
 func (m *Model) PullDemand(ctx context.Context, mask *fieldmaskpb.FieldMask) <-chan PullDemandChange {
 	send := make(chan PullDemandChange)
 
-	recv := m.demand.Pull(ctx)
+	recv := m.demand.Pull(ctx, resource.WithReadMask(mask))
 	go func() {
-		filter := masks.NewResponseFilter(masks.WithFieldMask(mask))
-		var lastSent *traits.ElectricDemand
-
+		defer close(send)
 		for change := range recv {
-			demand := filter.FilterClone(change.Value).(*traits.ElectricDemand)
-			if proto.Equal(lastSent, demand) {
-				continue
-			}
-			lastSent = demand
+			demand := change.Value.(*traits.ElectricDemand)
 			send <- PullDemandChange{
 				Value:      demand,
 				ChangeTime: change.ChangeTime.AsTime(),
@@ -130,18 +125,11 @@ func (m *Model) ActiveMode(opts ...resource.ReadOption) *traits.ElectricMode {
 func (m *Model) PullActiveMode(ctx context.Context, mask *fieldmaskpb.FieldMask) <-chan PullActiveModeChange {
 	send := make(chan PullActiveModeChange)
 
-	recv := m.activeMode.Pull(ctx)
+	recv := m.activeMode.Pull(ctx, resource.WithReadMask(mask))
 	go func() {
 		defer close(send)
-		filter := masks.NewResponseFilter(masks.WithFieldMask(mask))
-		var lastSent *traits.ElectricMode
-
 		for change := range recv {
-			activeMode := filter.FilterClone(change.Value).(*traits.ElectricMode)
-			if proto.Equal(lastSent, activeMode) {
-				continue
-			}
-			lastSent = activeMode
+			activeMode := change.Value.(*traits.ElectricMode)
 			send <- PullActiveModeChange{
 				ActiveMode: activeMode,
 				ChangeTime: change.ChangeTime.AsTime(),
@@ -361,29 +349,25 @@ func (m *Model) updateMode(mode *traits.ElectricMode, mask *fieldmaskpb.FieldMas
 // to prevents leaks and/or deadlocks. The channel will also be closed if ctx is cancelled.
 func (m *Model) PullModes(ctx context.Context, mask *fieldmaskpb.FieldMask) <-chan PullModesChange {
 	send := make(chan PullModesChange)
-	recv := m.modes.Pull(ctx)
+	recv := m.modes.Pull(ctx, resource.WithReadMask(mask))
 
 	go func() {
 		defer close(send)
-		filter := masks.NewResponseFilter(masks.WithFieldMask(mask))
-
 		// no need to listen to ctx.Done, as modes.Pull does that.
 		for change := range recv {
-			newValue := filter.FilterClone(change.NewValue)
-			oldValue := filter.FilterClone(change.OldValue)
-			if proto.Equal(newValue, oldValue) {
-				continue
+			var newValue, oldValue *traits.ElectricMode
+			if change.NewValue != nil {
+				newValue = change.NewValue.(*traits.ElectricMode)
+			}
+			if change.OldValue != nil {
+				oldValue = change.OldValue.(*traits.ElectricMode)
 			}
 
 			pullChange := PullModesChange{
 				Type:       change.ChangeType,
 				ChangeTime: change.ChangeTime,
-			}
-			if newValue != nil {
-				pullChange.NewValue = change.NewValue.(*traits.ElectricMode)
-			}
-			if oldValue != nil {
-				pullChange.OldValue = change.OldValue.(*traits.ElectricMode)
+				NewValue:   newValue,
+				OldValue:   oldValue,
 			}
 			send <- pullChange
 		}

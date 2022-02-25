@@ -37,6 +37,11 @@ func WithMessageEquivalence(e cmp.Message) Option {
 	return WithEquivalence(ComparerFunc(e))
 }
 
+// WithNoDuplicates is like WithMessageEquivalence(cmp.Equal()).
+func WithNoDuplicates() Option {
+	return WithMessageEquivalence(cmp.Equal())
+}
+
 // WithRNG configures the source of randomness for the resource.
 // Defaults to rand.Rand with a time seed.
 func WithRNG(rng io.Reader) Option {

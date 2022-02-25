@@ -8,6 +8,7 @@ import (
 
 	"github.com/olebedev/emitter"
 	"github.com/smart-core-os/sc-api/go/types"
+	"github.com/smart-core-os/sc-golang/pkg/masks"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -195,7 +196,10 @@ func (c *Collection) Delete(id string) proto.Message {
 	return oldVal.body
 }
 
-func (c *Collection) Pull(ctx context.Context) <-chan *Change {
+func (c *Collection) Pull(ctx context.Context, opts ...ReadOption) <-chan *Change {
+	readConfig := computeReadConfig(opts...)
+	filter := readConfig.ResponseFilter()
+
 	emit := c.bus.On("change")
 	send := make(chan *Change)
 
@@ -208,7 +212,7 @@ func (c *Collection) Pull(ctx context.Context) <-chan *Change {
 			case <-ctx.Done():
 				return
 			case event := <-emit:
-				change := event.Args[0].(*Change)
+				change := event.Args[0].(*Change).filter(filter)
 				if c.equivalence != nil && c.equivalence.Compare(change.OldValue, change.NewValue) {
 					continue
 				}
@@ -242,4 +246,19 @@ type Change struct {
 	ChangeType types.ChangeType
 	OldValue   proto.Message
 	NewValue   proto.Message
+}
+
+func (c *Change) filter(filter *masks.ResponseFilter) *Change {
+	newNewValue := filter.FilterClone(c.NewValue)
+	newOldValue := filter.FilterClone(c.OldValue)
+	if newNewValue == c.NewValue && newOldValue == c.OldValue {
+		return c
+	}
+	return &Change{
+		Id:         c.Id,
+		ChangeType: c.ChangeType,
+		ChangeTime: c.ChangeTime,
+		OldValue:   newOldValue,
+		NewValue:   newNewValue,
+	}
 }

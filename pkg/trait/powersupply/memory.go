@@ -45,6 +45,7 @@ func NewMemoryDevice() *MemoryDevice {
 			resource.WithInitialValue(initialPowerCapacity),
 		),
 		settings: resource.NewValue(
+			resource.WithNoDuplicates(),
 			resource.WithInitialValue(&MemorySettings{
 				Rating:              initialPowerCapacity.Rating,
 				Load:                *initialPowerCapacity.Load,

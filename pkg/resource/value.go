@@ -124,7 +124,9 @@ func (r *Value) set(value proto.Message, request updateRequest) (proto.Message, 
 // The changes emitted can be adjusted using WithEquivalence.
 // The returned chan will be closed when no more events will be emitted, either because ctx was cancelled or for other
 // reasons.
-func (r *Value) Pull(ctx context.Context) <-chan *ValueChange {
+func (r *Value) Pull(ctx context.Context, opts ...ReadOption) <-chan *ValueChange {
+	readConfig := computeReadConfig(opts...)
+	filter := readConfig.ResponseFilter()
 	on := r.bus.On("update")
 	typedEvents := make(chan *ValueChange)
 	go func() {
@@ -140,7 +142,7 @@ func (r *Value) Pull(ctx context.Context) <-chan *ValueChange {
 				if !ok {
 					return // the listener was cancelled
 				}
-				change := event.Args[0].(*ValueChange)
+				change := event.Args[0].(*ValueChange).filter(filter)
 				if r.equivalence != nil && r.equivalence.Compare(last, change.Value) {
 					continue
 				}
@@ -159,6 +161,14 @@ func (r *Value) Pull(ctx context.Context) <-chan *ValueChange {
 type ValueChange struct {
 	Value      proto.Message
 	ChangeTime *timestamppb.Timestamp
+}
+
+func (v *ValueChange) filter(filter *masks.ResponseFilter) *ValueChange {
+	newValue := filter.FilterClone(v.Value)
+	if newValue == v.Value {
+		return v
+	}
+	return &ValueChange{Value: newValue, ChangeTime: v.ChangeTime}
 }
 
 type UpdateInterceptor func(old, new proto.Message)

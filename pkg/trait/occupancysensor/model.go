@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/smart-core-os/sc-golang/pkg/masks"
 	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
@@ -37,12 +36,10 @@ func (m *Model) GetOccupancy(opts ...resource.ReadOption) (*traits.Occupancy, er
 func (m *Model) PullOccupancy(ctx context.Context, mask *fieldmaskpb.FieldMask) <-chan PullOccupancyChange {
 	send := make(chan PullOccupancyChange)
 
-	recv := m.occupancy.Pull(ctx)
+	recv := m.occupancy.Pull(ctx, resource.WithReadMask(mask))
 	go func() {
-		filter := masks.NewResponseFilter(masks.WithFieldMask(mask))
-
 		for change := range recv {
-			value := filter.FilterClone(change.Value).(*traits.Occupancy)
+			value := change.Value.(*traits.Occupancy)
 			send <- PullOccupancyChange{
 				Value:      value,
 				ChangeTime: change.ChangeTime.AsTime(),

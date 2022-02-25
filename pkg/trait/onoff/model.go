@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/smart-core-os/sc-api/go/traits"
-	"github.com/smart-core-os/sc-golang/pkg/masks"
 	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
@@ -37,12 +36,10 @@ func (m *Model) UpdateOnOff(value *traits.OnOff, opts ...resource.UpdateOption) 
 func (m *Model) PullOnOff(ctx context.Context, mask *fieldmaskpb.FieldMask) <-chan PullOnOffChange {
 	send := make(chan PullOnOffChange)
 
-	recv := m.onOff.Pull(ctx)
+	recv := m.onOff.Pull(ctx, resource.WithReadMask(mask))
 	go func() {
-		filter := masks.NewResponseFilter(masks.WithFieldMask(mask))
-
 		for change := range recv {
-			value := filter.FilterClone(change.Value).(*traits.OnOff)
+			value := change.Value.(*traits.OnOff)
 			send <- PullOnOffChange{
 				Value:      value,
 				ChangeTime: change.ChangeTime.AsTime(),

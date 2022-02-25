@@ -20,7 +20,7 @@ type Model struct {
 
 func NewModel() *Model {
 	return &Model{
-		children: resource.NewCollection(resource.WithClockCollection(clock.Real())),
+		children: resource.NewCollection(resource.WithClock(clock.Real())),
 	}
 }
 

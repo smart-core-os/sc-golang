@@ -52,7 +52,6 @@ type Tween struct {
 	Duration        time.Duration
 	Easing          ease.TweenFunc
 	FramesPerSecond float32
-	Clock           func() time.Time
 
 	tween *gween.Tween
 }
@@ -78,7 +77,6 @@ func (t *Tween) NextFrame() (float32, error) {
 type TweenOption func(*Tween)
 
 var DefaultTweenOptions = []TweenOption{
-	WithClock(time.Now),
 	WithBounds(0, 100),
 	WithFramesPerSecond(10),
 	WithDuration(time.Second),
@@ -110,11 +108,5 @@ func WithDuration(duration time.Duration) TweenOption {
 func WithEasing(easing ease.TweenFunc) TweenOption {
 	return func(tween *Tween) {
 		tween.Easing = easing
-	}
-}
-
-func WithClock(clock func() time.Time) TweenOption {
-	return func(tween *Tween) {
-		tween.Clock = clock
 	}
 }

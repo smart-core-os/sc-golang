@@ -61,7 +61,7 @@ func NewModel(clk clock.Clock) *Model {
 	mem := &Model{
 		demand:     resource.NewValue(resource.WithInitialValue(demand)),
 		activeMode: resource.NewValue(resource.WithInitialValue(mode)),
-		modes:      resource.NewCollection(resource.WithClockCollection(clk)),
+		modes:      resource.NewCollection(resource.WithClock(clk)),
 		clock:      clk,
 		Rng:        rand.New(rand.NewSource(rand.Int63())),
 	}

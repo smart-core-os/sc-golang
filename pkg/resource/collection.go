@@ -2,14 +2,9 @@ package resource
 
 import (
 	"context"
-	"io"
-	"math/rand"
 	"sort"
 	"sync"
 	"time"
-
-	"github.com/smart-core-os/sc-golang/pkg/cmp"
-	"github.com/smart-core-os/sc-golang/pkg/time/clock"
 
 	"github.com/olebedev/emitter"
 	"github.com/smart-core-os/sc-api/go/types"
@@ -18,38 +13,22 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type CollectionOption func(collection *Collection)
-
-var DefaultCollectionOptions = []CollectionOption{
-	WithClockCollection(clock.Real()),
-	WithRandom(nil), // create a new rng for each Collection instance
-}
-
 type Collection struct {
+	*config
+
 	mu   sync.RWMutex // protects byId and rng from concurrent access
 	byId map[string]*item
-	// rng is used to generate new ids.
-	// It should be rand.Rand or crypto.Rand. The reader shouldn't close
-	rng io.Reader
 	// "change" events contain a Change instance
-	bus   *emitter.Emitter
-	clock clock.Clock
-
-	eq EntryEquivalence
+	bus *emitter.Emitter
 }
 
-func NewCollection(options ...CollectionOption) *Collection {
+func NewCollection(options ...Option) *Collection {
+	conf := computeConfig(options...)
 	c := &Collection{
-		byId: make(map[string]*item),
-		mu:   sync.RWMutex{},
-		bus:  emitter.New(0),
-	}
-
-	for _, opt := range DefaultCollectionOptions {
-		opt(c)
-	}
-	for _, opt := range options {
-		opt(c)
+		config: conf,
+		byId:   make(map[string]*item),
+		mu:     sync.RWMutex{},
+		bus:    emitter.New(0),
 	}
 
 	return c
@@ -218,7 +197,6 @@ func (c *Collection) Pull(ctx context.Context) <-chan *Change {
 	go func() {
 		defer c.bus.Off("change", emit)
 		defer close(send)
-		var last *Change
 
 		for {
 			select {
@@ -226,10 +204,9 @@ func (c *Collection) Pull(ctx context.Context) <-chan *Change {
 				return
 			case event := <-emit:
 				change := event.Args[0].(*Change)
-				if c.eq != nil && c.eq(last, change) {
+				if c.equivalence != nil && c.equivalence.Compare(change.OldValue, change.NewValue) {
 					continue
 				}
-				last = change
 				select {
 				case send <- change:
 				case <-ctx.Done():
@@ -260,42 +237,4 @@ type Change struct {
 	ChangeType types.ChangeType
 	OldValue   proto.Message
 	NewValue   proto.Message
-}
-
-type EntryEquivalence func(x, y *Change) bool
-
-// WithEntryEquivalence configures the collection to only send updates when eq returns false for consecutive updates.
-func WithEntryEquivalence(eq EntryEquivalence) CollectionOption {
-	return func(c *Collection) {
-		c.eq = eq
-	}
-}
-
-// WithEntryMessageEquivalence is like WithEntryEquivalence but compares x.OldValue with y.NewValue.
-func WithEntryMessageEquivalence(eq cmp.Message) CollectionOption {
-	return WithEntryEquivalence(func(x, y *Change) bool {
-		if x == nil || y == nil {
-			return x == nil && y == nil
-		}
-		return eq(x.OldValue, y.NewValue)
-	})
-}
-
-// TODO: figure out a way to resolve this naming collision
-func WithClockCollection(clk clock.Clock) CollectionOption {
-	return func(collection *Collection) {
-		collection.clock = clk
-	}
-}
-
-// WithRandom sets the source of randomness used for generating IDs.
-// The Collection will not call Read on the rng concurrently.
-// If rng is nil, a new rand.Rand will be created and used.
-func WithRandom(rng io.Reader) CollectionOption {
-	return func(collection *Collection) {
-		if rng == nil {
-			rng = rand.New(rand.NewSource(rand.Int63()))
-		}
-		collection.rng = rng
-	}
 }

@@ -12,8 +12,8 @@ type Model struct {
 	metadata *resource.Value // of traits.Metadata
 }
 
-func NewModel(opts ...resource.ValueOption) *Model {
-	defaultOpts := []resource.ValueOption{resource.WithInitialValue(&traits.Metadata{})}
+func NewModel(opts ...resource.Option) *Model {
+	defaultOpts := []resource.Option{resource.WithInitialValue(&traits.Metadata{})}
 	return &Model{
 		metadata: resource.NewValue(append(defaultOpts, opts...)...),
 	}

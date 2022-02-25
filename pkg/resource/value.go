@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/olebedev/emitter"
-	"github.com/smart-core-os/sc-golang/pkg/cmp"
 	"github.com/smart-core-os/sc-golang/pkg/masks"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -17,23 +16,22 @@ import (
 // Value represents a simple state field in an object. Think Temperature or Volume or Occupancy. Use a Value to
 // gain thread safe reads/writes that also support FieldMasks and update notifications.
 type Value struct {
-	writableFields *fieldmaskpb.FieldMask
+	*config
 
 	mu    sync.RWMutex
 	value proto.Message
 
 	bus *emitter.Emitter
-
-	eq ValueEquivalence
 }
 
-func NewValue(opts ...ValueOption) *Value {
+func NewValue(opts ...Option) *Value {
+	c := computeConfig(opts...)
 	res := &Value{
-		bus: &emitter.Emitter{},
+		config: c,
+		bus:    &emitter.Emitter{},
 	}
-	for _, opt := range opts {
-		opt(res)
-	}
+	res.value = c.initialValue
+	c.initialValue = nil // clear so it can be GC'd when the value changes
 	return res
 }
 
@@ -134,7 +132,7 @@ func (r *Value) Pull(ctx context.Context) (updates <-chan *ValueChange, done fun
 	typedEvents := make(chan *ValueChange)
 	go func() {
 		defer close(typedEvents)
-		var last *ValueChange
+		var last proto.Message
 		for {
 			select {
 			case <-ctx.Done():
@@ -144,10 +142,10 @@ func (r *Value) Pull(ctx context.Context) (updates <-chan *ValueChange, done fun
 					return
 				}
 				change := event.Args[0].(*ValueChange)
-				if r.eq != nil && r.eq(last, change) {
+				if r.equivalence != nil && r.equivalence.Compare(last, change.Value) {
 					continue
 				}
-				last = change
+				last = change.Value
 				select {
 				case <-ctx.Done():
 					return // give up sending
@@ -165,50 +163,6 @@ func (r *Value) Pull(ctx context.Context) (updates <-chan *ValueChange, done fun
 type ValueChange struct {
 	Value      proto.Message
 	ChangeTime *timestamppb.Timestamp
-}
-
-// ValueOption allows configuration of the resource
-type ValueOption func(resource *Value)
-
-// WithInitialValue sets the initial value of a Value
-func WithInitialValue(v proto.Message) ValueOption {
-	return func(r *Value) {
-		r.value = v
-	}
-}
-
-// ValueEquivalence returns true if x and y are equivalent.
-// Unlike proto.Equal, this may return true if the two messages are close enough, say 0.001 and 0.002 return true.
-type ValueEquivalence func(x, y *ValueChange) bool
-
-// WithValueEquivalence configures how adjacent messages sent over a Pull stream are compared for equivalent.
-// Subsequent equivalent messages will not be sent.
-func WithValueEquivalence(equivalence ValueEquivalence) ValueOption {
-	return func(r *Value) {
-		r.eq = equivalence
-	}
-}
-
-// WithValueMessageEquivalence is like WithValueEquivalence and applies eq to ValueOption.Value.
-func WithValueMessageEquivalence(eq cmp.Message) ValueOption {
-	return WithValueEquivalence(func(x, y *ValueChange) bool {
-		if x == nil || y == nil {
-			return x == nil && y == nil
-		}
-		return eq(x.Value, y.Value)
-	})
-}
-
-// WithWritablePaths sets the fields that can be modified via Update calls.
-// Will panic if paths are not valid according to the message type.
-func WithWritablePaths(m proto.Message, paths ...string) ValueOption {
-	mask, err := fieldmaskpb.New(m, paths...)
-	if err != nil {
-		panic(err)
-	}
-	return func(r *Value) {
-		r.writableFields = mask
-	}
 }
 
 type getRequest struct {

@@ -23,7 +23,7 @@ func NewModel() *Model {
 		cmp.DurationValueWithin(1*time.Second),
 	)
 	return &Model{
-		energyLevel: resource.NewValue(resource.WithInitialValue(&traits.EnergyLevel{}), resource.WithValueMessageEquivalence(eq)),
+		energyLevel: resource.NewValue(resource.WithInitialValue(&traits.EnergyLevel{}), resource.WithMessageEquivalence(eq)),
 	}
 }
 

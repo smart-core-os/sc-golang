@@ -7,7 +7,6 @@ import (
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-golang/pkg/cmp"
 	"github.com/smart-core-os/sc-golang/pkg/resource"
-	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
 type Model struct {
@@ -43,10 +42,10 @@ type PullEnergyLevelChange struct {
 	ChangeTime time.Time
 }
 
-func (m *Model) PullEnergyLevel(ctx context.Context, mask *fieldmaskpb.FieldMask) <-chan PullEnergyLevelChange {
+func (m *Model) PullEnergyLevel(ctx context.Context, opts ...resource.ReadOption) <-chan PullEnergyLevelChange {
 	send := make(chan PullEnergyLevelChange)
 
-	recv := m.energyLevel.Pull(ctx, resource.WithReadMask(mask))
+	recv := m.energyLevel.Pull(ctx, opts...)
 	go func() {
 		for change := range recv {
 			demand := change.Value.(*traits.EnergyLevel)

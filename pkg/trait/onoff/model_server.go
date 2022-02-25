@@ -34,7 +34,7 @@ func (s *ModelServer) UpdateOnOff(_ context.Context, request *traits.UpdateOnOff
 }
 
 func (s *ModelServer) PullOnOff(request *traits.PullOnOffRequest, server traits.OnOffApi_PullOnOffServer) error {
-	for update := range s.model.PullOnOff(server.Context(), nil) {
+	for update := range s.model.PullOnOff(server.Context()) {
 		change := &traits.PullOnOffResponse_Change{
 			Name:       request.Name,
 			ChangeTime: timestamppb.New(update.ChangeTime),

@@ -58,26 +58,7 @@ func (r *Value) set(value proto.Message, request writeRequest) (proto.Message, e
 		func() (proto.Message, error) {
 			return r.value, nil
 		},
-		func(old, new proto.Message) error {
-			if request.expectedValue != nil {
-				if !proto.Equal(old, request.expectedValue) {
-					return ExpectedValuePreconditionFailed
-				}
-			}
-
-			if request.interceptBefore != nil {
-				// convert the value from relative to absolute values
-				request.interceptBefore(old, value)
-			}
-
-			writer.Merge(new, value)
-
-			if request.interceptAfter != nil {
-				// apply any after change changes, like setting update times
-				request.interceptAfter(old, new)
-			}
-			return nil
-		},
+		request.changeFn(writer, value),
 		func(message proto.Message) {
 			r.value = message
 		},

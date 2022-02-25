@@ -51,15 +51,16 @@ func (m *Model) RemoveChildByName(name string) (child *traits.Child, existed boo
 // If no child with the given name is already know, one will be created.
 // If a child is already known with the given name, its traits will be unioned with the given trait names.
 func (m *Model) AddChildTrait(name string, traitName ...trait.Name) (child *traits.Child, created bool) {
-	msg, err := m.children.UpdateOrCreate(name, func(old, new proto.Message) error {
-		oldChild := old.(*traits.Child)
-		newChild := new.(*traits.Child)
-		newChild.Traits = traitUnion(oldChild.Traits, traitName...)
-		return nil
-	}, func(id string) proto.Message {
-		created = true
-		return &traits.Child{Name: id}
-	})
+	msg, err := m.children.Update(name, &traits.Child{Name: name},
+		resource.WithCreateIfAbsent(),
+		resource.WithCreatedCallback(func() {
+			created = true
+		}),
+		resource.InterceptBefore(func(old, value proto.Message) {
+			oldChild := old.(*traits.Child)
+			newChild := value.(*traits.Child)
+			newChild.Traits = traitUnion(oldChild.Traits, traitName...)
+		}))
 	if err != nil {
 		panic(err) // shouldn't happen
 	}

@@ -9,13 +9,11 @@ import (
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-api/go/types"
 	"github.com/smart-core-os/sc-golang/pkg/cmp"
-	"github.com/smart-core-os/sc-golang/pkg/masks"
 	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"github.com/smart-core-os/sc-golang/pkg/time/clock"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -79,10 +77,10 @@ func (m *Model) Demand(opts ...resource.ReadOption) *traits.ElectricDemand {
 // PullDemand subscribes to changes to the electricity demand on this device.
 // The returned channel will be closed when done is called. You must call done after you are finished with the channel
 // to prevents leaks and/or deadlocks. The channel will also be closed if ctx is cancelled.
-func (m *Model) PullDemand(ctx context.Context, mask *fieldmaskpb.FieldMask) <-chan PullDemandChange {
+func (m *Model) PullDemand(ctx context.Context, opts ...resource.ReadOption) <-chan PullDemandChange {
 	send := make(chan PullDemandChange)
 
-	recv := m.demand.Pull(ctx, resource.WithReadMask(mask))
+	recv := m.demand.Pull(ctx, opts...)
 	go func() {
 		defer close(send)
 		for change := range recv {
@@ -122,10 +120,10 @@ func (m *Model) ActiveMode(opts ...resource.ReadOption) *traits.ElectricMode {
 // ChangeActiveMode), the channel will send a notification.
 // The returned channel will be closed when done is called. You must call done after you are finished with the channel
 // to prevents leaks and/or deadlocks. The channel will also be closed if ctx is cancelled.
-func (m *Model) PullActiveMode(ctx context.Context, mask *fieldmaskpb.FieldMask) <-chan PullActiveModeChange {
+func (m *Model) PullActiveMode(ctx context.Context, opts ...resource.ReadOption) <-chan PullActiveModeChange {
 	send := make(chan PullActiveModeChange)
 
-	recv := m.activeMode.Pull(ctx, resource.WithReadMask(mask))
+	recv := m.activeMode.Pull(ctx, opts...)
 	go func() {
 		defer close(send)
 		for change := range recv {
@@ -220,8 +218,8 @@ func (m *Model) findMode(id string) (*traits.ElectricMode, bool) {
 }
 
 // Modes returns a list of all registered modes, sorted by their ID.
-func (m *Model) Modes(mask *fieldmaskpb.FieldMask) []*traits.ElectricMode {
-	entries := m.modes.List(resource.WithReadMask(mask))
+func (m *Model) Modes(opts ...resource.ReadOption) []*traits.ElectricMode {
+	entries := m.modes.List(opts...)
 
 	modes := make([]*traits.ElectricMode, len(entries))
 	for i, entry := range entries {
@@ -319,24 +317,14 @@ func (m *Model) deleteMode(id string) error {
 // UpdateMode will modify one of the modes stored in this device.
 // The mode to be modified is specified by mode.Id, which must be set.
 // Fields to be modified can be selected using mask - to modify all fields, pass a nil mask.
-func (m *Model) UpdateMode(mode *traits.ElectricMode, mask *fieldmaskpb.FieldMask) (*traits.ElectricMode, error) {
+func (m *Model) UpdateMode(mode *traits.ElectricMode, opts ...resource.WriteOption) (*traits.ElectricMode, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.updateMode(mode, mask)
+	return m.updateMode(mode, opts...)
 }
 
-func (m *Model) updateMode(mode *traits.ElectricMode, mask *fieldmaskpb.FieldMask) (*traits.ElectricMode, error) {
-	msg, err := m.modes.Update(mode.Id, func(oldMsg, updatedMsg proto.Message) error {
-		writer := masks.NewFieldUpdater(
-			masks.WithUpdateMask(mask),
-		)
-		if err := writer.Validate(updatedMsg); err != nil {
-			return err
-		}
-
-		writer.Merge(updatedMsg, mode)
-		return nil
-	})
+func (m *Model) updateMode(mode *traits.ElectricMode, opts ...resource.WriteOption) (*traits.ElectricMode, error) {
+	msg, err := m.modes.Update(mode.Id, mode, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -347,9 +335,9 @@ func (m *Model) updateMode(mode *traits.ElectricMode, mask *fieldmaskpb.FieldMas
 // a PullModesChange describing the event down the changes channel.
 // The returned channel will be closed when done is called. You must call done after you are finished with the channel
 // to prevents leaks and/or deadlocks. The channel will also be closed if ctx is cancelled.
-func (m *Model) PullModes(ctx context.Context, mask *fieldmaskpb.FieldMask) <-chan PullModesChange {
+func (m *Model) PullModes(ctx context.Context, opts ...resource.ReadOption) <-chan PullModesChange {
 	send := make(chan PullModesChange)
-	recv := m.modes.Pull(ctx, resource.WithReadMask(mask))
+	recv := m.modes.Pull(ctx, opts...)
 
 	go func() {
 		defer close(send)

@@ -175,6 +175,9 @@ type writeRequest struct {
 
 	nilWritableFields  bool
 	moreWritableFields *fieldmaskpb.FieldMask
+
+	createIfAbsent  bool
+	createdCallback func()
 }
 
 func (wr writeRequest) fieldUpdater(writableFields *fieldmaskpb.FieldMask) *masks.FieldUpdater {
@@ -192,6 +195,29 @@ func (wr writeRequest) fieldUpdater(writableFields *fieldmaskpb.FieldMask) *mask
 		}
 	}
 	return masks.NewFieldUpdater(opts...)
+}
+
+func (wr writeRequest) changeFn(writer *masks.FieldUpdater, value proto.Message) ChangeFn {
+	return func(old, new proto.Message) error {
+		if wr.expectedValue != nil {
+			if !proto.Equal(old, wr.expectedValue) {
+				return ExpectedValuePreconditionFailed
+			}
+		}
+
+		if wr.interceptBefore != nil {
+			// allow callers to update the value based on the old message
+			wr.interceptBefore(old, value)
+		}
+
+		writer.Merge(new, value)
+
+		if wr.interceptAfter != nil {
+			// apply any after change changes, like setting update times
+			wr.interceptAfter(old, new)
+		}
+		return nil
+	}
 }
 
 type writeOptionFunc func(wr *writeRequest)
@@ -297,5 +323,23 @@ var ExpectedValuePreconditionFailed = status.Errorf(codes.FailedPrecondition, "c
 func WithExpectedValue(expectedValue proto.Message) WriteOption {
 	return writeOptionFunc(func(request *writeRequest) {
 		request.expectedValue = expectedValue
+	})
+}
+
+// WithCreateIfAbsent instructs the write to create an entry if none already exist.
+// Applicable only to Collection updates.
+// When specified any interceptors will receive a zero old value of the collection item type.
+func WithCreateIfAbsent() WriteOption {
+	return writeOptionFunc(func(wr *writeRequest) {
+		wr.createIfAbsent = true
+	})
+}
+
+// WithCreatedCallback calls cb if during an update, a new value is created.
+// Applicable only to Collection updates.
+// Use the response from the Update call to get the actual value.
+func WithCreatedCallback(cb func()) WriteOption {
+	return writeOptionFunc(func(wr *writeRequest) {
+		wr.createdCallback = cb
 	})
 }

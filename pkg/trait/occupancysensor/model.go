@@ -4,10 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/smart-core-os/sc-golang/pkg/resource"
-	"google.golang.org/protobuf/types/known/fieldmaskpb"
-
 	"github.com/smart-core-os/sc-api/go/traits"
+	"github.com/smart-core-os/sc-golang/pkg/resource"
 )
 
 type Model struct {
@@ -33,10 +31,10 @@ func (m *Model) GetOccupancy(opts ...resource.ReadOption) (*traits.Occupancy, er
 	return m.occupancy.Get(opts...).(*traits.Occupancy), nil
 }
 
-func (m *Model) PullOccupancy(ctx context.Context, mask *fieldmaskpb.FieldMask) <-chan PullOccupancyChange {
+func (m *Model) PullOccupancy(ctx context.Context, opts ...resource.ReadOption) <-chan PullOccupancyChange {
 	send := make(chan PullOccupancyChange)
 
-	recv := m.occupancy.Pull(ctx, resource.WithReadMask(mask))
+	recv := m.occupancy.Pull(ctx, opts...)
 	go func() {
 		for change := range recv {
 			value := change.Value.(*traits.Occupancy)

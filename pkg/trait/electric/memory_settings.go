@@ -33,7 +33,7 @@ func (s *ModelServer) UpdateMode(_ context.Context, request *UpdateModeRequest) 
 		return nil, status.Error(codes.InvalidArgument, "id is required")
 	}
 
-	return s.model.UpdateMode(request.Mode, request.UpdateMask)
+	return s.model.UpdateMode(request.Mode, resource.WithUpdateMask(request.UpdateMask))
 }
 
 func (s *ModelServer) DeleteMode(_ context.Context, request *DeleteModeRequest) (*emptypb.Empty, error) {

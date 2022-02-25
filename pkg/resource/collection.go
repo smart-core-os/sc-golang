@@ -122,36 +122,36 @@ func (c *Collection) add(id string, create CreateFn) (proto.Message, string, err
 	return body, id, nil
 }
 
-// Update allows the given ChangeFn to update the item with the given id.
-func (c *Collection) Update(id string, fn ChangeFn) (proto.Message, error) {
-	return c.UpdateOrCreate(id, fn, func(id string) proto.Message {
-		return nil // nil means do not create, and results in NOT_FOUND error
-	})
-}
+func (c *Collection) Update(id string, msg proto.Message, opts ...WriteOption) (proto.Message, error) {
+	writeRequest := computeWriteConfig(opts...)
+	writer := writeRequest.fieldUpdater(c.writableFields)
+	if err := writer.Validate(msg); err != nil {
+		return nil, err
+	}
 
-// UpdateOrCreate allows the given ChangeFn to update the item with the given id, creating a new item if needed.
-// If CreateFn returns nil, and no existing value with id, an error representing NotFound will be returned.
-func (c *Collection) UpdateOrCreate(id string, change ChangeFn, create CreateFn) (proto.Message, error) {
-	var created proto.Message // so multiple gets return the same instance
+	var created proto.Message // during create, this is returned by GetFn so concurrent reference checks pass
 	oldValue, newValue, err := GetAndUpdate(
 		&c.mu,
-		func() (proto.Message, error) {
+		func() (item proto.Message, err error) {
 			if created != nil {
 				return created, nil
 			}
 			val, exists := c.byId[id]
-			if !exists {
-				created = create(id)
-				if created == nil {
-					return nil, status.Errorf(codes.NotFound, "id %v not found", id)
-				}
-				return created, nil
+			if exists {
+				return val.body, nil
 			}
-			return val.body, nil
+			if !writeRequest.createIfAbsent {
+				return nil, status.Errorf(codes.NotFound, "id %v not found", id)
+			}
+			created = msg.ProtoReflect().New().Interface()
+			if writeRequest.createdCallback != nil {
+				writeRequest.createdCallback()
+			}
+			return created, nil
 		},
-		change,
-		func(message proto.Message) {
-			c.byId[id] = &item{body: message}
+		writeRequest.changeFn(writer, msg),
+		func(msg proto.Message) {
+			c.byId[id] = &item{body: msg}
 		})
 
 	if err != nil {

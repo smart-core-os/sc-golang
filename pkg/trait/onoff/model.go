@@ -6,7 +6,6 @@ import (
 
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-golang/pkg/resource"
-	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
 type Model struct {
@@ -33,10 +32,10 @@ func (m *Model) UpdateOnOff(value *traits.OnOff, opts ...resource.WriteOption) (
 	return res.(*traits.OnOff), nil
 }
 
-func (m *Model) PullOnOff(ctx context.Context, mask *fieldmaskpb.FieldMask) <-chan PullOnOffChange {
+func (m *Model) PullOnOff(ctx context.Context, opts ...resource.ReadOption) <-chan PullOnOffChange {
 	send := make(chan PullOnOffChange)
 
-	recv := m.onOff.Pull(ctx, resource.WithReadMask(mask))
+	recv := m.onOff.Pull(ctx, opts...)
 	go func() {
 		for change := range recv {
 			value := change.Value.(*traits.OnOff)

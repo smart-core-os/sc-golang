@@ -33,7 +33,7 @@ func (s *ModelServer) GetOccupancy(_ context.Context, _ *traits.GetOccupancyRequ
 }
 
 func (s *ModelServer) PullOccupancy(request *traits.PullOccupancyRequest, server traits.OccupancySensorApi_PullOccupancyServer) error {
-	for update := range s.model.PullOccupancy(server.Context(), nil) {
+	for update := range s.model.PullOccupancy(server.Context()) {
 		change := &traits.PullOccupancyResponse_Change{
 			Name:       request.Name,
 			ChangeTime: timestamppb.New(update.ChangeTime),

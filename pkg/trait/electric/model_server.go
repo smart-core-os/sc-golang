@@ -42,7 +42,7 @@ func (s *ModelServer) GetDemand(_ context.Context, request *traits.GetDemandRequ
 }
 
 func (s *ModelServer) PullDemand(request *traits.PullDemandRequest, server traits.ElectricApi_PullDemandServer) error {
-	for update := range s.model.PullDemand(server.Context(), request.ReadMask) {
+	for update := range s.model.PullDemand(server.Context(), resource.WithReadMask(request.ReadMask)) {
 		change := &traits.PullDemandResponse_Change{
 			Name:       request.Name,
 			ChangeTime: timestamppb.New(update.ChangeTime),
@@ -79,7 +79,7 @@ func (s *ModelServer) ClearActiveMode(_ context.Context, _ *traits.ClearActiveMo
 }
 
 func (s *ModelServer) PullActiveMode(request *traits.PullActiveModeRequest, server traits.ElectricApi_PullActiveModeServer) error {
-	for event := range s.model.PullActiveMode(server.Context(), request.ReadMask) {
+	for event := range s.model.PullActiveMode(server.Context(), resource.WithReadMask(request.ReadMask)) {
 		change := &traits.PullActiveModeResponse_Change{
 			Name:       request.Name,
 			ActiveMode: event.ActiveMode,
@@ -105,7 +105,7 @@ func (s *ModelServer) ListModes(_ context.Context, request *traits.ListModesRequ
 	lastKey := pageToken.GetLastResourceName() // the key() of the last item we sent
 	pageSize := capPageSize(int(request.GetPageSize()))
 
-	sortedModes := s.model.Modes(request.ReadMask)
+	sortedModes := s.model.Modes(resource.WithReadMask(request.ReadMask))
 	nextIndex := 0
 	if lastKey != "" {
 		nextIndex = sort.Search(len(sortedModes), func(i int) bool {
@@ -136,29 +136,20 @@ func (s *ModelServer) ListModes(_ context.Context, request *traits.ListModesRequ
 }
 
 func (s *ModelServer) PullModes(request *traits.PullModesRequest, server traits.ElectricApi_PullModesServer) error {
-	ctx, done := context.WithCancel(server.Context())
-	changes := s.model.PullModes(ctx, request.ReadMask)
-	defer done()
+	for change := range s.model.PullModes(server.Context(), resource.WithReadMask(request.ReadMask)) {
+		err := server.Send(&traits.PullModesResponse{Changes: []*traits.PullModesResponse_Change{
+			{
+				Name:       request.Name,
+				Type:       change.Type,
+				NewValue:   change.NewValue,
+				OldValue:   change.OldValue,
+				ChangeTime: timestamppb.New(change.ChangeTime),
+			},
+		}})
 
-	// watch for changes to the modes list and emit when one matches our query
-	for {
-		select {
-		case <-ctx.Done():
-			return status.FromContextError(ctx.Err()).Err()
-		case change := <-changes:
-			err := server.Send(&traits.PullModesResponse{Changes: []*traits.PullModesResponse_Change{
-				{
-					Name:       request.Name,
-					Type:       change.Type,
-					NewValue:   change.NewValue,
-					OldValue:   change.OldValue,
-					ChangeTime: timestamppb.New(change.ChangeTime),
-				},
-			}})
-
-			if err != nil {
-				return err
-			}
+		if err != nil {
+			return err
 		}
 	}
+	return server.Context().Err()
 }

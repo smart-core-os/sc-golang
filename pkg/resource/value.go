@@ -35,21 +35,14 @@ func NewValue(opts ...Option) *Value {
 	return res
 }
 
-func (r *Value) Get(opts ...GetOption) proto.Message {
-	req := &getRequest{}
-	for _, opt := range opts {
-		opt(req)
-	}
-	return r.get(req)
+func (r *Value) Get(opts ...ReadOption) proto.Message {
+	return r.get(computeReadConfig(opts...))
 }
 
-func (r *Value) get(req *getRequest) proto.Message {
-	filter := masks.NewResponseFilter(masks.WithFieldMask(req.fields))
-	// todo: if err := filter.Validate(); err != nil { return nil, err }
-
+func (r *Value) get(req *readRequest) proto.Message {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return filter.FilterClone(r.value)
+	return req.FilterClone(r.value)
 }
 
 // Set updates the current value of this Value with the given value.
@@ -166,17 +159,6 @@ func (r *Value) Pull(ctx context.Context) <-chan *ValueChange {
 type ValueChange struct {
 	Value      proto.Message
 	ChangeTime *timestamppb.Timestamp
-}
-
-type getRequest struct {
-	fields *fieldmaskpb.FieldMask
-}
-type GetOption func(*getRequest)
-
-func WithGetMask(m *fieldmaskpb.FieldMask) GetOption {
-	return func(request *getRequest) {
-		request.fields = m
-	}
 }
 
 type UpdateInterceptor func(old, new proto.Message)

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/smart-core-os/sc-golang/pkg/cmp"
+	"github.com/smart-core-os/sc-golang/pkg/masks"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
@@ -92,4 +93,54 @@ type optionFunc func(s *config)
 
 func (f optionFunc) apply(s *config) {
 	f(s)
+}
+
+// ReadOption configures settings for reading data.
+type ReadOption interface {
+	apply(rr *readRequest)
+}
+
+// WithReadMask configures the properties that will be filled in the response value.
+func WithReadMask(mask *fieldmaskpb.FieldMask) ReadOption {
+	return readOptionFunc(func(rr *readRequest) {
+		rr.readMask = mask
+	})
+}
+
+// WithReadPaths configures the properties that will be filled in the response value.
+// Panics if paths aren't part of m.
+func WithReadPaths(m proto.Message, paths ...string) ReadOption {
+	mask, err := fieldmaskpb.New(m, paths...)
+	if err != nil {
+		panic(err)
+	}
+	return WithReadMask(mask)
+}
+
+func computeReadConfig(opts ...ReadOption) *readRequest {
+	rr := &readRequest{}
+	for _, opt := range opts {
+		opt.apply(rr)
+	}
+	return rr
+}
+
+type readRequest struct {
+	readMask *fieldmaskpb.FieldMask
+}
+
+// ResponseFilter returns a masks.ResponseFilter configured using this readRequest properties.
+func (rr *readRequest) ResponseFilter() *masks.ResponseFilter {
+	return masks.NewResponseFilter(masks.WithFieldMask(rr.readMask))
+}
+
+// FilterClone in the equivalent of rr.ResponseFilter().FilterClone(m).
+func (rr *readRequest) FilterClone(m proto.Message) proto.Message {
+	return rr.ResponseFilter().FilterClone(m)
+}
+
+type readOptionFunc func(rr *readRequest)
+
+func (r readOptionFunc) apply(rr *readRequest) {
+	r(rr)
 }

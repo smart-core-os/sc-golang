@@ -36,7 +36,7 @@ func (s *ModelServer) Register(server *grpc.Server) {
 }
 
 func (s *ModelServer) GetEnergyLevel(_ context.Context, request *traits.GetEnergyLevelRequest) (*traits.EnergyLevel, error) {
-	return s.model.GetEnergyLevel(resource.WithGetMask(request.GetFields()))
+	return s.model.GetEnergyLevel(resource.WithReadMask(request.GetFields()))
 }
 
 func (s *ModelServer) PullEnergyLevel(request *traits.PullEnergyLevelRequest, server traits.EnergyStorageApi_PullEnergyLevelServer) error {

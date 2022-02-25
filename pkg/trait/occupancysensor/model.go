@@ -30,7 +30,7 @@ func (m *Model) SetOccupancy(occupancy *traits.Occupancy, opts ...resource.Updat
 	return res.(*traits.Occupancy), nil
 }
 
-func (m *Model) GetOccupancy(opts ...resource.GetOption) (*traits.Occupancy, error) {
+func (m *Model) GetOccupancy(opts ...resource.ReadOption) (*traits.Occupancy, error) {
 	return m.occupancy.Get(opts...).(*traits.Occupancy), nil
 }
 

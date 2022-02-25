@@ -19,7 +19,7 @@ func NewModel(opts ...resource.Option) *Model {
 	}
 }
 
-func (m *Model) GetMetadata(opts ...resource.GetOption) (*traits.Metadata, error) {
+func (m *Model) GetMetadata(opts ...resource.ReadOption) (*traits.Metadata, error) {
 	res := m.metadata.Get(opts...)
 	return res.(*traits.Metadata), nil
 }

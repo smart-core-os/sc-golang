@@ -30,7 +30,7 @@ func (s *ModelServer) Register(server *grpc.Server) {
 }
 
 func (s *ModelServer) GetMetadata(_ context.Context, request *traits.GetMetadataRequest) (*traits.Metadata, error) {
-	return s.model.GetMetadata(resource.WithGetMask(request.ReadMask))
+	return s.model.GetMetadata(resource.WithReadMask(request.ReadMask))
 }
 
 func (s *ModelServer) PullMetadata(request *traits.PullMetadataRequest, server traits.MetadataApi_PullMetadataServer) error {

@@ -70,8 +70,8 @@ func NewModel(clk clock.Clock) *Model {
 }
 
 // Demand gets the demand stored in this Model.
-// The fields returned can be filtered by passing resource.WithGetMask.
-func (m *Model) Demand(opts ...resource.GetOption) *traits.ElectricDemand {
+// The fields returned can be filtered by passing resource.WithReadMask.
+func (m *Model) Demand(opts ...resource.ReadOption) *traits.ElectricDemand {
 	return m.demand.Get(opts...).(*traits.ElectricDemand)
 }
 
@@ -118,8 +118,8 @@ func (m *Model) UpdateDemand(update *traits.ElectricDemand, opts ...resource.Upd
 // When the Model is first created, its active mode is a dummy mode with all-blank fields. After it is changed for
 // the first time, it will always correspond to one of the modes that can be listed by Modes.
 // The StartTime fields will reflect when the mode became active.
-// The fields returned can be filtered using resource.WithGetMask
-func (m *Model) ActiveMode(opts ...resource.GetOption) *traits.ElectricMode {
+// The fields returned can be filtered using resource.WithReadMask
+func (m *Model) ActiveMode(opts ...resource.ReadOption) *traits.ElectricMode {
 	return m.activeMode.Get(opts...).(*traits.ElectricMode)
 }
 
@@ -233,13 +233,11 @@ func (m *Model) findMode(id string) (*traits.ElectricMode, bool) {
 
 // Modes returns a list of all registered modes, sorted by their ID.
 func (m *Model) Modes(mask *fieldmaskpb.FieldMask) []*traits.ElectricMode {
-	entries := m.modes.List()
-	filter := masks.NewResponseFilter(masks.WithFieldMask(mask))
+	entries := m.modes.List(resource.WithReadMask(mask))
 
 	modes := make([]*traits.ElectricMode, len(entries))
 	for i, entry := range entries {
-		mode := filter.FilterClone(entry)
-		modes[i] = mode.(*traits.ElectricMode)
+		modes[i] = entry.(*traits.ElectricMode)
 	}
 	return modes
 }

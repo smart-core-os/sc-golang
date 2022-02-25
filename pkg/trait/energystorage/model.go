@@ -27,7 +27,7 @@ func NewModel() *Model {
 	}
 }
 
-func (m *Model) GetEnergyLevel(opts ...resource.GetOption) (*traits.EnergyLevel, error) {
+func (m *Model) GetEnergyLevel(opts ...resource.ReadOption) (*traits.EnergyLevel, error) {
 	res := m.energyLevel.Get(opts...)
 	return res.(*traits.EnergyLevel), nil
 }

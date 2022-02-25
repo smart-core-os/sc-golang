@@ -22,7 +22,7 @@ func NewModel(initialState traits.OnOff_State) *Model {
 	}
 }
 
-func (m *Model) GetOnOff(opts ...resource.GetOption) (*traits.OnOff, error) {
+func (m *Model) GetOnOff(opts ...resource.ReadOption) (*traits.OnOff, error) {
 	return m.onOff.Get(opts...).(*traits.OnOff), nil
 }
 

@@ -35,7 +35,9 @@ func NewCollection(options ...Option) *Collection {
 }
 
 // Get will find the entry with the given ID. If no such entry exists, returns false.
-func (c *Collection) Get(id string) (proto.Message, bool) {
+func (c *Collection) Get(id string, opts ...ReadOption) (proto.Message, bool) {
+	readConfig := computeReadConfig(opts...)
+
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -44,11 +46,13 @@ func (c *Collection) Get(id string) (proto.Message, bool) {
 		return nil, false
 	}
 
-	return entry.body, true
+	return readConfig.FilterClone(entry.body), true
 }
 
 // List returns a list of all the entries, sorted by their ID.
-func (c *Collection) List() []proto.Message {
+func (c *Collection) List(opts ...ReadOption) []proto.Message {
+	readConfig := computeReadConfig(opts...)
+
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -67,8 +71,9 @@ func (c *Collection) List() []proto.Message {
 	})
 
 	result := make([]proto.Message, 0, len(tmp))
+	filter := readConfig.ResponseFilter()
 	for _, e := range tmp {
-		result = append(result, e.body)
+		result = append(result, filter.FilterClone(e.body))
 	}
 	return result
 }

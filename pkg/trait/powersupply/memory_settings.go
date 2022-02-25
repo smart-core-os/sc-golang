@@ -17,7 +17,7 @@ func (s *MemoryDevice) readSettings() *MemorySettings {
 }
 
 func (s *MemoryDevice) GetSettings(_ context.Context, req *GetMemorySettingsReq) (*MemorySettings, error) {
-	return s.settings.Get(resource.WithGetMask(req.Fields)).(*MemorySettings), nil
+	return s.settings.Get(resource.WithReadMask(req.Fields)).(*MemorySettings), nil
 }
 
 func (s *MemoryDevice) UpdateSettings(_ context.Context, req *UpdateMemorySettingsReq) (*MemorySettings, error) {

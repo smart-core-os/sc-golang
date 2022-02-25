@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/smart-core-os/sc-golang/internal/th"
-	"github.com/smart-core-os/sc-golang/pkg/memory"
+	"github.com/smart-core-os/sc-golang/pkg/resource"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/smart-core-os/sc-api/go/traits"
@@ -18,9 +18,9 @@ func TestMemoryDevice_UpdateBrightness(t *testing.T) {
 	t.Run("tween", func(t *testing.T) {
 		api := NewMemoryDevice()
 		api.brightnessTick = 10 * time.Millisecond // give us a chance to see some updates
-		update, done := api.brightness.OnUpdate(th.Ctx)
+		update, done := api.brightness.Pull(th.Ctx)
 		t.Cleanup(done)
-		var updates []*memory.ResourceChange
+		var updates []*resource.ValueChange
 		go func() {
 			for change := range update {
 				updates = append(updates, change)
@@ -96,11 +96,11 @@ func TestMemoryDevice_UpdateBrightness(t *testing.T) {
 	t.Run("tween interrupted", func(t *testing.T) {
 		api := NewMemoryDevice()
 		api.brightnessTick = 10 * time.Millisecond // give us a chance to see some updates
-		update, done := api.brightness.OnUpdate(th.Ctx)
+		update, done := api.brightness.Pull(th.Ctx)
 		t.Cleanup(done)
 
 		tweenStarted := make(chan struct{}, 3)
-		var updates []*memory.ResourceChange
+		var updates []*resource.ValueChange
 		go func() {
 			for change := range update {
 				updates = append(updates, change)

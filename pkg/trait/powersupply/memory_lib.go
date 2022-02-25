@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/smart-core-os/sc-api/go/types"
-	"github.com/smart-core-os/sc-golang/pkg/memory"
+	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/smart-core-os/sc-api/go/traits"
@@ -18,15 +18,15 @@ import (
 )
 
 func (s *MemoryDevice) setNotified(notified float32) {
-	_, _ = s.powerCapacity.Set(&traits.PowerCapacity{Notified: notified}, memory.WithUpdatePaths("notified"))
+	_, _ = s.powerCapacity.Set(&traits.PowerCapacity{Notified: notified}, resource.WithUpdatePaths("notified"))
 }
 
 func (s *MemoryDevice) addNotified(notified float32) {
 	log.Printf("addNotified(%v)", notified)
 	_, _ = s.powerCapacity.Set(
 		&traits.PowerCapacity{Notified: notified},
-		memory.WithUpdatePaths("notified"),
-		memory.InterceptBefore(func(old, change proto.Message) {
+		resource.WithUpdatePaths("notified"),
+		resource.InterceptBefore(func(old, change proto.Message) {
 			val := old.(*traits.PowerCapacity)
 			delta := change.(*traits.PowerCapacity)
 			delta.Notified += val.Notified
@@ -62,7 +62,7 @@ func (s *MemoryDevice) normaliseRampDuration(n *traits.DrawNotification) {
 // generateId assigns a unique id to the given DrawNotification.
 // s.notificationsByIdMu must be locked before calling.
 func (s *MemoryDevice) generateId(n *traits.DrawNotification) error {
-	id, err := memory.GenerateUniqueId(s.Rng, func(candidate string) bool {
+	id, err := resource.GenerateUniqueId(s.Rng, func(candidate string) bool {
 		_, ok := s.notificationsById[candidate]
 		return ok
 	})

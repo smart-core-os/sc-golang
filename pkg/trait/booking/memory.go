@@ -8,7 +8,7 @@ import (
 	"sync"
 	goTime "time"
 
-	"github.com/smart-core-os/sc-golang/pkg/memory"
+	"github.com/smart-core-os/sc-golang/pkg/resource"
 
 	"github.com/olebedev/emitter"
 	"github.com/smart-core-os/sc-api/go/traits"
@@ -117,7 +117,7 @@ func (b *MemoryDevice) CreateBooking(_ context.Context, request *traits.CreateBo
 		// try to generate a unique id
 		b.bookingsByIdMu.RLock()
 		var err error
-		id, err = memory.GenerateUniqueId(b.Rng, func(candidate string) bool {
+		id, err = resource.GenerateUniqueId(b.Rng, func(candidate string) bool {
 			_, ok := b.bookingsById[candidate]
 			return ok
 		})
@@ -235,7 +235,7 @@ func (b *MemoryDevice) PullBookings(request *traits.ListBookingsRequest, server 
 }
 
 func (b *MemoryDevice) applyChange(name string, id string, fn func(newBooking *traits.Booking) error) (*traits.Booking, error) {
-	oldValue, newValue, err := memory.GetAndUpdate(
+	oldValue, newValue, err := resource.GetAndUpdate(
 		&b.bookingsByIdMu,
 		func() (proto.Message, error) {
 			val, exists := b.bookingsById[id]

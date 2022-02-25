@@ -3,7 +3,7 @@ package speaker
 import (
 	"context"
 
-	"github.com/smart-core-os/sc-golang/pkg/memory"
+	"github.com/smart-core-os/sc-golang/pkg/resource"
 
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-api/go/types"
@@ -14,12 +14,12 @@ import (
 
 type MemoryDevice struct {
 	traits.UnimplementedSpeakerApiServer
-	volume *memory.Resource
+	volume *resource.Value
 }
 
 func NewMemoryDevice(initialState *types.AudioLevel) *MemoryDevice {
 	return &MemoryDevice{
-		volume: memory.NewResource(memory.WithInitialValue(initialState)),
+		volume: resource.NewValue(resource.WithInitialValue(initialState)),
 	}
 }
 
@@ -32,7 +32,7 @@ func (s *MemoryDevice) GetVolume(_ context.Context, _ *traits.GetSpeakerVolumeRe
 }
 
 func (s *MemoryDevice) UpdateVolume(_ context.Context, request *traits.UpdateSpeakerVolumeRequest) (*types.AudioLevel, error) {
-	newValue, err := s.volume.Set(request.Volume, memory.WithUpdateMask(request.UpdateMask), memory.InterceptBefore(func(old, change proto.Message) {
+	newValue, err := s.volume.Set(request.Volume, resource.WithUpdateMask(request.UpdateMask), resource.InterceptBefore(func(old, change proto.Message) {
 		if request.Delta {
 			val := old.(*types.AudioLevel)
 			delta := change.(*types.AudioLevel)
@@ -46,7 +46,7 @@ func (s *MemoryDevice) UpdateVolume(_ context.Context, request *traits.UpdateSpe
 }
 
 func (s *MemoryDevice) PullVolume(request *traits.PullSpeakerVolumeRequest, server traits.SpeakerApi_PullVolumeServer) error {
-	changes, done := s.volume.OnUpdate(server.Context())
+	changes, done := s.volume.Pull(server.Context())
 	defer done()
 
 	for {

@@ -3,7 +3,7 @@ package emergency
 import (
 	"context"
 
-	"github.com/smart-core-os/sc-golang/pkg/memory"
+	"github.com/smart-core-os/sc-golang/pkg/resource"
 
 	"github.com/smart-core-os/sc-api/go/traits"
 	"google.golang.org/grpc"
@@ -13,12 +13,12 @@ import (
 
 type MemoryDevice struct {
 	traits.UnimplementedEmergencyApiServer
-	state *memory.Resource
+	state *resource.Value
 }
 
 func NewMemoryDevice() *MemoryDevice {
 	return &MemoryDevice{
-		state: memory.NewResource(memory.WithInitialValue(InitialEmergency())),
+		state: resource.NewValue(resource.WithInitialValue(InitialEmergency())),
 	}
 }
 
@@ -38,7 +38,7 @@ func (t *MemoryDevice) GetEmergency(_ context.Context, _ *traits.GetEmergencyReq
 }
 
 func (t *MemoryDevice) UpdateEmergency(_ context.Context, request *traits.UpdateEmergencyRequest) (*traits.Emergency, error) {
-	update, err := t.state.Set(request.Emergency, memory.WithUpdateMask(request.UpdateMask), memory.InterceptAfter(func(old, new proto.Message) {
+	update, err := t.state.Set(request.Emergency, resource.WithUpdateMask(request.UpdateMask), resource.InterceptAfter(func(old, new proto.Message) {
 		// user server time if the level changed but the change time didn't
 		oldt, newt := old.(*traits.Emergency), new.(*traits.Emergency)
 		if newt.Level != oldt.Level && oldt.LevelChangeTime == newt.LevelChangeTime {
@@ -49,7 +49,7 @@ func (t *MemoryDevice) UpdateEmergency(_ context.Context, request *traits.Update
 }
 
 func (t *MemoryDevice) PullEmergency(request *traits.PullEmergencyRequest, server traits.EmergencyApi_PullEmergencyServer) error {
-	changes, done := t.state.OnUpdate(server.Context())
+	changes, done := t.state.Pull(server.Context())
 	defer done()
 
 	for {

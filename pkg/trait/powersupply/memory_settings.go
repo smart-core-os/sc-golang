@@ -5,7 +5,7 @@ package powersupply
 import (
 	"context"
 
-	"github.com/smart-core-os/sc-golang/pkg/memory"
+	"github.com/smart-core-os/sc-golang/pkg/resource"
 
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-golang/pkg/masks"
@@ -17,15 +17,15 @@ func (s *MemoryDevice) readSettings() *MemorySettings {
 }
 
 func (s *MemoryDevice) GetSettings(_ context.Context, req *GetMemorySettingsReq) (*MemorySettings, error) {
-	return s.settings.Get(memory.WithGetMask(req.Fields)).(*MemorySettings), nil
+	return s.settings.Get(resource.WithGetMask(req.Fields)).(*MemorySettings), nil
 }
 
 func (s *MemoryDevice) UpdateSettings(_ context.Context, req *UpdateMemorySettingsReq) (*MemorySettings, error) {
 	var oldSettings *MemorySettings
 	newVal, err := s.settings.Set(
 		req.Settings,
-		memory.WithUpdateMask(req.UpdateMask),
-		memory.InterceptAfter(func(old, new proto.Message) {
+		resource.WithUpdateMask(req.UpdateMask),
+		resource.InterceptAfter(func(old, new proto.Message) {
 			oldSettings = old.(*MemorySettings)
 		}),
 	)
@@ -41,7 +41,7 @@ func (s *MemoryDevice) UpdateSettings(_ context.Context, req *UpdateMemorySettin
 }
 
 func (s *MemoryDevice) PullSettings(req *PullMemorySettingsReq, server MemorySettingsApi_PullSettingsServer) error {
-	events, done := s.settings.OnUpdate(server.Context())
+	events, done := s.settings.Pull(server.Context())
 	defer done()
 
 	var lastSentMsg *MemorySettings
@@ -94,9 +94,9 @@ func (s *MemoryDevice) updateCapacityForSettingChange(oldSettings, newSettings *
 			Load:    &newSettings.Load,
 		}
 		_, err := s.powerCapacity.Set(&capacity,
-			memory.WithUpdatePaths(capacityUpdateFields...),
-			memory.WithMoreWritablePaths(capacityUpdateFields...),
-			memory.InterceptAfter(func(old, new proto.Message) {
+			resource.WithUpdatePaths(capacityUpdateFields...),
+			resource.WithMoreWritablePaths(capacityUpdateFields...),
+			resource.InterceptAfter(func(old, new proto.Message) {
 				newCapacity := new.(*traits.PowerCapacity)
 				adjustPowerCapacityForLoad(newCapacity, newSettings.Reserved)
 			}))

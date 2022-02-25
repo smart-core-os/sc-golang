@@ -12,7 +12,7 @@ import (
 	"github.com/olebedev/emitter"
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-api/go/types"
-	"github.com/smart-core-os/sc-golang/pkg/memory"
+	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -26,9 +26,9 @@ type MemoryDevice struct {
 	traits.UnimplementedPowerSupplyApiServer
 	UnimplementedMemorySettingsApiServer
 
-	powerCapacity *memory.Resource   // of *traits.PowerCapacity
-	settings      *memory.Resource   // of *MemorySettings
-	notifications *memory.Collection // of *drawNotification
+	powerCapacity *resource.Value      // of *traits.PowerCapacity
+	settings      *resource.Value      // of *MemorySettings
+	notifications *resource.Collection // of *drawNotification
 
 	notificationsById   map[string]*drawNotification
 	notificationsByIdMu sync.RWMutex
@@ -41,11 +41,11 @@ type MemoryDevice struct {
 func NewMemoryDevice() *MemoryDevice {
 	initialPowerCapacity := InitialPowerCapacity()
 	return &MemoryDevice{
-		powerCapacity: memory.NewResource(
-			memory.WithInitialValue(initialPowerCapacity),
+		powerCapacity: resource.NewValue(
+			resource.WithInitialValue(initialPowerCapacity),
 		),
-		settings: memory.NewResource(
-			memory.WithInitialValue(&MemorySettings{
+		settings: resource.NewValue(
+			resource.WithInitialValue(&MemorySettings{
 				Rating:              initialPowerCapacity.Rating,
 				Load:                *initialPowerCapacity.Load,
 				Voltage:             initialPowerCapacity.Voltage,
@@ -85,7 +85,7 @@ func (s *MemoryDevice) GetPowerCapacity(_ context.Context, _ *traits.GetPowerCap
 }
 
 func (s *MemoryDevice) PullPowerCapacity(request *traits.PullPowerCapacityRequest, server traits.PowerSupplyApi_PullPowerCapacityServer) error {
-	changes, done := s.powerCapacity.OnUpdate(server.Context())
+	changes, done := s.powerCapacity.Pull(server.Context())
 	defer done()
 
 	for {

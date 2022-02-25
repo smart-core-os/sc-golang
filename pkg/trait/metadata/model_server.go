@@ -5,7 +5,7 @@ import (
 
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-golang/pkg/masks"
-	"github.com/smart-core-os/sc-golang/pkg/memory"
+	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 )
@@ -30,7 +30,7 @@ func (s *ModelServer) Register(server *grpc.Server) {
 }
 
 func (s *ModelServer) GetMetadata(_ context.Context, request *traits.GetMetadataRequest) (*traits.Metadata, error) {
-	return s.model.GetMetadata(memory.WithGetMask(request.ReadMask))
+	return s.model.GetMetadata(resource.WithGetMask(request.ReadMask))
 }
 
 func (s *ModelServer) PullMetadata(request *traits.PullMetadataRequest, server traits.MetadataApi_PullMetadataServer) error {

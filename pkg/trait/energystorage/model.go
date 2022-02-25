@@ -7,13 +7,13 @@ import (
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-golang/pkg/cmp"
 	"github.com/smart-core-os/sc-golang/pkg/masks"
-	"github.com/smart-core-os/sc-golang/pkg/memory"
+	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
 type Model struct {
-	energyLevel *memory.Resource // of traits.EnergyLevel
+	energyLevel *resource.Value // of traits.EnergyLevel
 }
 
 func NewModel() *Model {
@@ -23,16 +23,16 @@ func NewModel() *Model {
 		cmp.DurationValueWithin(1*time.Second),
 	)
 	return &Model{
-		energyLevel: memory.NewResource(memory.WithInitialValue(&traits.EnergyLevel{}), memory.WithValueMessageEquivalence(eq)),
+		energyLevel: resource.NewValue(resource.WithInitialValue(&traits.EnergyLevel{}), resource.WithValueMessageEquivalence(eq)),
 	}
 }
 
-func (m *Model) GetEnergyLevel(opts ...memory.GetOption) (*traits.EnergyLevel, error) {
+func (m *Model) GetEnergyLevel(opts ...resource.GetOption) (*traits.EnergyLevel, error) {
 	res := m.energyLevel.Get(opts...)
 	return res.(*traits.EnergyLevel), nil
 }
 
-func (m *Model) UpdateEnergyLevel(energyLevel *traits.EnergyLevel, opts ...memory.UpdateOption) (*traits.EnergyLevel, error) {
+func (m *Model) UpdateEnergyLevel(energyLevel *traits.EnergyLevel, opts ...resource.UpdateOption) (*traits.EnergyLevel, error) {
 	res, err := m.energyLevel.Set(energyLevel, opts...)
 	if err != nil {
 		return nil, err
@@ -48,7 +48,7 @@ type PullEnergyLevelChange struct {
 func (m *Model) PullEnergyLevel(ctx context.Context, mask *fieldmaskpb.FieldMask) (changes <-chan PullEnergyLevelChange, done func()) {
 	send := make(chan PullEnergyLevelChange)
 
-	recv, done := m.energyLevel.OnUpdate(ctx)
+	recv, done := m.energyLevel.Pull(ctx)
 	go func() {
 		filter := masks.NewResponseFilter(masks.WithFieldMask(mask))
 		var lastSent *traits.EnergyLevel

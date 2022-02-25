@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/smart-core-os/sc-golang/pkg/memory"
+	"github.com/smart-core-os/sc-golang/pkg/resource"
 )
 
 // ModelServer is an implementation of ElectricApiServer and MemorySettingsApiServer backed by a Model.
@@ -38,7 +38,7 @@ func (s *ModelServer) Register(server *grpc.Server) {
 }
 
 func (s *ModelServer) GetDemand(_ context.Context, request *traits.GetDemandRequest) (*traits.ElectricDemand, error) {
-	return s.model.Demand(memory.WithGetMask(request.ReadMask)), nil
+	return s.model.Demand(resource.WithGetMask(request.ReadMask)), nil
 }
 
 func (s *ModelServer) PullDemand(request *traits.PullDemandRequest, server traits.ElectricApi_PullDemandServer) error {
@@ -67,7 +67,7 @@ func (s *ModelServer) PullDemand(request *traits.PullDemandRequest, server trait
 }
 
 func (s *ModelServer) GetActiveMode(_ context.Context, request *traits.GetActiveModeRequest) (*traits.ElectricMode, error) {
-	return s.model.ActiveMode(memory.WithGetMask(request.ReadMask)), nil
+	return s.model.ActiveMode(resource.WithGetMask(request.ReadMask)), nil
 }
 
 func (s *ModelServer) UpdateActiveMode(_ context.Context, request *traits.UpdateActiveModeRequest) (*traits.ElectricMode, error) {

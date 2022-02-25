@@ -6,27 +6,27 @@ import (
 
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-golang/pkg/masks"
-	"github.com/smart-core-os/sc-golang/pkg/memory"
+	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
 type Model struct {
-	onOff *memory.Resource // of *traits.OnOff
+	onOff *resource.Value // of *traits.OnOff
 }
 
 func NewModel(initialState traits.OnOff_State) *Model {
 	return &Model{
-		onOff: memory.NewResource(memory.WithInitialValue(&traits.OnOff{
+		onOff: resource.NewValue(resource.WithInitialValue(&traits.OnOff{
 			State: initialState,
 		})),
 	}
 }
 
-func (m *Model) GetOnOff(opts ...memory.GetOption) (*traits.OnOff, error) {
+func (m *Model) GetOnOff(opts ...resource.GetOption) (*traits.OnOff, error) {
 	return m.onOff.Get(opts...).(*traits.OnOff), nil
 }
 
-func (m *Model) UpdateOnOff(value *traits.OnOff, opts ...memory.UpdateOption) (*traits.OnOff, error) {
+func (m *Model) UpdateOnOff(value *traits.OnOff, opts ...resource.UpdateOption) (*traits.OnOff, error) {
 	res, err := m.onOff.Set(value, opts...)
 	if err != nil {
 		return nil, err
@@ -37,7 +37,7 @@ func (m *Model) UpdateOnOff(value *traits.OnOff, opts ...memory.UpdateOption) (*
 func (m *Model) PullOnOff(ctx context.Context, mask *fieldmaskpb.FieldMask) (changes <-chan PullOnOffChange, done func()) {
 	send := make(chan PullOnOffChange)
 
-	recv, done := m.onOff.OnUpdate(ctx)
+	recv, done := m.onOff.Pull(ctx)
 	go func() {
 		filter := masks.NewResponseFilter(masks.WithFieldMask(mask))
 

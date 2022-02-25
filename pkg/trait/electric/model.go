@@ -9,7 +9,7 @@ import (
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-api/go/types"
 	"github.com/smart-core-os/sc-golang/pkg/masks"
-	"github.com/smart-core-os/sc-golang/pkg/memory"
+	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"github.com/smart-core-os/sc-golang/pkg/time/clock"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -32,9 +32,9 @@ var (
 //   2. The active mode cannot be deleted.
 //   3. Only a mode that exists can be active (except when the Model is first created, when a dummy mode is active)
 type Model struct {
-	demand     *memory.Resource // of *traits.ElectricDemand
-	activeMode *memory.Resource // of *traits.ElectricMode
-	modes      *memory.Collection
+	demand     *resource.Value // of *traits.ElectricDemand
+	activeMode *resource.Value // of *traits.ElectricMode
+	modes      *resource.Collection
 
 	// mu protects invariants
 	mu    sync.RWMutex
@@ -59,9 +59,9 @@ func NewModel(clk clock.Clock) *Model {
 	mode := &traits.ElectricMode{}
 
 	mem := &Model{
-		demand:     memory.NewResource(memory.WithInitialValue(demand)),
-		activeMode: memory.NewResource(memory.WithInitialValue(mode)),
-		modes:      memory.NewCollection(memory.WithClockCollection(clk)),
+		demand:     resource.NewValue(resource.WithInitialValue(demand)),
+		activeMode: resource.NewValue(resource.WithInitialValue(mode)),
+		modes:      resource.NewCollection(resource.WithClockCollection(clk)),
 		clock:      clk,
 		Rng:        rand.New(rand.NewSource(rand.Int63())),
 	}
@@ -70,8 +70,8 @@ func NewModel(clk clock.Clock) *Model {
 }
 
 // Demand gets the demand stored in this Model.
-// The fields returned can be filtered by passing memory.WithGetMask.
-func (m *Model) Demand(opts ...memory.GetOption) *traits.ElectricDemand {
+// The fields returned can be filtered by passing resource.WithGetMask.
+func (m *Model) Demand(opts ...resource.GetOption) *traits.ElectricDemand {
 	return m.demand.Get(opts...).(*traits.ElectricDemand)
 }
 
@@ -81,7 +81,7 @@ func (m *Model) Demand(opts ...memory.GetOption) *traits.ElectricDemand {
 func (m *Model) PullDemand(ctx context.Context, mask *fieldmaskpb.FieldMask) (changes <-chan PullDemandChange, done func()) {
 	send := make(chan PullDemandChange)
 
-	recv, done := m.demand.OnUpdate(ctx)
+	recv, done := m.demand.Pull(ctx)
 	go func() {
 		filter := masks.NewResponseFilter(masks.WithFieldMask(mask))
 		var lastSent *traits.ElectricDemand
@@ -104,9 +104,9 @@ func (m *Model) PullDemand(ctx context.Context, mask *fieldmaskpb.FieldMask) (ch
 }
 
 // UpdateDemand will update the stored traits.ElectricDemand associated with this device.
-// The fields to update can be filtered by passing memory.WithUpdateMask.
+// The fields to update can be filtered by passing resource.WithUpdateMask.
 // The updated traits.ElectricDemand is returned.
-func (m *Model) UpdateDemand(update *traits.ElectricDemand, opts ...memory.UpdateOption) (*traits.ElectricDemand, error) {
+func (m *Model) UpdateDemand(update *traits.ElectricDemand, opts ...resource.UpdateOption) (*traits.ElectricDemand, error) {
 	updated, err := m.demand.Set(update, opts...)
 	if err != nil {
 		return nil, err
@@ -118,8 +118,8 @@ func (m *Model) UpdateDemand(update *traits.ElectricDemand, opts ...memory.Updat
 // When the Model is first created, its active mode is a dummy mode with all-blank fields. After it is changed for
 // the first time, it will always correspond to one of the modes that can be listed by Modes.
 // The StartTime fields will reflect when the mode became active.
-// The fields returned can be filtered using memory.WithGetMask
-func (m *Model) ActiveMode(opts ...memory.GetOption) *traits.ElectricMode {
+// The fields returned can be filtered using resource.WithGetMask
+func (m *Model) ActiveMode(opts ...resource.GetOption) *traits.ElectricMode {
 	return m.activeMode.Get(opts...).(*traits.ElectricMode)
 }
 
@@ -130,7 +130,7 @@ func (m *Model) ActiveMode(opts ...memory.GetOption) *traits.ElectricMode {
 func (m *Model) PullActiveMode(ctx context.Context, mask *fieldmaskpb.FieldMask) (changes <-chan PullActiveModeChange, done func()) {
 	send := make(chan PullActiveModeChange)
 
-	recv, done := m.activeMode.OnUpdate(ctx)
+	recv, done := m.activeMode.Pull(ctx)
 	go func() {
 		defer close(send)
 		filter := masks.NewResponseFilter(masks.WithFieldMask(mask))
@@ -183,7 +183,7 @@ func (m *Model) changeActiveMode(id string) (*traits.ElectricMode, error) {
 		return nil, ErrModeNotFound
 	}
 
-	updated, err := m.activeMode.Set(mode, memory.InterceptAfter(func(old, new proto.Message) {
+	updated, err := m.activeMode.Set(mode, resource.InterceptAfter(func(old, new proto.Message) {
 		oldMode := old.(*traits.ElectricMode)
 		newMode := new.(*traits.ElectricMode)
 		if oldMode.Id != newMode.Id {
@@ -363,13 +363,13 @@ func (m *Model) updateMode(mode *traits.ElectricMode, mask *fieldmaskpb.FieldMas
 // to prevents leaks and/or deadlocks. The channel will also be closed if ctx is cancelled.
 func (m *Model) PullModes(ctx context.Context, mask *fieldmaskpb.FieldMask) <-chan PullModesChange {
 	send := make(chan PullModesChange)
-	recv := m.modes.PullChanges(ctx)
+	recv := m.modes.Pull(ctx)
 
 	go func() {
 		defer close(send)
 		filter := masks.NewResponseFilter(masks.WithFieldMask(mask))
 
-		// no need to listen to ctx.Done, as modes.PullChanges does that.
+		// no need to listen to ctx.Done, as modes.Pull does that.
 		for change := range recv {
 			newValue := filter.FilterClone(change.NewValue)
 			oldValue := filter.FilterClone(change.OldValue)

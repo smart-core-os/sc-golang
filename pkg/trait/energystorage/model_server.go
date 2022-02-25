@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/smart-core-os/sc-api/go/traits"
-	"github.com/smart-core-os/sc-golang/pkg/memory"
+	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -36,7 +36,7 @@ func (s *ModelServer) Register(server *grpc.Server) {
 }
 
 func (s *ModelServer) GetEnergyLevel(_ context.Context, request *traits.GetEnergyLevelRequest) (*traits.EnergyLevel, error) {
-	return s.model.GetEnergyLevel(memory.WithGetMask(request.GetFields()))
+	return s.model.GetEnergyLevel(resource.WithGetMask(request.GetFields()))
 }
 
 func (s *ModelServer) PullEnergyLevel(request *traits.PullEnergyLevelRequest, server traits.EnergyStorageApi_PullEnergyLevelServer) error {
@@ -75,7 +75,7 @@ func (s *ModelServer) Charge(_ context.Context, request *traits.ChargeRequest) (
 	} else {
 		level.Flow = &traits.EnergyLevel_Discharge{}
 	}
-	_, err := s.model.UpdateEnergyLevel(&level, memory.WithUpdatePaths("idle", "charge", "discharge"))
+	_, err := s.model.UpdateEnergyLevel(&level, resource.WithUpdatePaths("idle", "charge", "discharge"))
 	if err != nil {
 		return nil, err
 	}

@@ -6,7 +6,7 @@ import (
 
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-api/go/types"
-	"github.com/smart-core-os/sc-golang/pkg/memory"
+	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"github.com/tanema/gween"
 	"github.com/tanema/gween/ease"
 	"google.golang.org/grpc/status"
@@ -16,7 +16,7 @@ import (
 // MemoryDevice implements the LightApiServer interface for a single device by storing state in memory.
 type MemoryDevice struct {
 	traits.UnimplementedLightApiServer
-	brightness     *memory.Resource
+	brightness     *resource.Value
 	brightnessTick time.Duration // duration between updates when tweening brightness
 
 	// todo: support presets
@@ -25,9 +25,9 @@ type MemoryDevice struct {
 func NewMemoryDevice() *MemoryDevice {
 	return &MemoryDevice{
 		brightnessTick: time.Second / 15,
-		brightness: memory.NewResource(
-			memory.WithInitialValue(InitialBrightness()),
-			memory.WithWritablePaths(&traits.Brightness{},
+		brightness: resource.NewValue(
+			resource.WithInitialValue(InitialBrightness()),
+			resource.WithWritablePaths(&traits.Brightness{},
 				"level_percent",
 				"brightness_tween.total_duration",
 			),
@@ -44,7 +44,7 @@ func (s *MemoryDevice) GetBrightness(_ context.Context, _ *traits.GetBrightnessR
 }
 
 func (s *MemoryDevice) UpdateBrightness(ctx context.Context, request *traits.UpdateBrightnessRequest) (*traits.Brightness, error) {
-	if err := memory.ValidateTweenOnUpdate("brightness", request.GetBrightness().GetBrightnessTween()); err != nil {
+	if err := resource.ValidateTweenOnUpdate("brightness", request.GetBrightness().GetBrightnessTween()); err != nil {
 		return nil, err
 	}
 
@@ -52,9 +52,9 @@ func (s *MemoryDevice) UpdateBrightness(ctx context.Context, request *traits.Upd
 	if duration > 0 {
 		startTime := time.Now()
 		lastObj, err := s.brightness.Set(request.Brightness,
-			memory.WithUpdatePaths("level_percent", "brightness_tween", "target_level_percent"),
-			memory.WithMoreWritablePaths("brightness_tween", "target_level_percent"),
-			memory.InterceptBefore(func(old, new proto.Message) {
+			resource.WithUpdatePaths("level_percent", "brightness_tween", "target_level_percent"),
+			resource.WithMoreWritablePaths("brightness_tween", "target_level_percent"),
+			resource.InterceptBefore(func(old, new proto.Message) {
 				current := old.(*traits.Brightness)
 				next := new.(*traits.Brightness)
 				if request.Delta {
@@ -83,11 +83,11 @@ func (s *MemoryDevice) UpdateBrightness(ctx context.Context, request *traits.Upd
 				if finished {
 					// the tween has completed, reset the tween data
 					_, err := s.brightness.Set(&traits.Brightness{LevelPercent: newValue},
-						memory.WithUpdatePaths("level_percent"),
-						memory.WithResetPaths("target_level_percent", "brightness_tween"),
-						memory.WithExpectedValue(lastObj),
+						resource.WithUpdatePaths("level_percent"),
+						resource.WithResetPaths("target_level_percent", "brightness_tween"),
+						resource.WithExpectedValue(lastObj),
 					)
-					if err != nil && err != memory.ExpectedValuePreconditionFailed {
+					if err != nil && err != resource.ExpectedValuePreconditionFailed {
 						panic(err) // programmer error
 					}
 					return
@@ -96,12 +96,12 @@ func (s *MemoryDevice) UpdateBrightness(ctx context.Context, request *traits.Upd
 				// calculate using time, not value, which leave room for easing (and is mentioned in the tween spec)
 				progress := 100 * float32(playTime.Milliseconds()) / float32(duration.Milliseconds())
 				lastObj, err = s.brightness.Set(&traits.Brightness{LevelPercent: newValue, BrightnessTween: &types.Tween{Progress: progress}},
-					memory.WithUpdatePaths("level_percent", "brightness_tween.progress"),
-					memory.WithMoreWritablePaths("brightness_tween.progress"),
-					memory.WithExpectedValue(lastObj),
+					resource.WithUpdatePaths("level_percent", "brightness_tween.progress"),
+					resource.WithMoreWritablePaths("brightness_tween.progress"),
+					resource.WithExpectedValue(lastObj),
 				)
 				switch {
-				case err == memory.ExpectedValuePreconditionFailed:
+				case err == resource.ExpectedValuePreconditionFailed:
 					// somebody else changed the value, tweening is done
 					return
 				case err != nil:
@@ -116,8 +116,8 @@ func (s *MemoryDevice) UpdateBrightness(ctx context.Context, request *traits.Upd
 	res, err := s.brightness.Set(
 		request.Brightness,
 		// if there's a tween in progress, clear the tween props
-		memory.WithResetPaths("target_level_percent", "brightness_tween"),
-		memory.InterceptBefore(func(old, change proto.Message) {
+		resource.WithResetPaths("target_level_percent", "brightness_tween"),
+		resource.InterceptBefore(func(old, change proto.Message) {
 			if request.Delta {
 				val := old.(*traits.Brightness)
 				delta := change.(*traits.Brightness)
@@ -131,7 +131,7 @@ func (s *MemoryDevice) UpdateBrightness(ctx context.Context, request *traits.Upd
 }
 
 func (s *MemoryDevice) PullBrightness(request *traits.PullBrightnessRequest, server traits.LightApi_PullBrightnessServer) error {
-	changes, done := s.brightness.OnUpdate(server.Context())
+	changes, done := s.brightness.Pull(server.Context())
 	defer done()
 
 	for {

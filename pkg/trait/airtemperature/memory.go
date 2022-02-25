@@ -5,21 +5,21 @@ import (
 
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-api/go/types"
-	"github.com/smart-core-os/sc-golang/pkg/memory"
+	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
 )
 
 type MemoryDevice struct {
 	traits.UnimplementedAirTemperatureApiServer
-	airTemperature *memory.Resource
+	airTemperature *resource.Value
 }
 
 func NewMemoryDevice() *MemoryDevice {
 	return &MemoryDevice{
-		airTemperature: memory.NewResource(
-			memory.WithInitialValue(InitialAirTemperatureState()),
-			memory.WithWritablePaths(&traits.AirTemperature{},
+		airTemperature: resource.NewValue(
+			resource.WithInitialValue(InitialAirTemperatureState()),
+			resource.WithWritablePaths(&traits.AirTemperature{},
 				"mode",
 				// temperature_goal oneof options
 				"temperature_set_point",
@@ -48,12 +48,12 @@ func (t *MemoryDevice) GetAirTemperature(_ context.Context, _ *traits.GetAirTemp
 }
 
 func (t *MemoryDevice) UpdateAirTemperature(_ context.Context, request *traits.UpdateAirTemperatureRequest) (*traits.AirTemperature, error) {
-	update, err := t.airTemperature.Set(request.State, memory.WithUpdateMask(request.UpdateMask))
+	update, err := t.airTemperature.Set(request.State, resource.WithUpdateMask(request.UpdateMask))
 	return update.(*traits.AirTemperature), err
 }
 
 func (t *MemoryDevice) PullAirTemperature(request *traits.PullAirTemperatureRequest, server traits.AirTemperatureApi_PullAirTemperatureServer) error {
-	changes, done := t.airTemperature.OnUpdate(server.Context())
+	changes, done := t.airTemperature.Pull(server.Context())
 	defer done()
 
 	for {

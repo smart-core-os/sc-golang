@@ -1,4 +1,4 @@
-package memory
+package resource
 
 import (
 	"context"
@@ -14,9 +14,9 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// Resource represents a simple state field in an object. Think Temperature or Volume or Occupancy. Use a Resource to
+// Value represents a simple state field in an object. Think Temperature or Volume or Occupancy. Use a Value to
 // gain thread safe reads/writes that also support FieldMasks and update notifications.
-type Resource struct {
+type Value struct {
 	writableFields *fieldmaskpb.FieldMask
 
 	mu    sync.RWMutex
@@ -27,8 +27,8 @@ type Resource struct {
 	eq ValueEquivalence
 }
 
-func NewResource(opts ...ResourceOption) *Resource {
-	res := &Resource{
+func NewValue(opts ...ValueOption) *Value {
+	res := &Value{
 		bus: &emitter.Emitter{},
 	}
 	for _, opt := range opts {
@@ -37,7 +37,7 @@ func NewResource(opts ...ResourceOption) *Resource {
 	return res
 }
 
-func (r *Resource) Get(opts ...GetOption) proto.Message {
+func (r *Value) Get(opts ...GetOption) proto.Message {
 	req := &getRequest{}
 	for _, opt := range opts {
 		opt(req)
@@ -45,7 +45,7 @@ func (r *Resource) Get(opts ...GetOption) proto.Message {
 	return r.get(req)
 }
 
-func (r *Resource) get(req *getRequest) proto.Message {
+func (r *Value) get(req *getRequest) proto.Message {
 	filter := masks.NewResponseFilter(masks.WithFieldMask(req.fields))
 	// todo: if err := filter.Validate(); err != nil { return nil, err }
 
@@ -54,10 +54,10 @@ func (r *Resource) get(req *getRequest) proto.Message {
 	return filter.FilterClone(r.value)
 }
 
-// Set updates the current value of this Resource with the given value.
+// Set updates the current value of this Value with the given value.
 // Returns the new value.
 // Provide UpdateOption to control masks and other variables during the update.
-func (r *Resource) Set(value proto.Message, opts ...UpdateOption) (proto.Message, error) {
+func (r *Value) Set(value proto.Message, opts ...UpdateOption) (proto.Message, error) {
 	request := updateRequest{}
 	for _, opt := range DefaultUpdateOptions {
 		opt(&request)
@@ -68,7 +68,7 @@ func (r *Resource) Set(value proto.Message, opts ...UpdateOption) (proto.Message
 	return r.set(value, request)
 }
 
-func (r *Resource) set(value proto.Message, request updateRequest) (proto.Message, error) {
+func (r *Value) set(value proto.Message, request updateRequest) (proto.Message, error) {
 	opts := []masks.FieldUpdaterOption{
 		masks.WithUpdateMask(request.updateMask),
 		masks.WithResetMask(request.resetMask),
@@ -121,7 +121,7 @@ func (r *Resource) set(value proto.Message, request updateRequest) (proto.Messag
 		return nil, err
 	}
 
-	r.bus.Emit("update", &ResourceChange{
+	r.bus.Emit("update", &ValueChange{
 		Value:      newValue,
 		ChangeTime: serverTimestamp(),
 	})
@@ -129,12 +129,12 @@ func (r *Resource) set(value proto.Message, request updateRequest) (proto.Messag
 	return newValue, err
 }
 
-func (r *Resource) OnUpdate(ctx context.Context) (updates <-chan *ResourceChange, done func()) {
+func (r *Value) Pull(ctx context.Context) (updates <-chan *ValueChange, done func()) {
 	on := r.bus.On("update")
-	typedEvents := make(chan *ResourceChange)
+	typedEvents := make(chan *ValueChange)
 	go func() {
 		defer close(typedEvents)
-		var last *ResourceChange
+		var last *ValueChange
 		for {
 			select {
 			case <-ctx.Done():
@@ -143,7 +143,7 @@ func (r *Resource) OnUpdate(ctx context.Context) (updates <-chan *ResourceChange
 				if !ok {
 					return
 				}
-				change := event.Args[0].(*ResourceChange)
+				change := event.Args[0].(*ValueChange)
 				if r.eq != nil && r.eq(last, change) {
 					continue
 				}
@@ -162,36 +162,36 @@ func (r *Resource) OnUpdate(ctx context.Context) (updates <-chan *ResourceChange
 	}
 }
 
-type ResourceChange struct {
+type ValueChange struct {
 	Value      proto.Message
 	ChangeTime *timestamppb.Timestamp
 }
 
-// ResourceOption allows configuration of the resource
-type ResourceOption func(resource *Resource)
+// ValueOption allows configuration of the resource
+type ValueOption func(resource *Value)
 
-// WithInitialValue sets the initial value of a Resource
-func WithInitialValue(v proto.Message) ResourceOption {
-	return func(r *Resource) {
+// WithInitialValue sets the initial value of a Value
+func WithInitialValue(v proto.Message) ValueOption {
+	return func(r *Value) {
 		r.value = v
 	}
 }
 
 // ValueEquivalence returns true if x and y are equivalent.
 // Unlike proto.Equal, this may return true if the two messages are close enough, say 0.001 and 0.002 return true.
-type ValueEquivalence func(x, y *ResourceChange) bool
+type ValueEquivalence func(x, y *ValueChange) bool
 
 // WithValueEquivalence configures how adjacent messages sent over a Pull stream are compared for equivalent.
 // Subsequent equivalent messages will not be sent.
-func WithValueEquivalence(equivalence ValueEquivalence) ResourceOption {
-	return func(r *Resource) {
+func WithValueEquivalence(equivalence ValueEquivalence) ValueOption {
+	return func(r *Value) {
 		r.eq = equivalence
 	}
 }
 
-// WithValueMessageEquivalence is like WithValueEquivalence and applies eq to ResourceOption.Value.
-func WithValueMessageEquivalence(eq cmp.Message) ResourceOption {
-	return WithValueEquivalence(func(x, y *ResourceChange) bool {
+// WithValueMessageEquivalence is like WithValueEquivalence and applies eq to ValueOption.Value.
+func WithValueMessageEquivalence(eq cmp.Message) ValueOption {
+	return WithValueEquivalence(func(x, y *ValueChange) bool {
 		if x == nil || y == nil {
 			return x == nil && y == nil
 		}
@@ -201,12 +201,12 @@ func WithValueMessageEquivalence(eq cmp.Message) ResourceOption {
 
 // WithWritablePaths sets the fields that can be modified via Update calls.
 // Will panic if paths are not valid according to the message type.
-func WithWritablePaths(m proto.Message, paths ...string) ResourceOption {
+func WithWritablePaths(m proto.Message, paths ...string) ValueOption {
 	mask, err := fieldmaskpb.New(m, paths...)
 	if err != nil {
 		panic(err)
 	}
-	return func(r *Resource) {
+	return func(r *Value) {
 		r.writableFields = mask
 	}
 }

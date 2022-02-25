@@ -1,4 +1,4 @@
-package memory
+package resource
 
 import "google.golang.org/protobuf/types/known/timestamppb"
 

@@ -1,4 +1,4 @@
-package memory
+package resource
 
 import (
 	"context"
@@ -211,7 +211,7 @@ func (c *Collection) Delete(id string) proto.Message {
 	return oldVal.body
 }
 
-func (c *Collection) PullChanges(ctx context.Context) <-chan *Change {
+func (c *Collection) Pull(ctx context.Context) <-chan *Change {
 	emit := c.bus.On("change")
 	send := make(chan *Change)
 

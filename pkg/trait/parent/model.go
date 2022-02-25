@@ -6,7 +6,7 @@ import (
 	"sort"
 
 	"github.com/smart-core-os/sc-api/go/traits"
-	"github.com/smart-core-os/sc-golang/pkg/memory"
+	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"github.com/smart-core-os/sc-golang/pkg/time/clock"
 	"github.com/smart-core-os/sc-golang/pkg/trait"
 	"google.golang.org/protobuf/proto"
@@ -15,12 +15,12 @@ import (
 
 // Model models a collection of children.
 type Model struct {
-	children *memory.Collection
+	children *resource.Collection
 }
 
 func NewModel() *Model {
 	return &Model{
-		children: memory.NewCollection(memory.WithClockCollection(clock.Real())),
+		children: resource.NewCollection(resource.WithClockCollection(clock.Real())),
 	}
 }
 
@@ -79,7 +79,7 @@ func (m *Model) ListChildren() []*traits.Child {
 // PullChildren returns a chat that will emit when changes are made to the known children of this model.
 func (m *Model) PullChildren(ctx context.Context) <-chan *traits.PullChildrenResponse_Change {
 	out := make(chan *traits.PullChildrenResponse_Change)
-	changes := m.children.PullChanges(ctx)
+	changes := m.children.Pull(ctx)
 
 	go func() {
 		for change := range changes {
@@ -90,7 +90,7 @@ func (m *Model) PullChildren(ctx context.Context) <-chan *traits.PullChildrenRes
 	return out
 }
 
-func childrenChangeToProto(change *memory.Change) *traits.PullChildrenResponse_Change {
+func childrenChangeToProto(change *resource.Change) *traits.PullChildrenResponse_Change {
 	pChange := traits.PullChildrenResponse_Change{
 		Type:       change.ChangeType,
 		ChangeTime: timestamppb.New(change.ChangeTime),

@@ -1,4 +1,4 @@
-package memory
+package resource
 
 import (
 	"encoding/base64"

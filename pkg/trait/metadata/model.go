@@ -4,27 +4,27 @@ import (
 	"context"
 
 	"github.com/smart-core-os/sc-api/go/traits"
-	"github.com/smart-core-os/sc-golang/pkg/memory"
+	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"google.golang.org/protobuf/proto"
 )
 
 type Model struct {
-	metadata *memory.Resource // of traits.Metadata
+	metadata *resource.Value // of traits.Metadata
 }
 
-func NewModel(opts ...memory.ResourceOption) *Model {
-	defaultOpts := []memory.ResourceOption{memory.WithInitialValue(&traits.Metadata{})}
+func NewModel(opts ...resource.ValueOption) *Model {
+	defaultOpts := []resource.ValueOption{resource.WithInitialValue(&traits.Metadata{})}
 	return &Model{
-		metadata: memory.NewResource(append(defaultOpts, opts...)...),
+		metadata: resource.NewValue(append(defaultOpts, opts...)...),
 	}
 }
 
-func (m *Model) GetMetadata(opts ...memory.GetOption) (*traits.Metadata, error) {
+func (m *Model) GetMetadata(opts ...resource.GetOption) (*traits.Metadata, error) {
 	res := m.metadata.Get(opts...)
 	return res.(*traits.Metadata), nil
 }
 
-func (m *Model) UpdateMetadata(metadata *traits.Metadata, opts ...memory.UpdateOption) (*traits.Metadata, error) {
+func (m *Model) UpdateMetadata(metadata *traits.Metadata, opts ...resource.UpdateOption) (*traits.Metadata, error) {
 	res, err := m.metadata.Set(metadata, opts...)
 	if err != nil {
 		return nil, err
@@ -32,9 +32,9 @@ func (m *Model) UpdateMetadata(metadata *traits.Metadata, opts ...memory.UpdateO
 	return res.(*traits.Metadata), nil
 }
 
-func (m *Model) UpdateTraitMetadata(traitMetadata *traits.TraitMetadata, opts ...memory.UpdateOption) (*traits.Metadata, error) {
+func (m *Model) UpdateTraitMetadata(traitMetadata *traits.TraitMetadata, opts ...resource.UpdateOption) (*traits.Metadata, error) {
 	// update traits and merge equivalently named traits more metadata field.
-	opts = append([]memory.UpdateOption{memory.WithUpdatePaths("traits"), memory.InterceptBefore(func(old, new proto.Message) {
+	opts = append([]resource.UpdateOption{resource.WithUpdatePaths("traits"), resource.InterceptBefore(func(old, new proto.Message) {
 		oldT := old.(*traits.Metadata)
 		newT := new.(*traits.Metadata)
 		newT.Traits = oldT.Traits
@@ -59,7 +59,7 @@ func (m *Model) PullMetadata(ctx context.Context) <-chan *traits.PullMetadataRes
 	send := make(chan *traits.PullMetadataResponse_Change)
 
 	// when done is called, then the resource will close recv for us
-	recv, done := m.metadata.OnUpdate(ctx)
+	recv, done := m.metadata.Pull(ctx)
 	go func() {
 		defer done()
 		for {
@@ -81,7 +81,7 @@ func (m *Model) PullMetadata(ctx context.Context) <-chan *traits.PullMetadataRes
 
 	return send
 }
-func metadataChangeToProto(change *memory.ResourceChange) *traits.PullMetadataResponse_Change {
+func metadataChangeToProto(change *resource.ValueChange) *traits.PullMetadataResponse_Change {
 	return &traits.PullMetadataResponse_Change{
 		ChangeTime: change.ChangeTime,
 		Metadata:   change.Value.(*traits.Metadata),

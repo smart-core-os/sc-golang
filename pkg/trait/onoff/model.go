@@ -25,7 +25,7 @@ func (m *Model) GetOnOff(opts ...resource.ReadOption) (*traits.OnOff, error) {
 	return m.onOff.Get(opts...).(*traits.OnOff), nil
 }
 
-func (m *Model) UpdateOnOff(value *traits.OnOff, opts ...resource.UpdateOption) (*traits.OnOff, error) {
+func (m *Model) UpdateOnOff(value *traits.OnOff, opts ...resource.WriteOption) (*traits.OnOff, error) {
 	res, err := m.onOff.Set(value, opts...)
 	if err != nil {
 		return nil, err

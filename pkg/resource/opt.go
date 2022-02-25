@@ -7,6 +7,8 @@ import (
 
 	"github.com/smart-core-os/sc-golang/pkg/cmp"
 	"github.com/smart-core-os/sc-golang/pkg/masks"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
@@ -148,4 +150,152 @@ type readOptionFunc func(rr *readRequest)
 
 func (r readOptionFunc) apply(rr *readRequest) {
 	r(rr)
+}
+
+type WriteOption interface{ apply(wr *writeRequest) }
+
+func computeWriteConfig(opts ...WriteOption) writeRequest {
+	req := &writeRequest{}
+	for _, opt := range opts {
+		opt.apply(req)
+	}
+	return *req
+}
+
+// UpdateInterceptor describes a function that applies changes to an existing message
+type UpdateInterceptor func(old, new proto.Message)
+
+type writeRequest struct {
+	updateMask    *fieldmaskpb.FieldMask
+	resetMask     *fieldmaskpb.FieldMask
+	expectedValue proto.Message
+
+	interceptBefore UpdateInterceptor
+	interceptAfter  UpdateInterceptor
+
+	nilWritableFields  bool
+	moreWritableFields *fieldmaskpb.FieldMask
+}
+
+func (wr writeRequest) fieldUpdater(writableFields *fieldmaskpb.FieldMask) *masks.FieldUpdater {
+	opts := []masks.FieldUpdaterOption{
+		masks.WithUpdateMask(wr.updateMask),
+		masks.WithResetMask(wr.resetMask),
+	}
+	if !wr.nilWritableFields {
+		// A nil writable fields means all fields are writable, no point merging in this case.
+		// If we blindly merged r.writableFields with request.moreWritableFields we could end up with
+		// an empty FieldMask when both are nil resulting in no writable fields instead of all writable.
+		if writableFields != nil {
+			fields := fieldmaskpb.Union(writableFields, wr.moreWritableFields)
+			opts = append(opts, masks.WithWritableFields(fields))
+		}
+	}
+	return masks.NewFieldUpdater(opts...)
+}
+
+type writeOptionFunc func(wr *writeRequest)
+
+func (w writeOptionFunc) apply(wr *writeRequest) {
+	w(wr)
+}
+
+// WithUpdateMask configures the update to only apply to these fields.
+// nil will update all writable fields.
+// Fields specified here that aren't in the Resources writable fields will result in an error
+func WithUpdateMask(mask *fieldmaskpb.FieldMask) WriteOption {
+	return writeOptionFunc(func(request *writeRequest) {
+		request.updateMask = mask
+	})
+}
+
+// WithUpdatePaths is like WithUpdateMask but the FieldMask is made from the given paths.
+func WithUpdatePaths(paths ...string) WriteOption {
+	return WithUpdateMask(&fieldmaskpb.FieldMask{Paths: paths})
+}
+
+// WithResetMask configures the update to clear these fields from the final value.
+// This will happen after InterceptBefore, but before InterceptAfter.
+// WithWritableFields does not affect this.
+func WithResetMask(mask *fieldmaskpb.FieldMask) WriteOption {
+	return writeOptionFunc(func(request *writeRequest) {
+		request.resetMask = mask
+	})
+}
+
+// WithResetPaths is like WithResetMask but the FieldMask is made from the given paths.
+func WithResetPaths(paths ...string) WriteOption {
+	return WithResetMask(&fieldmaskpb.FieldMask{Paths: paths})
+}
+
+// InterceptBefore registers a function that will be called before the update occurs.
+// The new value passed to the function will be the Message given as part of the update operation.
+// Do not write to the old value of the callback, this is for information only.
+// This is useful when applying delta update to a value, in this case you can append the old value to the update value
+// to get the sum.
+//
+// Example
+//
+//   r.Set(val, InterceptBefore(func(old, change proto.Message) {
+//     if val.Delta {
+//       // assume casting
+//       change.Quantity += old.Quantity
+//     }
+//   }))
+func InterceptBefore(interceptor UpdateInterceptor) WriteOption {
+	return writeOptionFunc(func(request *writeRequest) {
+		request.interceptBefore = interceptor
+	})
+}
+
+// InterceptAfter registers a function that will be called after changes have been made but before they are saved.
+// This is useful if there are computed properties in the message that might need setting if an update has occurred,
+// for example a `LastUpdateTime` or similar.
+//
+// Example
+//
+//   r.Set(val, InterceptAfter(func(old, new proto.Message) {
+//     // assume casting
+//     if old.Quantity != new.Quantity {
+//       new.UpdateTime = timestamppb.Now()
+//     }
+//   }))
+func InterceptAfter(interceptor UpdateInterceptor) WriteOption {
+	return writeOptionFunc(func(request *writeRequest) {
+		request.interceptAfter = interceptor
+	})
+}
+
+// WithAllFieldsWritable instructs the update to ignore the resources configured writable fields.
+// All fields will be writable if using this option.
+// Prefer WithMoreWritableFields if possible.
+func WithAllFieldsWritable() WriteOption {
+	return writeOptionFunc(func(request *writeRequest) {
+		request.nilWritableFields = true
+	})
+}
+
+// WithMoreWritableFields adds the given fields to the resources configured writable fields before validating the update.
+// Prefer this over WithAllFieldsWritable.
+func WithMoreWritableFields(writableFields *fieldmaskpb.FieldMask) WriteOption {
+	return writeOptionFunc(func(request *writeRequest) {
+		request.moreWritableFields = fieldmaskpb.Union(request.moreWritableFields, writableFields)
+	})
+}
+
+// WithMoreWritablePaths is like WithMoreWritableFields but with paths instead.
+func WithMoreWritablePaths(writablePaths ...string) WriteOption {
+	return WithMoreWritableFields(&fieldmaskpb.FieldMask{Paths: writablePaths})
+}
+
+// ExpectedValuePreconditionFailed is returned when an update configured WithExpectedValue fails its comparison.
+var ExpectedValuePreconditionFailed = status.Errorf(codes.FailedPrecondition, "current value is not as expected")
+
+// WithExpectedValue instructs the update to only proceed if the current value is equal to expectedValue.
+// If the precondition fails the update will return the error ExpectedValuePreconditionFailed.
+// The precondition will be checked _before_ InterceptBefore.
+func WithExpectedValue(expectedValue proto.Message) WriteOption {
+	return writeOptionFunc(func(request *writeRequest) {
+		request.expectedValue = expectedValue
+	})
 }

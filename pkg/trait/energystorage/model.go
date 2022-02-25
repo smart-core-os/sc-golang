@@ -30,7 +30,7 @@ func (m *Model) GetEnergyLevel(opts ...resource.ReadOption) (*traits.EnergyLevel
 	return res.(*traits.EnergyLevel), nil
 }
 
-func (m *Model) UpdateEnergyLevel(energyLevel *traits.EnergyLevel, opts ...resource.UpdateOption) (*traits.EnergyLevel, error) {
+func (m *Model) UpdateEnergyLevel(energyLevel *traits.EnergyLevel, opts ...resource.WriteOption) (*traits.EnergyLevel, error) {
 	res, err := m.energyLevel.Set(energyLevel, opts...)
 	if err != nil {
 		return nil, err

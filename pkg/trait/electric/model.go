@@ -101,7 +101,7 @@ func (m *Model) PullDemand(ctx context.Context, mask *fieldmaskpb.FieldMask) <-c
 // UpdateDemand will update the stored traits.ElectricDemand associated with this device.
 // The fields to update can be filtered by passing resource.WithUpdateMask.
 // The updated traits.ElectricDemand is returned.
-func (m *Model) UpdateDemand(update *traits.ElectricDemand, opts ...resource.UpdateOption) (*traits.ElectricDemand, error) {
+func (m *Model) UpdateDemand(update *traits.ElectricDemand, opts ...resource.WriteOption) (*traits.ElectricDemand, error) {
 	updated, err := m.demand.Set(update, opts...)
 	if err != nil {
 		return nil, err

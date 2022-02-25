@@ -21,7 +21,7 @@ func NewModel(initialState *traits.Occupancy) *Model {
 }
 
 // SetOccupancy updates the known occupancy state for this device
-func (m *Model) SetOccupancy(occupancy *traits.Occupancy, opts ...resource.UpdateOption) (*traits.Occupancy, error) {
+func (m *Model) SetOccupancy(occupancy *traits.Occupancy, opts ...resource.WriteOption) (*traits.Occupancy, error) {
 	res, err := m.occupancy.Set(occupancy, opts...)
 	if err != nil {
 		return nil, err

@@ -25,7 +25,7 @@ func (m *Model) GetMetadata(opts ...resource.ReadOption) (*traits.Metadata, erro
 	return res.(*traits.Metadata), nil
 }
 
-func (m *Model) UpdateMetadata(metadata *traits.Metadata, opts ...resource.UpdateOption) (*traits.Metadata, error) {
+func (m *Model) UpdateMetadata(metadata *traits.Metadata, opts ...resource.WriteOption) (*traits.Metadata, error) {
 	res, err := m.metadata.Set(metadata, opts...)
 	if err != nil {
 		return nil, err
@@ -33,9 +33,9 @@ func (m *Model) UpdateMetadata(metadata *traits.Metadata, opts ...resource.Updat
 	return res.(*traits.Metadata), nil
 }
 
-func (m *Model) UpdateTraitMetadata(traitMetadata *traits.TraitMetadata, opts ...resource.UpdateOption) (*traits.Metadata, error) {
+func (m *Model) UpdateTraitMetadata(traitMetadata *traits.TraitMetadata, opts ...resource.WriteOption) (*traits.Metadata, error) {
 	// update traits and merge equivalently named traits more metadata field.
-	opts = append([]resource.UpdateOption{resource.WithUpdatePaths("traits"), resource.InterceptBefore(func(old, new proto.Message) {
+	opts = append([]resource.WriteOption{resource.WithUpdatePaths("traits"), resource.InterceptBefore(func(old, new proto.Message) {
 		oldT := old.(*traits.Metadata)
 		newT := new.(*traits.Metadata)
 		newT.Traits = oldT.Traits

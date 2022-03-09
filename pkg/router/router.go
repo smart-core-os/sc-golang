@@ -30,6 +30,8 @@ type router struct {
 	registry map[string]interface{} // of type MyServiceClient
 	factory  Factory
 	fallback Factory
+
+	onCommit OnCommit
 }
 type Factory func(string) (interface{}, error) // returns the type MyServiceClient
 
@@ -71,6 +73,16 @@ func (r *router) Has(name string) bool {
 	return exists
 }
 
+// Get returns the client identified by the given name.
+// If the name is not recognised by r
+//  1. A fallback is checked, configured via WithFallback, if found it is returned, else
+//  2. The factory is invoked to create a new client, configured via WithFactory.
+//     If the factory successfully creates a client, and no concurrent call already created a client, it is remembered
+//     and the callback registered via WithOnCommit is notified.
+// If no client can be found or created, this returns an error suitable for return by a gRPC method,
+// i.e. one representing codes.NotFound.
+//
+// Note, no locks are held when invoking fallbacks, factories, or callbacks.
 func (r *router) Get(name string) (child interface{}, err error) {
 	r.mu.RLock()
 	child, exists := r.registry[name]
@@ -83,13 +95,19 @@ func (r *router) Get(name string) (child interface{}, err error) {
 		if exists {
 			r.mu.Lock()
 			// check again
+			var newChildRemembered bool
 			child2, exists2 := r.registry[name]
 			if exists2 {
 				child = child2
 			} else {
+				newChildRemembered = true
 				r.registry[name] = child
 			}
 			r.mu.Unlock()
+
+			if newChildRemembered && r.onCommit != nil {
+				r.onCommit(name, child)
+			}
 		}
 	}
 
@@ -110,6 +128,9 @@ type Option func(r *router)
 
 // WithFactory configures a Router to call the given function when Get is called and no existing client is known.
 // Prefer using the generated WithMyServiceClientFactory methods in the trait packages.
+// The given factory may be called multiple times with the same name if concurrent access is performed.
+// Only one returned client will be remembered.
+// Use WithOnCommit if you need to trigger side effects as part of your client creation.
 func WithFactory(f Factory) Option {
 	return func(r *router) {
 		r.factory = f
@@ -122,5 +143,16 @@ func WithFactory(f Factory) Option {
 func WithFallback(f Factory) Option {
 	return func(r *router) {
 		r.fallback = f
+	}
+}
+
+// OnCommit is a callback function for use in WithOnCommit.
+type OnCommit func(name string, client interface{})
+
+// WithOnCommit registers a func that will be called with the value remembered as part of a WithFactory Factory call.
+// Use this if you want to register or otherwise setup side effects for Factory created entries.
+func WithOnCommit(onCommit OnCommit) Option {
+	return func(r *router) {
+		r.onCommit = onCommit
 	}
 }

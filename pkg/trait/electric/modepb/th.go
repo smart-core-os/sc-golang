@@ -33,10 +33,14 @@ func m(ss ...s) *traits.ElectricMode {
 
 func mst(st int, ss ...s) *traits.ElectricMode {
 	result := m(ss...)
-	result.StartTime = timestamppb.New(time.Time{}.Add(time.Duration(st)))
+	result.StartTime = timestamppb.New(at(st))
 	return result
 }
 
 func modes(modes ...*traits.ElectricMode) []*traits.ElectricMode {
 	return modes
+}
+
+func at(t int) time.Time {
+	return time.Time{}.Add(time.Duration(t))
 }

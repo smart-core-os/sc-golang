@@ -34,11 +34,3 @@ func MinAt(t time.Time, modes map[string]*traits.ElectricMode) (mode *traits.Ele
 func MaxSegmentAfter(t time.Time, mode *traits.ElectricMode) (index int) {
 	return segmentpb.MaxAfter(t.Sub(tOrST(t, mode)), mode.GetSegments()...)
 }
-
-// tOrST returns t if m.StartTime is nil, or m.StartTime.AsTime() otherwise.
-func tOrST(t time.Time, m *traits.ElectricMode) time.Time {
-	if m.GetStartTime() == nil {
-		return t
-	}
-	return m.GetStartTime().AsTime()
-}

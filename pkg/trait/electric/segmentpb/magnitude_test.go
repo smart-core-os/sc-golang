@@ -99,3 +99,40 @@ func TestMagnitudeAt(t *testing.T) {
 		})
 	}
 }
+
+func TestMaxAfter(t *testing.T) {
+	tests := []struct {
+		name      string
+		d         time.Duration
+		segments  []*traits.ElectricMode_Segment
+		wantIndex int
+	}{
+		{"empty+0", 0, segs(), 0},
+		{"empty+10", 10, segs(), 0},
+		{"empty-10", -10, segs(), 0},
+		{"inf+0", 0, segs(s{3, 0}), 0},
+		{"inf+10", 10, segs(s{3, 0}), 0},
+		{"inf-10", -10, segs(s{3, 0}), 0},
+		{"cap+0", 0, segs(s{3, 7}), 0},
+		{"cap+1", 1, segs(s{3, 7}), 0},
+		{"cap+7", 7, segs(s{3, 7}), 1},
+		{"cap-10", -10, segs(s{3, 7}), 0},
+		{"max-1", -1, segs(s{3, 3}, s{5, 5}, s{2, 2}), 1},
+		{"max+0", 0, segs(s{3, 3}, s{5, 5}, s{2, 2}), 1},
+		{"max+1", 1, segs(s{3, 3}, s{5, 5}, s{2, 2}), 1},
+		{"max+3", 3, segs(s{3, 3}, s{5, 5}, s{2, 2}), 1},
+		{"max+4", 4, segs(s{3, 3}, s{5, 5}, s{2, 2}), 1},
+		{"max+8", 8, segs(s{3, 3}, s{5, 5}, s{2, 2}), 2},
+		{"max+10", 10, segs(s{3, 3}, s{5, 5}, s{2, 2}), 3},
+		{"max+inf+8", 8, segs(s{3, 3}, s{5, 5}, s{2, 0}), 2},
+		{"max+inf+10", 10, segs(s{3, 3}, s{5, 5}, s{2, 0}), 2},
+		{"max+inf+1000", 1000, segs(s{3, 3}, s{5, 5}, s{2, 0}), 2},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if gotIndex := MaxAfter(tt.d, tt.segments...); gotIndex != tt.wantIndex {
+				t.Errorf("MaxAfter() = %v, want %v", gotIndex, tt.wantIndex)
+			}
+		})
+	}
+}

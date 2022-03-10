@@ -8,16 +8,44 @@ import (
 )
 
 // MaxMagnitude returns the largest segment magnitude of all non-zero length segments.
+// If segments is empty or contains only zero-length segments, returns 0.
 func MaxMagnitude(segments ...*traits.ElectricMode_Segment) (max float32) {
-	for _, segment := range segments {
+	i := Max(segments...)
+	if i < len(segments) {
+		return segments[i].Magnitude
+	}
+	return 0
+}
+
+// Max returns the index of the segment with the largest magnitude of all non-zero length segments.
+// If segments is empty, or contains only zero length segments, len(segments) is returned.
+func Max(segments ...*traits.ElectricMode_Segment) (index int) {
+	var found bool
+	var max float32
+	for i, segment := range segments {
 		if segment.Length != nil && !durationPositive(segment.Length) {
 			continue // don't count zero length segments
 		}
-		if segment.Magnitude > max {
+		if !found {
 			max = segment.Magnitude
+			index = i
+			found = true
+		} else if segment.Magnitude > max {
+			max = segment.Magnitude
+			index = i
 		}
 	}
-	return max
+	if !found {
+		return len(segments)
+	}
+	return index
+}
+
+// MaxAfter returns the index of the segment with the largest magnitude of all non-zero length segments after d time.
+// If segments is empty, or contains only zero length segments, len(segments) is returned.
+func MaxAfter(d time.Duration, segments ...*traits.ElectricMode_Segment) (index int) {
+	_, i := ActiveAt(d, segments...)
+	return Max(segments[i:]...) + i
 }
 
 // SumMagnitude sums the magnitude of all the given segments.

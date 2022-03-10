@@ -26,5 +26,5 @@ func ActiveAt(d time.Duration, segments ...*traits.ElectricMode_Segment) (segmen
 		}
 	}
 
-	return nil, i
+	return nil, len(segments)
 }

@@ -6,25 +6,27 @@ import (
 	"github.com/smart-core-os/sc-api/go/traits"
 )
 
-// ActiveAt returns the segment active at d or nil if there is no such segment.
-// Returns 0 if d is before all segments, and len(segments) if d is after all segments, otherwise returns the index of
-// the segment in segments.
-func ActiveAt(d time.Duration, segments ...*traits.ElectricMode_Segment) (segment *traits.ElectricMode_Segment, i int) {
+// ActiveAt finds the active segment at time d.
+// The index of the active segment in segments is returned along with the elapsed time before that segment started.
+// If segments is empty or d<0, (0, 0) is returned.
+// If d is after all segments, the total length of the segments is returned as elapsed, and len(segments) as index.
+func ActiveAt(d time.Duration, segments ...*traits.ElectricMode_Segment) (elapsed time.Duration, index int) {
 	if d < 0 {
-		return nil, 0
+		return 0, 0
 	}
 
 	var cur time.Duration
-	for i, segment = range segments {
+	for i, segment := range segments {
 		if segment.Length == nil {
-			return segment, i
+			return cur, i
 		}
 
-		cur += segment.Length.AsDuration()
-		if cur > d {
-			return segment, i
+		l := segment.Length.AsDuration()
+		if cur+l > d {
+			return cur, i
 		}
+		cur += l
 	}
 
-	return nil, len(segments)
+	return cur, len(segments)
 }

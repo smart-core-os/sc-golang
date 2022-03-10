@@ -59,11 +59,14 @@ func SumMagnitude(segments ...*traits.ElectricMode_Segment) (sum float32) {
 // MagnitudeAt returns the magnitude of the segment active at d.
 // If there is no segment at d, ok will be false.
 func MagnitudeAt(d time.Duration, segments ...*traits.ElectricMode_Segment) (level float32, ok bool) {
-	s, _ := ActiveAt(d, segments...)
-	if s == nil {
+	if d < 0 {
 		return 0, false
 	}
-	return s.Magnitude, true
+	_, i := ActiveAt(d, segments...)
+	if i >= len(segments) {
+		return 0, false
+	}
+	return segments[i].Magnitude, true
 }
 
 func durationPositive(d *durationpb.Duration) bool {

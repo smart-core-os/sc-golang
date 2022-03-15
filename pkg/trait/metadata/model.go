@@ -35,25 +35,34 @@ func (m *Model) UpdateMetadata(metadata *traits.Metadata, opts ...resource.Write
 
 func (m *Model) UpdateTraitMetadata(traitMetadata *traits.TraitMetadata, opts ...resource.WriteOption) (*traits.Metadata, error) {
 	// update traits and merge equivalently named traits more metadata field.
-	opts = append([]resource.WriteOption{resource.WithUpdatePaths("traits"), resource.InterceptBefore(func(old, new proto.Message) {
+	// Note: if we specify "traits" as an update mask here, the traits slice will be merged.
+	// This should probably be fixed in update.go
+	opts = append([]resource.WriteOption{resource.InterceptBefore(func(old, new proto.Message) {
 		oldT := old.(*traits.Metadata)
 		newT := new.(*traits.Metadata)
-		newT.Traits = oldT.Traits
-		for _, trait := range newT.Traits {
-			if trait.Name == traitMetadata.Name {
-				if trait.More == nil {
-					trait.More = make(map[string]string)
-				}
-				for k, v := range traitMetadata.More {
-					trait.More[k] = v
-				}
-				return
-			}
-		}
-		// trait doesn't exist, add it
-		newT.Traits = append(newT.Traits, traitMetadata)
+		proto.Merge(newT, oldT)
+		newT.Traits = mergeTraitMetadata(oldT.Traits, traitMetadata)
 	})}, opts...)
-	return m.UpdateMetadata(&traits.Metadata{Traits: []*traits.TraitMetadata{traitMetadata}}, opts...)
+	return m.UpdateMetadata(&traits.Metadata{}, opts...)
+}
+
+func mergeTraitMetadata(tmds []*traits.TraitMetadata, tmd *traits.TraitMetadata) []*traits.TraitMetadata {
+	if len(tmds) == 0 {
+		return []*traits.TraitMetadata{tmd}
+	}
+	for _, trait := range tmds {
+		if trait.Name == tmd.Name {
+			if trait.More == nil {
+				trait.More = make(map[string]string)
+			}
+			for k, v := range tmd.More {
+				trait.More[k] = v
+			}
+			return tmds
+		}
+	}
+	// trait doesn't exist, add it
+	return append(tmds, tmd)
 }
 
 func (m *Model) PullMetadata(ctx context.Context) <-chan *traits.PullMetadataResponse_Change {

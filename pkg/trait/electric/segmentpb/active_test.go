@@ -16,6 +16,7 @@ func TestActiveAt(t *testing.T) {
 		wantIndex   int
 	}{
 		{"empty", 0, segs(), 0, 0},
+		{"negative", -8, segs(s{1, 1}, s{2, 2}, s{3, 3}, s{5, 5}), -8, 0},
 		{"start", 0, segs(s{1, 1}, s{2, 2}, s{3, 3}, s{5, 5}), 0, 0},
 		{"end1", 1, segs(s{1, 1}, s{2, 2}, s{3, 3}, s{5, 5}), 1, 1},
 		{"mid", 2, segs(s{1, 1}, s{2, 2}, s{3, 3}, s{5, 5}), 1, 1},

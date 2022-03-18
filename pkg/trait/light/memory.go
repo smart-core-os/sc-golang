@@ -30,6 +30,7 @@ func NewMemoryDevice() *MemoryDevice {
 			resource.WithWritablePaths(&traits.Brightness{},
 				"level_percent",
 				"brightness_tween.total_duration",
+				"preset",
 			),
 		),
 	}
@@ -44,6 +45,11 @@ func (s *MemoryDevice) GetBrightness(_ context.Context, _ *traits.GetBrightnessR
 }
 
 func (s *MemoryDevice) UpdateBrightness(ctx context.Context, request *traits.UpdateBrightnessRequest) (*traits.Brightness, error) {
+	if request.GetBrightness().GetPreset() != nil {
+		res, err := s.brightness.Set(request.GetBrightness())
+		return res.(*traits.Brightness), err
+	}
+
 	if err := resource.ValidateTweenOnUpdate("brightness", request.GetBrightness().GetBrightnessTween()); err != nil {
 		return nil, err
 	}

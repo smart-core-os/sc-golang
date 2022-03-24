@@ -99,6 +99,8 @@ func (c *Collection) AddFn(create CreateFn) (proto.Message, error) {
 }
 
 func (c *Collection) add(id string, create CreateFn) (proto.Message, string, error) {
+	// todo: convert Collection.Add to use WriteOption
+
 	if id == "" {
 		var err error
 		if id, err = c.genID(); err != nil {
@@ -114,7 +116,7 @@ func (c *Collection) add(id string, create CreateFn) (proto.Message, string, err
 	c.byId[id] = &item{body: body}
 	c.bus.Emit("change", &CollectionChange{
 		Id:         id,
-		ChangeTime: c.clock.Now(),
+		ChangeTime: c.clock.Now(), // todo: allow specifying the writeTime, as part of using WriteOption
 		ChangeType: types.ChangeType_ADD,
 		NewValue:   body,
 	})
@@ -166,7 +168,7 @@ func (c *Collection) Update(id string, msg proto.Message, opts ...WriteOption) (
 	}
 	c.bus.Emit("change", &CollectionChange{
 		Id:         id,
-		ChangeTime: c.clock.Now(),
+		ChangeTime: writeRequest.updateTime(c.clock),
 		ChangeType: changeType,
 		OldValue:   oldValue,
 		NewValue:   newValue,

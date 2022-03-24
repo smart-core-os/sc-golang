@@ -166,6 +166,8 @@ func computeWriteConfig(opts ...WriteOption) writeRequest {
 type UpdateInterceptor func(old, new proto.Message)
 
 type writeRequest struct {
+	writeTime *time.Time
+
 	updateMask    *fieldmaskpb.FieldMask
 	resetMask     *fieldmaskpb.FieldMask
 	expectedValue proto.Message
@@ -220,10 +222,26 @@ func (wr writeRequest) changeFn(writer *masks.FieldUpdater, value proto.Message)
 	}
 }
 
+func (wr writeRequest) updateTime(clock Clock) time.Time {
+	if wr.writeTime != nil {
+		return *wr.writeTime
+	}
+	return clock.Now()
+}
+
 type writeOptionFunc func(wr *writeRequest)
 
 func (w writeOptionFunc) apply(wr *writeRequest) {
 	w(wr)
+}
+
+// WithWriteTime configures the update to behave as if the write happened at time t, instead of now.
+// Any change events that may be emitted with this write use t as their ChangeTime.
+// Computational values, for example tweening, can use this to correctly determine the computed value.
+func WithWriteTime(t time.Time) WriteOption {
+	return writeOptionFunc(func(wr *writeRequest) {
+		wr.writeTime = &t
+	})
 }
 
 // WithUpdateMask configures the update to only apply to these fields.

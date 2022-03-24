@@ -70,7 +70,7 @@ func (r *Value) set(value proto.Message, request writeRequest) (proto.Message, e
 
 	r.bus.Emit("update", &ValueChange{
 		Value:      newValue,
-		ChangeTime: r.clock.Now(),
+		ChangeTime: request.updateTime(r.clock),
 	})
 
 	return newValue, err

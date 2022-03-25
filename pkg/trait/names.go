@@ -31,6 +31,7 @@ const (
 	Emergency        Name = "smartcore.traits.Emergency"
 	EnergyStorage    Name = "smartcore.traits.EnergyStorage"
 	ExtendRetract    Name = "smartcore.traits.ExtendRetract"
+	FanSpeed         Name = "smartcore.traits.FanSpeed"
 	InputSelect      Name = "smartcore.traits.InputSelect"
 	Light            Name = "smartcore.traits.Light"
 	Metadata         Name = "smartcore.traits.Metadata"

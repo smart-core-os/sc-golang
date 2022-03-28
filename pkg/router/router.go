@@ -48,9 +48,10 @@ func NewRouter(opts ...Option) Router {
 
 func (r *router) Add(name string, client interface{}) interface{} {
 	r.mu.Lock()
-	defer r.mu.Unlock()
 	old := r.registry[name]
 	r.registry[name] = client
+	r.mu.Unlock()
+
 	if r.onChange != nil {
 		r.onChange(Change{Name: name, Old: old, New: client})
 	}
@@ -63,13 +64,16 @@ func (r *router) HoldsType(_ interface{}) bool {
 
 func (r *router) Remove(name string) interface{} {
 	r.mu.Lock()
-	defer r.mu.Unlock()
 	old, ok := r.registry[name]
-	if ok {
-		delete(r.registry, name)
-		if r.onChange != nil {
-			r.onChange(Change{Name: name, Old: old})
-		}
+	if !ok {
+		r.mu.Unlock()
+		return old
+	}
+	delete(r.registry, name)
+	r.mu.Unlock()
+
+	if r.onChange != nil {
+		r.onChange(Change{Name: name, Old: old})
 	}
 	return old
 }

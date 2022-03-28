@@ -31,7 +31,7 @@ type router struct {
 	factory  Factory
 	fallback Factory
 
-	onCommit OnCommit
+	onChange func(Change)
 }
 type Factory func(string) (interface{}, error) // returns the type MyServiceClient
 
@@ -51,6 +51,9 @@ func (r *router) Add(name string, client interface{}) interface{} {
 	defer r.mu.Unlock()
 	old := r.registry[name]
 	r.registry[name] = client
+	if r.onChange != nil {
+		r.onChange(Change{Name: name, Old: old, New: client})
+	}
 	return old
 }
 
@@ -61,8 +64,13 @@ func (r *router) HoldsType(_ interface{}) bool {
 func (r *router) Remove(name string) interface{} {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	old := r.registry[name]
-	delete(r.registry, name)
+	old, ok := r.registry[name]
+	if ok {
+		delete(r.registry, name)
+		if r.onChange != nil {
+			r.onChange(Change{Name: name, Old: old})
+		}
+	}
 	return old
 }
 
@@ -105,8 +113,8 @@ func (r *router) Get(name string) (child interface{}, err error) {
 			}
 			r.mu.Unlock()
 
-			if newChildRemembered && r.onCommit != nil {
-				r.onCommit(name, child)
+			if newChildRemembered && r.onChange != nil {
+				r.onChange(Change{Name: name, New: child, Auto: true})
 			}
 		}
 	}
@@ -146,13 +154,22 @@ func WithFallback(f Factory) Option {
 	}
 }
 
-// OnCommit is a callback function for use in WithOnCommit.
-type OnCommit func(name string, client interface{})
-
-// WithOnCommit registers a func that will be called with the value remembered as part of a WithFactory Factory call.
-// Use this if you want to register or otherwise setup side effects for Factory created entries.
-func WithOnCommit(onCommit OnCommit) Option {
+// WithOnChange registers a func that will be called whenever the contents of this router change.
+// Changes include calls to Router.Add, Router.Remove, or Router.Get with a configured Factory.
+func WithOnChange(onChange func(Change)) Option {
 	return func(r *router) {
-		r.onCommit = onCommit
+		r.onChange = onChange
 	}
+}
+
+// Change represents a change to this routers contents.
+type Change struct {
+	// Name is the name of the entry being changed.
+	Name string
+	// Old holds the original value, or nil if there was no original.
+	Old interface{}
+	// New holds the new value, or nil if there is no new value.
+	New interface{}
+	// Auto is true if New was created via a Factory.
+	Auto bool
 }

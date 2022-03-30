@@ -7,7 +7,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/mennanov/fmutils v0.1.1
 	github.com/olebedev/emitter v0.0.0-20190110104742-e8d1457e6aee
-	github.com/smart-core-os/sc-api/go v1.0.0-beta.32
+	github.com/smart-core-os/sc-api/go v1.0.0-beta.33
 	github.com/tanema/gween v0.0.0-20200427131925-c89ae23cc63c
 	go.uber.org/zap v1.17.0
 	golang.org/x/net v0.0.0-20210614182718-04defd469f4e

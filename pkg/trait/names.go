@@ -36,6 +36,7 @@ const (
 	Light            Name = "smartcore.traits.Light"
 	Metadata         Name = "smartcore.traits.Metadata"
 	Microphone       Name = "smartcore.traits.Microphone"
+	Mode             Name = "smartcore.traits.Mode"
 	MotionSensor     Name = "smartcore.traits.MotionSensor"
 	OccupancySensor  Name = "smartcore.traits.OccupancySensor"
 	OnOff            Name = "smartcore.traits.OnOff"

@@ -40,7 +40,7 @@ func (s *ModelServer) GetEnergyLevel(_ context.Context, request *traits.GetEnerg
 }
 
 func (s *ModelServer) PullEnergyLevel(request *traits.PullEnergyLevelRequest, server traits.EnergyStorageApi_PullEnergyLevelServer) error {
-	for update := range s.model.PullEnergyLevel(server.Context(), resource.WithReadMask(request.GetReadMask())) {
+	for update := range s.model.PullEnergyLevel(server.Context(), resource.WithReadMask(request.GetReadMask()), resource.WithUpdatesOnly(request.UpdatesOnly)) {
 		change := &traits.PullEnergyLevelResponse_Change{
 			Name:        request.Name,
 			ChangeTime:  timestamppb.New(update.ChangeTime),

@@ -42,7 +42,7 @@ func (s *ModelServer) GetDemand(_ context.Context, request *traits.GetDemandRequ
 }
 
 func (s *ModelServer) PullDemand(request *traits.PullDemandRequest, server traits.ElectricApi_PullDemandServer) error {
-	for update := range s.model.PullDemand(server.Context(), resource.WithReadMask(request.ReadMask)) {
+	for update := range s.model.PullDemand(server.Context(), resource.WithReadMask(request.ReadMask), resource.WithUpdatesOnly(request.UpdatesOnly)) {
 		change := &traits.PullDemandResponse_Change{
 			Name:       request.Name,
 			ChangeTime: timestamppb.New(update.ChangeTime),
@@ -79,7 +79,7 @@ func (s *ModelServer) ClearActiveMode(_ context.Context, _ *traits.ClearActiveMo
 }
 
 func (s *ModelServer) PullActiveMode(request *traits.PullActiveModeRequest, server traits.ElectricApi_PullActiveModeServer) error {
-	for event := range s.model.PullActiveMode(server.Context(), resource.WithReadMask(request.ReadMask)) {
+	for event := range s.model.PullActiveMode(server.Context(), resource.WithReadMask(request.ReadMask), resource.WithUpdatesOnly(request.UpdatesOnly)) {
 		change := &traits.PullActiveModeResponse_Change{
 			Name:       request.Name,
 			ActiveMode: event.ActiveMode,
@@ -136,7 +136,7 @@ func (s *ModelServer) ListModes(_ context.Context, request *traits.ListModesRequ
 }
 
 func (s *ModelServer) PullModes(request *traits.PullModesRequest, server traits.ElectricApi_PullModesServer) error {
-	for change := range s.model.PullModes(server.Context(), resource.WithReadMask(request.ReadMask)) {
+	for change := range s.model.PullModes(server.Context(), resource.WithReadMask(request.ReadMask), resource.WithUpdatesOnly(request.UpdatesOnly)) {
 		err := server.Send(&traits.PullModesResponse{Changes: []*traits.PullModesResponse_Change{
 			{
 				Name:       request.Name,

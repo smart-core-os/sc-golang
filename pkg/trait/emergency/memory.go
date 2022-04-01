@@ -49,7 +49,7 @@ func (t *MemoryDevice) UpdateEmergency(_ context.Context, request *traits.Update
 }
 
 func (t *MemoryDevice) PullEmergency(request *traits.PullEmergencyRequest, server traits.EmergencyApi_PullEmergencyServer) error {
-	for event := range t.state.Pull(server.Context(), resource.WithReadMask(request.ReadMask)) {
+	for event := range t.state.Pull(server.Context(), resource.WithReadMask(request.ReadMask), resource.WithUpdatesOnly(request.UpdatesOnly)) {
 		change := &traits.PullEmergencyResponse_Change{
 			Name:       request.Name,
 			Emergency:  event.Value.(*traits.Emergency),

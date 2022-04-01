@@ -34,7 +34,7 @@ func (s *ModelServer) GetOccupancy(_ context.Context, req *traits.GetOccupancyRe
 }
 
 func (s *ModelServer) PullOccupancy(request *traits.PullOccupancyRequest, server traits.OccupancySensorApi_PullOccupancyServer) error {
-	for update := range s.model.PullOccupancy(server.Context(), resource.WithReadMask(request.ReadMask)) {
+	for update := range s.model.PullOccupancy(server.Context(), resource.WithReadMask(request.ReadMask), resource.WithUpdatesOnly(request.UpdatesOnly)) {
 		change := &traits.PullOccupancyResponse_Change{
 			Name:       request.Name,
 			ChangeTime: timestamppb.New(update.ChangeTime),

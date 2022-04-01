@@ -54,8 +54,8 @@ func TestGroup_UpdateOnOff(t *testing.T) {
 
 func TestGroup_PullOnOff(t *testing.T) {
 	tester := newOnOffTester(t, "A", "B").pull()
-	// no messages to start with
-	tester.assertNone()
+	// current value sent immediately
+	tester.assertPull(traits.OnOff_UNKNOWN)
 	// message on first change
 	tester.prepare(traits.OnOff_ON, "A")
 	tester.assertPull(traits.OnOff_ON)

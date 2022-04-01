@@ -48,14 +48,14 @@ func TestGroup_UpdateBrightness(t *testing.T) {
 
 func TestGroup_PullBrightness(t *testing.T) {
 	tester := newBrightnessTester(t, "A", "B").pull()
-	// no messages to start with
-	tester.assertNone()
+	// initial value sent immediately
+	tester.assertPull(&traits.Brightness{})
 	// message on first change: 40, 0
 	tester.prepare(&traits.Brightness{LevelPercent: 40}, "A")
-	tester.assertPull(&traits.Brightness{LevelPercent: 40})
+	tester.assertPull(&traits.Brightness{LevelPercent: 20})
 	// message on first change: 40, 40
 	tester.prepare(&traits.Brightness{LevelPercent: 40}, "B")
-	tester.assertNone()
+	tester.assertPull(&traits.Brightness{LevelPercent: 40})
 	// message on first change: 20, 40
 	tester.prepare(&traits.Brightness{LevelPercent: 20}, "A")
 	tester.assertPull(&traits.Brightness{LevelPercent: 30})

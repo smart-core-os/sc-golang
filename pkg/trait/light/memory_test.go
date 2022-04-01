@@ -20,7 +20,7 @@ func TestMemoryDevice_UpdateBrightness(t *testing.T) {
 		api := NewMemoryDevice()
 		api.brightnessTick = 10 * time.Millisecond // give us a chance to see some updates
 		ctx, done := context.WithCancel(th.Ctx)
-		update := api.brightness.Pull(ctx)
+		update := api.brightness.Pull(ctx, resource.WithUpdatesOnly(true))
 		t.Cleanup(done)
 		var updates []*resource.ValueChange
 		go func() {

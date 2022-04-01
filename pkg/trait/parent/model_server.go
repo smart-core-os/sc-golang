@@ -7,6 +7,7 @@ import (
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-api/go/types"
 	"github.com/smart-core-os/sc-golang/pkg/masks"
+	"github.com/smart-core-os/sc-golang/pkg/resource"
 )
 
 // ModelServer exposes Model as a traits.ParentApiServer.
@@ -77,24 +78,7 @@ func (s *ModelServer) ListChildren(_ context.Context, request *traits.ListChildr
 }
 
 func (s *ModelServer) PullChildren(request *traits.PullChildrenRequest, server traits.ParentApi_PullChildrenServer) error {
-	mask := masks.NewResponseFilter(masks.WithFieldMask(request.GetReadMask()))
-	for change := range s.model.PullChildren(server.Context()) {
-		oldValue := mask.FilterClone(change.OldValue)
-		newValue := mask.FilterClone(change.NewValue)
-		if oldValue == newValue {
-			continue // nothing changed wrt the mask
-		}
-		change = &traits.PullChildrenResponse_Change{
-			Name:       request.Name,
-			ChangeTime: change.ChangeTime,
-			Type:       change.Type,
-		}
-		if oldValue != nil {
-			change.OldValue = oldValue.(*traits.Child)
-		}
-		if newValue != nil {
-			change.NewValue = newValue.(*traits.Child)
-		}
+	for change := range s.model.PullChildren(server.Context(), resource.WithReadMask(request.ReadMask), resource.WithUpdatesOnly(request.UpdatesOnly)) {
 		err := server.Send(&traits.PullChildrenResponse{Changes: []*traits.PullChildrenResponse_Change{change}})
 		if err != nil {
 			return err

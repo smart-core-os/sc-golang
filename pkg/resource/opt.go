@@ -124,6 +124,14 @@ func WithReadPaths(m proto.Message, paths ...string) ReadOption {
 	return WithReadMask(mask)
 }
 
+// WithUpdatesOnly instructs Pull methods to only send updates.
+// The default behaviour is to send the current value, followed by future updates.
+func WithUpdatesOnly(updatesOnly bool) ReadOption {
+	return readOptionFunc(func(rr *readRequest) {
+		rr.updatesOnly = updatesOnly
+	})
+}
+
 func computeReadConfig(opts ...ReadOption) *readRequest {
 	rr := &readRequest{}
 	for _, opt := range opts {
@@ -134,6 +142,8 @@ func computeReadConfig(opts ...ReadOption) *readRequest {
 
 type readRequest struct {
 	readMask *fieldmaskpb.FieldMask
+
+	updatesOnly bool
 }
 
 // ResponseFilter returns a masks.ResponseFilter configured using this readRequest properties.

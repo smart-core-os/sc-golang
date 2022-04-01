@@ -191,7 +191,7 @@ func (b *MemoryDevice) PullBookings(request *traits.ListBookingsRequest, server 
 	}()
 	log.Printf("[%x] PullBookings start %v", id, request)
 
-	if listBookingsOnPull {
+	if !request.UpdatesOnly {
 		// send all the bookings we already know about
 		currentBookings, err := b.ListBookings(server.Context(), request)
 		if err != nil {

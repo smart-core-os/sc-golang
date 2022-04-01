@@ -60,7 +60,7 @@ func (t *MemoryDevice) UpdateCount(_ context.Context, request *traits.UpdateCoun
 }
 
 func (t *MemoryDevice) PullCounts(request *traits.PullCountsRequest, server traits.CountApi_PullCountsServer) error {
-	for event := range t.count.Pull(server.Context(), resource.WithReadMask(request.ReadMask)) {
+	for event := range t.count.Pull(server.Context(), resource.WithReadMask(request.ReadMask), resource.WithUpdatesOnly(request.UpdatesOnly)) {
 		change := &traits.PullCountsResponse_Change{
 			Name:  request.Name,
 			Count: event.Value.(*traits.Count),

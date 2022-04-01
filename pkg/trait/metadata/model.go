@@ -65,11 +65,11 @@ func mergeTraitMetadata(tmds []*traits.TraitMetadata, tmd *traits.TraitMetadata)
 	return append(tmds, tmd)
 }
 
-func (m *Model) PullMetadata(ctx context.Context) <-chan *traits.PullMetadataResponse_Change {
+func (m *Model) PullMetadata(ctx context.Context, opts ...resource.ReadOption) <-chan *traits.PullMetadataResponse_Change {
 	send := make(chan *traits.PullMetadataResponse_Change)
 
 	// when ctx is cancelled, then the resource will close recv for us
-	recv := m.metadata.Pull(ctx)
+	recv := m.metadata.Pull(ctx, opts...)
 	go func() {
 		for change := range recv {
 			select {

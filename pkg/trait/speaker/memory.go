@@ -46,7 +46,7 @@ func (s *MemoryDevice) UpdateVolume(_ context.Context, request *traits.UpdateSpe
 }
 
 func (s *MemoryDevice) PullVolume(request *traits.PullSpeakerVolumeRequest, server traits.SpeakerApi_PullVolumeServer) error {
-	for change := range s.volume.Pull(server.Context(), resource.WithReadMask(request.ReadMask)) {
+	for change := range s.volume.Pull(server.Context(), resource.WithReadMask(request.ReadMask), resource.WithUpdatesOnly(request.UpdatesOnly)) {
 		typedChange := &types.AudioLevelChange{
 			Name:       request.Name,
 			Level:      change.Value.(*types.AudioLevel),

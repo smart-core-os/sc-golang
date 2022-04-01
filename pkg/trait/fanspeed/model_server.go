@@ -45,7 +45,7 @@ func (s *ModelServer) UpdateFanSpeed(_ context.Context, request *traits.UpdateFa
 }
 
 func (s *ModelServer) PullFanSpeed(request *traits.PullFanSpeedRequest, server traits.FanSpeedApi_PullFanSpeedServer) error {
-	for change := range s.model.PullFanSpeed(server.Context(), resource.WithReadMask(request.ReadMask)) {
+	for change := range s.model.PullFanSpeed(server.Context(), resource.WithReadMask(request.ReadMask), resource.WithUpdatesOnly(request.UpdatesOnly)) {
 		err := server.Send(&traits.PullFanSpeedResponse{Changes: []*traits.PullFanSpeedResponse_Change{
 			{Name: request.Name, FanSpeed: change.Value, ChangeTime: timestamppb.New(change.ChangeTime)},
 		}})

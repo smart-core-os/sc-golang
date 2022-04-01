@@ -92,7 +92,7 @@ func (m *ModelServer) relativeAdjustment(relative map[string]int32) resource.Upd
 }
 
 func (m *ModelServer) PullModeValues(request *traits.PullModeValuesRequest, server traits.ModeApi_PullModeValuesServer) error {
-	for change := range m.model.PullModeValues(server.Context(), resource.WithReadMask(request.ReadMask)) {
+	for change := range m.model.PullModeValues(server.Context(), resource.WithReadMask(request.ReadMask), resource.WithUpdatesOnly(request.UpdatesOnly)) {
 		err := server.Send(&traits.PullModeValuesResponse{Changes: []*traits.PullModeValuesResponse_Change{
 			{
 				Name:       request.Name,

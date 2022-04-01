@@ -137,7 +137,7 @@ func (s *MemoryDevice) UpdateBrightness(ctx context.Context, request *traits.Upd
 }
 
 func (s *MemoryDevice) PullBrightness(request *traits.PullBrightnessRequest, server traits.LightApi_PullBrightnessServer) error {
-	for event := range s.brightness.Pull(server.Context(), resource.WithReadMask(request.ReadMask)) {
+	for event := range s.brightness.Pull(server.Context(), resource.WithReadMask(request.ReadMask), resource.WithUpdatesOnly(request.UpdatesOnly)) {
 		brightness := event.Value.(*traits.Brightness)
 		// don't emit progress if the caller doesn't want it
 		if request.ExcludeRamping {

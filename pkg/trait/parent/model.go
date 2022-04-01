@@ -77,10 +77,10 @@ func (m *Model) ListChildren() []*traits.Child {
 	return children
 }
 
-// PullChildren returns a chat that will emit when changes are made to the known children of this model.
-func (m *Model) PullChildren(ctx context.Context) <-chan *traits.PullChildrenResponse_Change {
+// PullChildren returns a chan that will emit when changes are made to the known children of this model.
+func (m *Model) PullChildren(ctx context.Context, opts ...resource.ReadOption) <-chan *traits.PullChildrenResponse_Change {
 	out := make(chan *traits.PullChildrenResponse_Change)
-	changes := m.children.Pull(ctx)
+	changes := m.children.Pull(ctx, opts...)
 
 	go func() {
 		for change := range changes {

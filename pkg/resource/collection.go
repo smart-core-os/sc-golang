@@ -200,12 +200,30 @@ func (c *Collection) Pull(ctx context.Context, opts ...ReadOption) <-chan *Colle
 	readConfig := computeReadConfig(opts...)
 	filter := readConfig.ResponseFilter()
 
-	emit := c.bus.On("change")
+	emit, currentValues := c.onUpdate(readConfig)
 	send := make(chan *CollectionChange)
 
 	go func() {
 		defer c.bus.Off("change", emit)
 		defer close(send)
+
+		if len(currentValues) > 0 {
+			ct := c.clock.Now()
+			for _, value := range currentValues {
+				change := &CollectionChange{
+					Id:         value.id,
+					ChangeTime: ct,
+					ChangeType: types.ChangeType_ADD,
+					NewValue:   value.body,
+				}
+				change = change.filter(filter)
+				select {
+				case <-ctx.Done():
+					return
+				case send <- change:
+				}
+			}
+		}
 
 		for {
 			select {
@@ -229,6 +247,20 @@ func (c *Collection) Pull(ctx context.Context, opts ...ReadOption) <-chan *Colle
 	return send
 }
 
+func (c *Collection) onUpdate(config *readRequest) (<-chan emitter.Event, []idItem) {
+	if config.updatesOnly {
+		return c.bus.On("change"), nil
+	}
+
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	res := make([]idItem, 0, len(c.byId))
+	for id, item := range c.byId {
+		res = append(res, idItem{item: *item, id: id})
+	}
+	return c.bus.On("change"), res
+}
+
 func (c *Collection) genID() (string, error) {
 	return GenerateUniqueId(c.rng, func(candidate string) bool {
 		_, exists := c.byId[candidate]
@@ -238,4 +270,9 @@ func (c *Collection) genID() (string, error) {
 
 type item struct {
 	body proto.Message
+}
+
+type idItem struct {
+	item
+	id string
 }

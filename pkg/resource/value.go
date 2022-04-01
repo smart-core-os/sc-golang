@@ -83,11 +83,21 @@ func (r *Value) set(value proto.Message, request writeRequest) (proto.Message, e
 func (r *Value) Pull(ctx context.Context, opts ...ReadOption) <-chan *ValueChange {
 	readConfig := computeReadConfig(opts...)
 	filter := readConfig.ResponseFilter()
-	on := r.bus.On("update")
+	on, currentValue := r.onUpdate(readConfig)
 	typedEvents := make(chan *ValueChange)
 	go func() {
 		defer close(typedEvents)
 		defer r.bus.Off("update", on)
+
+		if currentValue != nil {
+			change := &ValueChange{Value: currentValue, ChangeTime: r.clock.Now()}
+			change = change.filter(filter)
+			select {
+			case <-ctx.Done():
+				return // give up sending
+			case typedEvents <- change:
+			}
+		}
 
 		var last proto.Message
 		for {
@@ -112,4 +122,14 @@ func (r *Value) Pull(ctx context.Context, opts ...ReadOption) <-chan *ValueChang
 		}
 	}()
 	return typedEvents
+}
+
+func (r *Value) onUpdate(config *readRequest) (<-chan emitter.Event, proto.Message) {
+	if config.updatesOnly {
+		return r.bus.On("update"), nil
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.bus.On("update"), r.value
 }

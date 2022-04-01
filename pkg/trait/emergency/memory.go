@@ -33,8 +33,8 @@ func (t *MemoryDevice) Register(server *grpc.Server) {
 	traits.RegisterEmergencyApiServer(server, t)
 }
 
-func (t *MemoryDevice) GetEmergency(_ context.Context, _ *traits.GetEmergencyRequest) (*traits.Emergency, error) {
-	return t.state.Get().(*traits.Emergency), nil
+func (t *MemoryDevice) GetEmergency(_ context.Context, req *traits.GetEmergencyRequest) (*traits.Emergency, error) {
+	return t.state.Get(resource.WithReadMask(req.ReadMask)).(*traits.Emergency), nil
 }
 
 func (t *MemoryDevice) UpdateEmergency(_ context.Context, request *traits.UpdateEmergencyRequest) (*traits.Emergency, error) {
@@ -49,7 +49,7 @@ func (t *MemoryDevice) UpdateEmergency(_ context.Context, request *traits.Update
 }
 
 func (t *MemoryDevice) PullEmergency(request *traits.PullEmergencyRequest, server traits.EmergencyApi_PullEmergencyServer) error {
-	for event := range t.state.Pull(server.Context()) {
+	for event := range t.state.Pull(server.Context(), resource.WithReadMask(request.ReadMask)) {
 		change := &traits.PullEmergencyResponse_Change{
 			Name:       request.Name,
 			Emergency:  event.Value.(*traits.Emergency),

@@ -36,11 +36,11 @@ func (s *ModelServer) Register(server *grpc.Server) {
 }
 
 func (s *ModelServer) GetEnergyLevel(_ context.Context, request *traits.GetEnergyLevelRequest) (*traits.EnergyLevel, error) {
-	return s.model.GetEnergyLevel(resource.WithReadMask(request.GetFields()))
+	return s.model.GetEnergyLevel(resource.WithReadMask(request.GetReadMask()))
 }
 
 func (s *ModelServer) PullEnergyLevel(request *traits.PullEnergyLevelRequest, server traits.EnergyStorageApi_PullEnergyLevelServer) error {
-	for update := range s.model.PullEnergyLevel(server.Context(), resource.WithReadMask(request.GetFields())) {
+	for update := range s.model.PullEnergyLevel(server.Context(), resource.WithReadMask(request.GetReadMask())) {
 		change := &traits.PullEnergyLevelResponse_Change{
 			Name:        request.Name,
 			ChangeTime:  timestamppb.New(update.ChangeTime),

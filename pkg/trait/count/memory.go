@@ -34,8 +34,8 @@ func InitialCount() *traits.Count {
 	}
 }
 
-func (t *MemoryDevice) GetCount(_ context.Context, _ *traits.GetCountRequest) (*traits.Count, error) {
-	return t.count.Get().(*traits.Count), nil
+func (t *MemoryDevice) GetCount(_ context.Context, req *traits.GetCountRequest) (*traits.Count, error) {
+	return t.count.Get(resource.WithReadMask(req.ReadMask)).(*traits.Count), nil
 }
 
 func (t *MemoryDevice) ResetCount(_ context.Context, request *traits.ResetCountRequest) (*traits.Count, error) {
@@ -60,7 +60,7 @@ func (t *MemoryDevice) UpdateCount(_ context.Context, request *traits.UpdateCoun
 }
 
 func (t *MemoryDevice) PullCounts(request *traits.PullCountsRequest, server traits.CountApi_PullCountsServer) error {
-	for event := range t.count.Pull(server.Context()) {
+	for event := range t.count.Pull(server.Context(), resource.WithReadMask(request.ReadMask)) {
 		change := &traits.PullCountsResponse_Change{
 			Name:  request.Name,
 			Count: event.Value.(*traits.Count),

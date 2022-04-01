@@ -40,8 +40,8 @@ func InitialBrightness() *traits.Brightness {
 	return &traits.Brightness{}
 }
 
-func (s *MemoryDevice) GetBrightness(_ context.Context, _ *traits.GetBrightnessRequest) (*traits.Brightness, error) {
-	return s.brightness.Get().(*traits.Brightness), nil
+func (s *MemoryDevice) GetBrightness(_ context.Context, req *traits.GetBrightnessRequest) (*traits.Brightness, error) {
+	return s.brightness.Get(resource.WithReadMask(req.ReadMask)).(*traits.Brightness), nil
 }
 
 func (s *MemoryDevice) UpdateBrightness(ctx context.Context, request *traits.UpdateBrightnessRequest) (*traits.Brightness, error) {
@@ -137,7 +137,7 @@ func (s *MemoryDevice) UpdateBrightness(ctx context.Context, request *traits.Upd
 }
 
 func (s *MemoryDevice) PullBrightness(request *traits.PullBrightnessRequest, server traits.LightApi_PullBrightnessServer) error {
-	for event := range s.brightness.Pull(server.Context()) {
+	for event := range s.brightness.Pull(server.Context(), resource.WithReadMask(request.ReadMask)) {
 		brightness := event.Value.(*traits.Brightness)
 		// don't emit progress if the caller doesn't want it
 		if request.ExcludeRamping {

@@ -27,8 +27,8 @@ func (s *MemoryDevice) Register(server *grpc.Server) {
 	traits.RegisterSpeakerApiServer(server, s)
 }
 
-func (s *MemoryDevice) GetVolume(_ context.Context, _ *traits.GetSpeakerVolumeRequest) (*types.AudioLevel, error) {
-	return s.volume.Get().(*types.AudioLevel), nil
+func (s *MemoryDevice) GetVolume(_ context.Context, req *traits.GetSpeakerVolumeRequest) (*types.AudioLevel, error) {
+	return s.volume.Get(resource.WithReadMask(req.ReadMask)).(*types.AudioLevel), nil
 }
 
 func (s *MemoryDevice) UpdateVolume(_ context.Context, request *traits.UpdateSpeakerVolumeRequest) (*types.AudioLevel, error) {
@@ -46,7 +46,7 @@ func (s *MemoryDevice) UpdateVolume(_ context.Context, request *traits.UpdateSpe
 }
 
 func (s *MemoryDevice) PullVolume(request *traits.PullSpeakerVolumeRequest, server traits.SpeakerApi_PullVolumeServer) error {
-	for change := range s.volume.Pull(server.Context()) {
+	for change := range s.volume.Pull(server.Context(), resource.WithReadMask(request.ReadMask)) {
 		typedChange := &types.AudioLevelChange{
 			Name:       request.Name,
 			Level:      change.Value.(*types.AudioLevel),

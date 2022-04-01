@@ -3,6 +3,7 @@ package occupancysensor
 import (
 	"context"
 
+	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/smart-core-os/sc-api/go/traits"
@@ -28,12 +29,12 @@ func (s *ModelServer) Register(server *grpc.Server) {
 	traits.RegisterOccupancySensorApiServer(server, s)
 }
 
-func (s *ModelServer) GetOccupancy(_ context.Context, _ *traits.GetOccupancyRequest) (*traits.Occupancy, error) {
-	return s.model.GetOccupancy()
+func (s *ModelServer) GetOccupancy(_ context.Context, req *traits.GetOccupancyRequest) (*traits.Occupancy, error) {
+	return s.model.GetOccupancy(resource.WithReadMask(req.ReadMask))
 }
 
 func (s *ModelServer) PullOccupancy(request *traits.PullOccupancyRequest, server traits.OccupancySensorApi_PullOccupancyServer) error {
-	for update := range s.model.PullOccupancy(server.Context()) {
+	for update := range s.model.PullOccupancy(server.Context(), resource.WithReadMask(request.ReadMask)) {
 		change := &traits.PullOccupancyResponse_Change{
 			Name:       request.Name,
 			ChangeTime: timestamppb.New(update.ChangeTime),

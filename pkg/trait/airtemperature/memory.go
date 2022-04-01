@@ -43,8 +43,8 @@ func (t *MemoryDevice) Register(server *grpc.Server) {
 	traits.RegisterAirTemperatureApiServer(server, t)
 }
 
-func (t *MemoryDevice) GetAirTemperature(_ context.Context, _ *traits.GetAirTemperatureRequest) (*traits.AirTemperature, error) {
-	return t.airTemperature.Get().(*traits.AirTemperature), nil
+func (t *MemoryDevice) GetAirTemperature(_ context.Context, req *traits.GetAirTemperatureRequest) (*traits.AirTemperature, error) {
+	return t.airTemperature.Get(resource.WithReadMask(req.ReadMask)).(*traits.AirTemperature), nil
 }
 
 func (t *MemoryDevice) UpdateAirTemperature(_ context.Context, request *traits.UpdateAirTemperatureRequest) (*traits.AirTemperature, error) {
@@ -53,7 +53,7 @@ func (t *MemoryDevice) UpdateAirTemperature(_ context.Context, request *traits.U
 }
 
 func (t *MemoryDevice) PullAirTemperature(request *traits.PullAirTemperatureRequest, server traits.AirTemperatureApi_PullAirTemperatureServer) error {
-	for event := range t.airTemperature.Pull(server.Context()) {
+	for event := range t.airTemperature.Pull(server.Context(), resource.WithReadMask(request.ReadMask)) {
 		change := &traits.PullAirTemperatureResponse_Change{
 			Name:       request.Name,
 			State:      event.Value.(*traits.AirTemperature),

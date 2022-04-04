@@ -55,9 +55,9 @@ func (t *MemoryDevice) UpdateAirTemperature(_ context.Context, request *traits.U
 func (t *MemoryDevice) PullAirTemperature(request *traits.PullAirTemperatureRequest, server traits.AirTemperatureApi_PullAirTemperatureServer) error {
 	for event := range t.airTemperature.Pull(server.Context(), resource.WithReadMask(request.ReadMask), resource.WithUpdatesOnly(request.UpdatesOnly)) {
 		change := &traits.PullAirTemperatureResponse_Change{
-			Name:       request.Name,
-			State:      event.Value.(*traits.AirTemperature),
-			ChangeTime: timestamppb.New(event.ChangeTime),
+			Name:           request.Name,
+			AirTemperature: event.Value.(*traits.AirTemperature),
+			ChangeTime:     timestamppb.New(event.ChangeTime),
 		}
 		err := server.Send(&traits.PullAirTemperatureResponse{
 			Changes: []*traits.PullAirTemperatureResponse_Change{change},

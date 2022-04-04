@@ -132,6 +132,19 @@ func WithUpdatesOnly(updatesOnly bool) ReadOption {
 	})
 }
 
+// FilterFunc defines the signature for a function that filters items from a collection.
+type FilterFunc func(id string, item proto.Message) bool
+
+// WithInclude instructs collection List or Pull methods to only include items where the given FilterFunc returns true.
+// During Pull if an item is updated so it's inclusion changes, the ChangeType will correctly reflect the change of
+// inclusion for that type in the response set.
+// For example if the item wasn't included in the response, then was updated so that include now returns true, then the change is an ADD.
+func WithInclude(include FilterFunc) ReadOption {
+	return readOptionFunc(func(rr *readRequest) {
+		rr.include = include
+	})
+}
+
 func computeReadConfig(opts ...ReadOption) *readRequest {
 	rr := &readRequest{}
 	for _, opt := range opts {
@@ -144,6 +157,8 @@ type readRequest struct {
 	readMask *fieldmaskpb.FieldMask
 
 	updatesOnly bool
+
+	include FilterFunc
 }
 
 // ResponseFilter returns a masks.ResponseFilter configured using this readRequest properties.
@@ -154,6 +169,11 @@ func (rr *readRequest) ResponseFilter() *masks.ResponseFilter {
 // FilterClone in the equivalent of rr.ResponseFilter().FilterClone(m).
 func (rr *readRequest) FilterClone(m proto.Message) proto.Message {
 	return rr.ResponseFilter().FilterClone(m)
+}
+
+// Exclude returns true if the given message should be excluded from responses to collection List or Pull.
+func (rr *readRequest) Exclude(id string, m proto.Message) bool {
+	return rr.include != nil && !rr.include(id, m)
 }
 
 type readOptionFunc func(rr *readRequest)

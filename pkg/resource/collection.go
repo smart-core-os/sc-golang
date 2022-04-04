@@ -54,17 +54,7 @@ func (c *Collection) List(opts ...ReadOption) []proto.Message {
 
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-
-	// temporary slice to allow sorting
-	type entry struct {
-		id   string
-		body proto.Message
-	}
-	tmp := make([]entry, 0, len(c.byId))
-
-	for id, value := range c.byId {
-		tmp = append(tmp, entry{id, value.body})
-	}
+	tmp := c.itemSlice(readConfig)
 	sort.Slice(tmp, func(i, j int) bool {
 		return tmp[i].id < tmp[j].id
 	})
@@ -79,14 +69,14 @@ func (c *Collection) List(opts ...ReadOption) []proto.Message {
 
 // Add associates the given body with the id.
 // If id already exists then an error is returned.
-func (c *Collection) Add(id string, body proto.Message) (string, error) {
+func (c *Collection) Add(id string, body proto.Message) (proto.Message, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	_, id, err := c.add(id, func(id string) proto.Message {
+	body, _, err := c.add(id, func(id string) proto.Message {
 		return body
 	})
-	return id, err
+	return body, err
 }
 
 // AddFn adds an entry to the collection by invoking create with a newly allocated ID.
@@ -230,7 +220,12 @@ func (c *Collection) Pull(ctx context.Context, opts ...ReadOption) <-chan *Colle
 			case <-ctx.Done():
 				return
 			case event := <-emit:
-				change := event.Args[0].(*CollectionChange).filter(filter)
+				change := event.Args[0].(*CollectionChange)
+				change, ok := change.include(readConfig.include)
+				if !ok {
+					continue
+				}
+				change = change.filter(filter)
 				if c.equivalence != nil && c.equivalence.Compare(change.OldValue, change.NewValue) {
 					continue
 				}
@@ -254,11 +249,20 @@ func (c *Collection) onUpdate(config *readRequest) (<-chan emitter.Event, []idIt
 
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	res := make([]idItem, 0, len(c.byId))
-	for id, item := range c.byId {
-		res = append(res, idItem{item: *item, id: id})
-	}
+	res := c.itemSlice(config)
 	return c.bus.On("change"), res
+}
+
+// itemSlice returns all the values in byId adjusted to match readConfig settings like readRequest.include.
+func (c *Collection) itemSlice(readConfig *readRequest) []idItem {
+	res := make([]idItem, 0, len(c.byId))
+	for id, value := range c.byId {
+		if readConfig.Exclude(id, value.body) {
+			continue
+		}
+		res = append(res, idItem{item: *value, id: id})
+	}
+	return res
 }
 
 func (c *Collection) genID() (string, error) {

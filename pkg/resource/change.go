@@ -61,3 +61,38 @@ func (c *CollectionChange) filter(filter *masks.ResponseFilter) *CollectionChang
 		NewValue:   newNewValue,
 	}
 }
+
+// include adjusts this change based on any filtering that is active on the collection.
+// If items are being filtered, then an UPDATE that causes an items inclusion to change will report an ADD or REMOVE
+// as needed. A new CollectionChange is returned if the underlying change type isn't accurate anymore.
+// The ok return value will be true if an update should be sent, and false if the change shouldn't be forwarded on.
+func (c *CollectionChange) include(includeFunc FilterFunc) (newChange *CollectionChange, ok bool) {
+	if includeFunc == nil {
+		return c, true
+	}
+
+	oldInclude := includeFunc(c.Id, c.OldValue)
+	newInclude := includeFunc(c.Id, c.NewValue)
+	if oldInclude == newInclude {
+		// the only time we want to skip sending the update is if both the old and new values are excluded
+		return c, !newInclude
+	}
+
+	if newInclude {
+		// treat this like an Add
+		return &CollectionChange{
+			Id:         c.Id,
+			ChangeType: types.ChangeType_ADD,
+			ChangeTime: c.ChangeTime,
+			NewValue:   c.NewValue,
+		}, true
+	}
+
+	// treat this like a remove
+	return &CollectionChange{
+		Id:         c.Id,
+		ChangeType: types.ChangeType_REMOVE,
+		ChangeTime: c.ChangeTime,
+		OldValue:   c.OldValue,
+	}, true
+}

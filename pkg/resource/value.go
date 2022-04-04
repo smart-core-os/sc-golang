@@ -3,6 +3,7 @@ package resource
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/olebedev/emitter"
 	"google.golang.org/protobuf/proto"
@@ -13,8 +14,9 @@ import (
 type Value struct {
 	*config
 
-	mu    sync.RWMutex
-	value proto.Message
+	mu         sync.RWMutex
+	value      proto.Message
+	changeTime time.Time
 
 	bus *emitter.Emitter
 }
@@ -26,6 +28,7 @@ func NewValue(opts ...Option) *Value {
 		bus:    &emitter.Emitter{},
 	}
 	res.value = c.initialValue
+	res.changeTime = c.clock.Now()
 	c.initialValue = nil // clear so it can be GC'd when the value changes
 	return res
 }
@@ -61,6 +64,7 @@ func (r *Value) set(value proto.Message, request writeRequest) (proto.Message, e
 		request.changeFn(writer, value),
 		func(message proto.Message) {
 			r.value = message
+			r.changeTime = request.updateTime(r.clock)
 		},
 	)
 
@@ -83,14 +87,14 @@ func (r *Value) set(value proto.Message, request writeRequest) (proto.Message, e
 func (r *Value) Pull(ctx context.Context, opts ...ReadOption) <-chan *ValueChange {
 	readConfig := computeReadConfig(opts...)
 	filter := readConfig.ResponseFilter()
-	on, currentValue := r.onUpdate(readConfig)
+	on, currentValue, changeTime := r.onUpdate(readConfig)
 	typedEvents := make(chan *ValueChange)
 	go func() {
 		defer close(typedEvents)
 		defer r.bus.Off("update", on)
 
 		if currentValue != nil {
-			change := &ValueChange{Value: currentValue, ChangeTime: r.clock.Now()}
+			change := &ValueChange{Value: currentValue, ChangeTime: changeTime}
 			change = change.filter(filter)
 			select {
 			case <-ctx.Done():
@@ -124,12 +128,12 @@ func (r *Value) Pull(ctx context.Context, opts ...ReadOption) <-chan *ValueChang
 	return typedEvents
 }
 
-func (r *Value) onUpdate(config *readRequest) (<-chan emitter.Event, proto.Message) {
+func (r *Value) onUpdate(config *readRequest) (<-chan emitter.Event, proto.Message, time.Time) {
 	if config.updatesOnly {
-		return r.bus.On("update"), nil
+		return r.bus.On("update"), nil, r.changeTime
 	}
 
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return r.bus.On("update"), r.value
+	return r.bus.On("update"), r.value, r.changeTime
 }

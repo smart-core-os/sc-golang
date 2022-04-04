@@ -4,6 +4,7 @@ import (
 	"context"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/olebedev/emitter"
 	"github.com/smart-core-os/sc-api/go/types"
@@ -103,7 +104,7 @@ func (c *Collection) add(id string, create CreateFn) (proto.Message, string, err
 	}
 
 	body := create(id)
-	c.byId[id] = &item{body: body}
+	c.byId[id] = &item{body: body, changeTime: c.clock.Now()}
 	c.bus.Emit("change", &CollectionChange{
 		Id:         id,
 		ChangeTime: c.clock.Now(), // todo: allow specifying the writeTime, as part of using WriteOption
@@ -143,7 +144,7 @@ func (c *Collection) Update(id string, msg proto.Message, opts ...WriteOption) (
 		},
 		writeRequest.changeFn(writer, msg),
 		func(msg proto.Message) {
-			c.byId[id] = &item{body: msg}
+			c.byId[id] = &item{body: msg, changeTime: writeRequest.updateTime(c.clock)}
 		})
 
 	if err != nil {
@@ -198,11 +199,10 @@ func (c *Collection) Pull(ctx context.Context, opts ...ReadOption) <-chan *Colle
 		defer close(send)
 
 		if len(currentValues) > 0 {
-			ct := c.clock.Now()
 			for _, value := range currentValues {
 				change := &CollectionChange{
 					Id:         value.id,
-					ChangeTime: ct,
+					ChangeTime: value.changeTime,
 					ChangeType: types.ChangeType_ADD,
 					NewValue:   value.body,
 				}
@@ -273,7 +273,8 @@ func (c *Collection) genID() (string, error) {
 }
 
 type item struct {
-	body proto.Message
+	body       proto.Message
+	changeTime time.Time
 }
 
 type idItem struct {

@@ -25,6 +25,7 @@ import (
 
 const listBookingsOnPull = false
 
+// Deprecated: Use Model and ModelServer instead
 type MemoryDevice struct {
 	traits.UnimplementedBookingApiServer
 	bookingsById   map[string]*traits.Booking
@@ -38,6 +39,7 @@ type MemoryDevice struct {
 // compile time check that we implement the interface we need
 var _ traits.BookingApiServer = (*MemoryDevice)(nil)
 
+// Deprecated: Use NewModelServer(NewModel()) instead
 func NewMemoryDevice() *MemoryDevice {
 	return &MemoryDevice{
 		bookingsById: make(map[string]*traits.Booking),

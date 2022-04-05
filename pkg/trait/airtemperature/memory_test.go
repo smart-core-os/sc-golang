@@ -9,7 +9,6 @@ import (
 	"github.com/smart-core-os/sc-api/go/types"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func TestMemoryDevice_GetState_Initial(t *testing.T) {
@@ -34,7 +33,7 @@ func TestMemoryDevice_UpdateAirTemperature(t *testing.T) {
 		},
 		// fields we can't edit
 		AmbientTemperature: &types.Temperature{ValueCelsius: -12},
-		AmbientHumidity:    wrapperspb.Float(12.2),
+		AmbientHumidity:    pfloat32(12.2),
 	}
 	updatedState, err := api.UpdateAirTemperature(context.Background(), &traits.UpdateAirTemperatureRequest{
 		Name:  "test",
@@ -72,7 +71,7 @@ func TestMemoryDevice_UpdateAirTemperature_Mask(t *testing.T) {
 		},
 		// fields we can't edit
 		AmbientTemperature: &types.Temperature{ValueCelsius: -12},
-		AmbientHumidity:    wrapperspb.Float(12.2),
+		AmbientHumidity:    pfloat32(12.2),
 	}
 	updatedState, err := api.UpdateAirTemperature(context.Background(), &traits.UpdateAirTemperatureRequest{
 		Name:       "test",
@@ -99,4 +98,8 @@ func TestMemoryDevice_UpdateAirTemperature_Mask(t *testing.T) {
 	if diff := cmp.Diff(initialState.AmbientTemperature, updatedState.AmbientTemperature, protocmp.Transform()); diff != "" {
 		t.Errorf("UpdateAirTemperature() AmbientTemperature mismatch (-want,+got)\n%v", diff)
 	}
+}
+
+func pfloat32(v float32) *float32 {
+	return &v
 }

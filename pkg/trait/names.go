@@ -34,6 +34,7 @@ const (
 	FanSpeed         Name = "smartcore.traits.FanSpeed"
 	InputSelect      Name = "smartcore.traits.InputSelect"
 	Light            Name = "smartcore.traits.Light"
+	LockUnlock       Name = "smartcore.traits.LockUnlock"
 	Metadata         Name = "smartcore.traits.Metadata"
 	Microphone       Name = "smartcore.traits.Microphone"
 	Mode             Name = "smartcore.traits.Mode"

@@ -76,7 +76,7 @@ func (r *Value) set(value proto.Message, request writeRequest) (proto.Message, e
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Second*5)
 	defer cancel()
 	r.bus.Send(ctx, &ValueChange{
 		Value:      newValue,

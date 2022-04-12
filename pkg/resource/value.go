@@ -2,6 +2,8 @@ package resource
 
 import (
 	"context"
+	"errors"
+	"log"
 	"sync"
 	"time"
 
@@ -56,6 +58,7 @@ func (r *Value) set(value proto.Message, request writeRequest) (proto.Message, e
 		return nil, err
 	}
 
+	disarm := timeoutAlarm(time.Second, "GetAndUpdate took too long")
 	_, newValue, err := GetAndUpdate(
 		&r.mu,
 		func() (proto.Message, error) {
@@ -67,15 +70,21 @@ func (r *Value) set(value proto.Message, request writeRequest) (proto.Message, e
 			r.changeTime = request.updateTime(r.clock)
 		},
 	)
+	disarm()
 
 	if err != nil {
 		return nil, err
 	}
 
-	r.bus.Send(context.TODO(), &ValueChange{
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
+	defer cancel()
+	r.bus.Send(ctx, &ValueChange{
 		Value:      newValue,
 		ChangeTime: request.updateTime(r.clock),
 	})
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		return nil, errors.New("bus.Send blocked for too long")
+	}
 
 	return newValue, err
 }
@@ -127,4 +136,17 @@ func (r *Value) onUpdate(ctx context.Context, config *readRequest) (<-chan inter
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.bus.Listen(ctx), r.value, r.changeTime
+}
+
+func timeoutAlarm(duration time.Duration, fmt string, args ...interface{}) (disarm func()) {
+	ctx, cancel := context.WithTimeout(context.Background(), duration)
+
+	go func() {
+		<-ctx.Done()
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			log.Printf(fmt, args...)
+		}
+	}()
+
+	return cancel
 }

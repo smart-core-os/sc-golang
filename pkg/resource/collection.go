@@ -6,11 +6,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/olebedev/emitter"
 	"github.com/smart-core-os/sc-api/go/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/smart-core-os/sc-golang/internal/minibus"
 )
 
 type Collection struct {
@@ -19,7 +20,7 @@ type Collection struct {
 	mu   sync.RWMutex // protects byId and rng from concurrent access
 	byId map[string]*item
 	// "change" events contain a *CollectionChange instance
-	bus *emitter.Emitter
+	bus minibus.Bus
 }
 
 func NewCollection(options ...Option) *Collection {
@@ -28,7 +29,6 @@ func NewCollection(options ...Option) *Collection {
 		config: conf,
 		byId:   make(map[string]*item),
 		mu:     sync.RWMutex{},
-		bus:    emitter.New(0),
 	}
 
 	return c
@@ -105,7 +105,7 @@ func (c *Collection) add(id string, create CreateFn) (proto.Message, string, err
 
 	body := create(id)
 	c.byId[id] = &item{body: body, changeTime: c.clock.Now()}
-	c.bus.Emit("change", &CollectionChange{
+	c.bus.Send(context.TODO(), &CollectionChange{
 		Id:         id,
 		ChangeTime: c.clock.Now(), // todo: allow specifying the writeTime, as part of using WriteOption
 		ChangeType: types.ChangeType_ADD,
@@ -157,7 +157,7 @@ func (c *Collection) Update(id string, msg proto.Message, opts ...WriteOption) (
 	if oldValue == nil {
 		changeType = types.ChangeType_ADD
 	}
-	c.bus.Emit("change", &CollectionChange{
+	c.bus.Send(context.TODO(), &CollectionChange{
 		Id:         id,
 		ChangeTime: writeRequest.updateTime(c.clock),
 		ChangeType: changeType,
@@ -178,7 +178,7 @@ func (c *Collection) Delete(id string) proto.Message {
 		return nil
 	}
 	delete(c.byId, id)
-	c.bus.Emit("change", &CollectionChange{
+	c.bus.Send(context.TODO(), &CollectionChange{
 		Id:         id,
 		ChangeTime: c.clock.Now(),
 		ChangeType: types.ChangeType_REMOVE,
@@ -191,11 +191,10 @@ func (c *Collection) Pull(ctx context.Context, opts ...ReadOption) <-chan *Colle
 	readConfig := computeReadConfig(opts...)
 	filter := readConfig.ResponseFilter()
 
-	emit, currentValues := c.onUpdate(readConfig)
+	emit, currentValues := c.onUpdate(ctx, readConfig)
 	send := make(chan *CollectionChange)
 
 	go func() {
-		defer c.bus.Off("change", emit)
 		defer close(send)
 
 		if len(currentValues) > 0 {
@@ -215,26 +214,20 @@ func (c *Collection) Pull(ctx context.Context, opts ...ReadOption) <-chan *Colle
 			}
 		}
 
-		for {
+		for event := range emit {
+			change := event.(*CollectionChange)
+			change, ok := change.include(readConfig.include)
+			if !ok {
+				continue
+			}
+			change = change.filter(filter)
+			if c.equivalence != nil && c.equivalence.Compare(change.OldValue, change.NewValue) {
+				continue
+			}
 			select {
+			case send <- change:
 			case <-ctx.Done():
 				return
-			case event := <-emit:
-				change := event.Args[0].(*CollectionChange)
-				change, ok := change.include(readConfig.include)
-				if !ok {
-					continue
-				}
-				change = change.filter(filter)
-				if c.equivalence != nil && c.equivalence.Compare(change.OldValue, change.NewValue) {
-					continue
-				}
-				select {
-				case send <- change:
-				case <-ctx.Done():
-					return
-				}
-
 			}
 		}
 	}()
@@ -242,15 +235,15 @@ func (c *Collection) Pull(ctx context.Context, opts ...ReadOption) <-chan *Colle
 	return send
 }
 
-func (c *Collection) onUpdate(config *readRequest) (<-chan emitter.Event, []idItem) {
+func (c *Collection) onUpdate(ctx context.Context, config *readRequest) (<-chan interface{}, []idItem) {
 	if config.updatesOnly {
-		return c.bus.On("change"), nil
+		return c.bus.Listen(ctx), nil
 	}
 
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	res := c.itemSlice(config)
-	return c.bus.On("change"), res
+	return c.bus.Listen(ctx), res
 }
 
 // itemSlice returns all the values in byId adjusted to match readConfig settings like readRequest.include.

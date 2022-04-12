@@ -5,8 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/olebedev/emitter"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/smart-core-os/sc-golang/internal/minibus"
 )
 
 // Value represents a simple state field in an object. Think Temperature or Volume or Occupancy. Use a Value to
@@ -18,14 +19,13 @@ type Value struct {
 	value      proto.Message
 	changeTime time.Time
 
-	bus *emitter.Emitter
+	bus minibus.Bus
 }
 
 func NewValue(opts ...Option) *Value {
 	c := computeConfig(opts...)
 	res := &Value{
 		config: c,
-		bus:    &emitter.Emitter{},
 	}
 	res.value = c.initialValue
 	res.changeTime = c.clock.Now()
@@ -72,7 +72,7 @@ func (r *Value) set(value proto.Message, request writeRequest) (proto.Message, e
 		return nil, err
 	}
 
-	r.bus.Emit("update", &ValueChange{
+	r.bus.Send(context.TODO(), &ValueChange{
 		Value:      newValue,
 		ChangeTime: request.updateTime(r.clock),
 	})
@@ -87,11 +87,10 @@ func (r *Value) set(value proto.Message, request writeRequest) (proto.Message, e
 func (r *Value) Pull(ctx context.Context, opts ...ReadOption) <-chan *ValueChange {
 	readConfig := computeReadConfig(opts...)
 	filter := readConfig.ResponseFilter()
-	on, currentValue, changeTime := r.onUpdate(readConfig)
+	on, currentValue, changeTime := r.onUpdate(ctx, readConfig)
 	typedEvents := make(chan *ValueChange)
 	go func() {
 		defer close(typedEvents)
-		defer r.bus.Off("update", on)
 
 		if currentValue != nil {
 			change := &ValueChange{Value: currentValue, ChangeTime: changeTime}
@@ -104,36 +103,28 @@ func (r *Value) Pull(ctx context.Context, opts ...ReadOption) <-chan *ValueChang
 		}
 
 		var last proto.Message
-		for {
+		for event := range on {
+			change := event.(*ValueChange).filter(filter)
+			if r.equivalence != nil && r.equivalence.Compare(last, change.Value) {
+				continue
+			}
+			last = change.Value
 			select {
 			case <-ctx.Done():
-				return
-			case event, ok := <-on:
-				if !ok {
-					return // the listener was cancelled
-				}
-				change := event.Args[0].(*ValueChange).filter(filter)
-				if r.equivalence != nil && r.equivalence.Compare(last, change.Value) {
-					continue
-				}
-				last = change.Value
-				select {
-				case <-ctx.Done():
-					return // give up sending
-				case typedEvents <- change:
-				}
+				return // give up sending
+			case typedEvents <- change:
 			}
 		}
 	}()
 	return typedEvents
 }
 
-func (r *Value) onUpdate(config *readRequest) (<-chan emitter.Event, proto.Message, time.Time) {
+func (r *Value) onUpdate(ctx context.Context, config *readRequest) (<-chan interface{}, proto.Message, time.Time) {
 	if config.updatesOnly {
-		return r.bus.On("update"), nil, r.changeTime
+		return r.bus.Listen(ctx), nil, r.changeTime
 	}
 
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return r.bus.On("update"), r.value, r.changeTime
+	return r.bus.Listen(ctx), r.value, r.changeTime
 }

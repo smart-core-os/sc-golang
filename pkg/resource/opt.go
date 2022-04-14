@@ -5,12 +5,13 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/smart-core-os/sc-golang/pkg/cmp"
-	"github.com/smart-core-os/sc-golang/pkg/masks"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
+
+	"github.com/smart-core-os/sc-golang/pkg/cmp"
+	"github.com/smart-core-os/sc-golang/pkg/masks"
 )
 
 // Option configures a resource value or collection.
@@ -145,8 +146,22 @@ func WithInclude(include FilterFunc) ReadOption {
 	})
 }
 
+// WithBackpressure will enabled or disable backpressure for Pull calls. Defaults to true.
+// It has no effect on Get calls.
+// Pulls with backpressure enabled will block the corresponding call to Set until the update has been received, so
+// the Pull will always receive all changes.
+// If backpressure is disabled, then if the Pull channel receiver can't keep up, older updates will be silently
+// dropped in favour of just the most recent data.
+func WithBackpressure(backpressure bool) ReadOption {
+	return readOptionFunc(func(rr *readRequest) {
+		rr.backpressure = backpressure
+	})
+}
+
 func computeReadConfig(opts ...ReadOption) *readRequest {
-	rr := &readRequest{}
+	rr := &readRequest{
+		backpressure: true,
+	}
 	for _, opt := range opts {
 		opt.apply(rr)
 	}
@@ -156,7 +171,8 @@ func computeReadConfig(opts ...ReadOption) *readRequest {
 type readRequest struct {
 	readMask *fieldmaskpb.FieldMask
 
-	updatesOnly bool
+	updatesOnly  bool
+	backpressure bool
 
 	include FilterFunc
 }

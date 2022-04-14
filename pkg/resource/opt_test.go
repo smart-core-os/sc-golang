@@ -42,7 +42,7 @@ func TestWithUpdatesOnly(t *testing.T) {
 			got[i] = event.Value
 		}
 		want := []proto.Message{
-			&traits.OnOff{State: traits.OnOff_ON}, // initial value
+			&traits.OnOff{State: traits.OnOff_ON},  // initial value
 			&traits.OnOff{State: traits.OnOff_OFF}, // update value
 		}
 
@@ -247,11 +247,63 @@ func TestWithInclude(t *testing.T) {
 	})
 }
 
+func TestWithBackpressure_False(t *testing.T) {
+	val := NewValue(WithInitialValue(&traits.OnOff{}))
+
+	t.Run("false", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		// with backpressure disabled, we can open a Pull, fail to receive, and it doesn't block
+		_ = val.Pull(ctx, WithBackpressure(false))
+		success := make(chan struct{})
+		go func() {
+			defer close(success)
+
+			// do a set call, which shouldn't block or error
+			_, err := val.Set(&traits.OnOff{State: traits.OnOff_OFF})
+			if err != nil {
+				t.Error(err)
+			}
+		}()
+
+		select {
+		case <-success:
+		case <-time.After(100 * time.Millisecond):
+			t.Error("calls blocked")
+		}
+	})
+
+	t.Run("true", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		// with backpressure enabled, we can open a Pull, fail to receive, and it will block calls to Set
+		_ = val.Pull(ctx, WithBackpressure(true))
+		completed := make(chan struct{})
+		go func() {
+			defer close(completed)
+
+			// do a set call, which should block
+			_, err := val.Set(&traits.OnOff{State: traits.OnOff_OFF})
+			if err != nil {
+				t.Error(err)
+			}
+		}()
+
+		select {
+		case <-completed:
+			t.Error("expected call to Set to block")
+		case <-time.After(100 * time.Millisecond):
+		}
+	})
+}
+
 // List CollectionChange but without the timestamp
 type collectionChange struct {
 	Id                 string
 	OldValue, NewValue proto.Message
-	ChangeType types.ChangeType
+	ChangeType         types.ChangeType
 }
 
 func add(t *testing.T, c *Collection, id string, msg proto.Message) {

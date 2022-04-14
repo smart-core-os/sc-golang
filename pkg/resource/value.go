@@ -129,13 +129,23 @@ func (r *Value) Pull(ctx context.Context, opts ...ReadOption) <-chan *ValueChang
 }
 
 func (r *Value) onUpdate(ctx context.Context, config *readRequest) (<-chan interface{}, proto.Message, time.Time) {
-	if config.updatesOnly {
-		return r.bus.Listen(ctx), nil, r.changeTime
+	var (
+		value      proto.Message
+		changeTime time.Time
+	)
+	if !config.updatesOnly {
+		r.mu.RLock()
+		defer r.mu.RUnlock()
+		value = r.value
+		changeTime = r.changeTime
 	}
 
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	return r.bus.Listen(ctx), r.value, r.changeTime
+	ch := r.bus.Listen(ctx)
+	if !config.backpressure {
+		ch = minibus.DropExcess(ch)
+	}
+
+	return ch, value, changeTime
 }
 
 func timeoutAlarm(duration time.Duration, fmt string, args ...interface{}) (disarm func()) {

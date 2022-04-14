@@ -236,14 +236,19 @@ func (c *Collection) Pull(ctx context.Context, opts ...ReadOption) <-chan *Colle
 }
 
 func (c *Collection) onUpdate(ctx context.Context, config *readRequest) (<-chan interface{}, []idItem) {
-	if config.updatesOnly {
-		return c.bus.Listen(ctx), nil
+	var res []idItem
+	if !config.updatesOnly {
+		c.mu.RLock()
+		defer c.mu.RUnlock()
+		res = c.itemSlice(config)
 	}
 
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	res := c.itemSlice(config)
-	return c.bus.Listen(ctx), res
+	ch := c.bus.Listen(ctx)
+	if !config.backpressure {
+		ch = minibus.DropExcess(ch)
+	}
+
+	return ch, res
 }
 
 // itemSlice returns all the values in byId adjusted to match readConfig settings like readRequest.include.

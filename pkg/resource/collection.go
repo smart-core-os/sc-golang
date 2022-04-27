@@ -251,6 +251,11 @@ func (c *Collection) onUpdate(ctx context.Context, config *readRequest) (<-chan 
 	return ch, res
 }
 
+// Clock returns the clock used by this resource for reporting time.
+func (c *Collection) Clock() Clock {
+	return c.clock
+}
+
 // itemSlice returns all the values in byId adjusted to match readConfig settings like readRequest.include.
 func (c *Collection) itemSlice(readConfig *readRequest) []idItem {
 	res := make([]idItem, 0, len(c.byId))

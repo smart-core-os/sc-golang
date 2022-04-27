@@ -160,3 +160,8 @@ func timeoutAlarm(duration time.Duration, fmt string, args ...interface{}) (disa
 
 	return cancel
 }
+
+// Clock returns the clock used by this resource for reporting time.
+func (r *Value) Clock() Clock {
+	return r.clock
+}

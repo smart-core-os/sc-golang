@@ -19,6 +19,14 @@ type Option interface {
 	apply(s *config)
 }
 
+// EmptyOption returns an Option that makes no changes to the semantics of the resource.
+// Useful for embedding in another struct to enable custom resource options.
+type EmptyOption struct {
+}
+
+func (e EmptyOption) apply(_ *config) {
+}
+
 // WithClock configures the clock used when time is needed.
 // Defaults to a Clock backed by the time package.
 func WithClock(c Clock) Option {

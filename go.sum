@@ -60,6 +60,8 @@ github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4/go.mod h1:
 github.com/sirupsen/logrus v1.4.2/go.mod h1:tLMulIdttU9McNUspp0xgXVQah82FyeX6MwdIuYE2rE=
 github.com/smart-core-os/sc-api/go v1.0.0-beta.34.0.20220406141929-952e73b4a63e h1:yVvFFEjv6PzBNE3b+qQCH8yg9yffH2Jr4+mDtN07hEE=
 github.com/smart-core-os/sc-api/go v1.0.0-beta.34.0.20220406141929-952e73b4a63e/go.mod h1:6mSjMPKk2EMSZWcAu4BUZuOFvyO9Vs09z7c3PGDLlmY=
+github.com/smart-core-os/sc-api/go v1.0.0-beta.34.0.20220427072334-68e66f06b408 h1:gyhvpwReyijd6eZCN0FRtiHcbR/M7xrdoOeMTToLWtE=
+github.com/smart-core-os/sc-api/go v1.0.0-beta.34.0.20220427072334-68e66f06b408/go.mod h1:6mSjMPKk2EMSZWcAu4BUZuOFvyO9Vs09z7c3PGDLlmY=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=

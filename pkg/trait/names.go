@@ -30,8 +30,10 @@ const (
 	Electric         Name = "smartcore.traits.Electric"
 	Emergency        Name = "smartcore.traits.Emergency"
 	EnergyStorage    Name = "smartcore.traits.EnergyStorage"
+	EnterLeaveSensor Name = "smartcore.traits.EnterLeaveSensor"
 	ExtendRetract    Name = "smartcore.traits.ExtendRetract"
 	FanSpeed         Name = "smartcore.traits.FanSpeed"
+	Hail             Name = "smartcore.traits.Hail"
 	InputSelect      Name = "smartcore.traits.InputSelect"
 	Light            Name = "smartcore.traits.Light"
 	LockUnlock       Name = "smartcore.traits.LockUnlock"
@@ -46,4 +48,5 @@ const (
 	PowerSupply      Name = "smartcore.traits.PowerSupply"
 	Ptz              Name = "smartcore.traits.Ptz"
 	Speaker          Name = "smartcore.traits.Speaker"
+	Vending          Name = "smartcore.traits.Vending"
 )

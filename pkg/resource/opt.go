@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"fmt"
 	"io"
 	"math/rand"
 	"time"
@@ -69,6 +70,20 @@ func WithInitialValue(initialValue proto.Message) Option {
 	})
 }
 
+// WithInitialRecord configures an initial record for a collection resource.
+// Panics if a record with the given id has already been configured.
+func WithInitialRecord(id string, value proto.Message) Option {
+	return optionFunc(func(s *config) {
+		if s.initialRecords == nil {
+			s.initialRecords = make(map[string]proto.Message)
+		}
+		if _, ok := s.initialRecords[id]; ok {
+			panic(fmt.Sprintf("initial record id:%v already exists", id))
+		}
+		s.initialRecords[id] = value
+	})
+}
+
 // WithWritableFields configures write operations on the resource to accept updates to the given fields only.
 // Explicit writes to fields not in this mask will fail.
 func WithWritableFields(mask *fieldmaskpb.FieldMask) Option {
@@ -91,6 +106,7 @@ type config struct {
 	equivalence    Comparer
 	rng            io.Reader
 	initialValue   proto.Message
+	initialRecords map[string]proto.Message
 	writableFields *fieldmaskpb.FieldMask
 }
 

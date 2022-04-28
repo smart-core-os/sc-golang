@@ -26,9 +26,15 @@ type Collection struct {
 
 func NewCollection(options ...Option) *Collection {
 	conf := computeConfig(options...)
+	initialItems := make(map[string]*item)
+	for k, v := range conf.initialRecords {
+		initialItems[k] = &item{body: v, changeTime: conf.clock.Now()}
+	}
+	conf.initialRecords = nil // so the gc can collect them
+
 	c := &Collection{
 		config: conf,
-		byId:   make(map[string]*item),
+		byId:   initialItems,
 		mu:     sync.RWMutex{},
 	}
 

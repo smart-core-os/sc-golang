@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	"log"
 	"sort"
 	"sync"
 	"time"
@@ -232,6 +233,37 @@ func (c *Collection) Pull(ctx context.Context, opts ...ReadOption) <-chan *Colle
 		}
 	}()
 
+	return send
+}
+
+// PullID subscribes to changes for a single item in the collection.
+// The returned channel will close if ctx is Done or the item identified by id is deleted.
+func (c *Collection) PullID(ctx context.Context, id string, opts ...ReadOption) <-chan *ValueChange {
+	send := make(chan *ValueChange)
+	go func() {
+		defer close(send)
+		for change := range c.Pull(ctx, opts...) {
+			if change.Id != id {
+				continue
+			}
+
+			if change.ChangeType == types.ChangeType_REMOVE {
+				return
+			}
+
+			// not sure how this case could happen, but let's deal with it anyway
+			if change.NewValue == nil {
+				log.Printf("WARN: CollectionChange.NewValue is nil, but not a REMOVE change! %v", change)
+				return
+			}
+
+			select {
+			case <-ctx.Done():
+				return
+			case send <- &ValueChange{ChangeTime: change.ChangeTime, Value: change.NewValue}:
+			}
+		}
+	}()
 	return send
 }
 

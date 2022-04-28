@@ -84,23 +84,11 @@ func (m *Model) PullHail(ctx context.Context, id string, opts ...resource.ReadOp
 	send := make(chan HailChange)
 	go func() {
 		defer close(send)
-		for change := range m.hails.Pull(ctx, opts...) {
-			oldVal, newVal := castChange(change)
-			if newVal == nil { // delete
-				if oldVal == nil || oldVal.Id != id {
-					continue
-				}
-				return // the hail we're watching has been deleted, there will be no more events. Close the stream
-			}
-
-			if newVal.Id != id {
-				continue
-			}
-
+		for change := range m.hails.PullID(ctx, id, opts...) {
 			select {
 			case <-ctx.Done():
 				return
-			case send <- HailChange{ChangeTime: change.ChangeTime, Value: newVal}:
+			case send <- HailChange{ChangeTime: change.ChangeTime, Value: change.Value.(*traits.Hail)}:
 			}
 		}
 	}()

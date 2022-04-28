@@ -166,7 +166,7 @@ func TestWithInclude(t *testing.T) {
 		c := NewCollection()
 		add(t, c, "A", &traits.OnOff{State: traits.OnOff_ON})
 		add(t, c, "B", &traits.OnOff{State: traits.OnOff_OFF})
-		add(t, c, "C", &traits.OnOff{State: traits.OnOff_UNKNOWN})
+		add(t, c, "C", &traits.OnOff{State: traits.OnOff_STATE_UNSPECIFIED})
 
 		t.Run("id filter", func(t *testing.T) {
 			got := c.List(WithInclude(func(id string, item proto.Message) bool {
@@ -174,7 +174,7 @@ func TestWithInclude(t *testing.T) {
 			}))
 			want := []proto.Message{
 				&traits.OnOff{State: traits.OnOff_OFF},
-				&traits.OnOff{State: traits.OnOff_UNKNOWN},
+				&traits.OnOff{State: traits.OnOff_STATE_UNSPECIFIED},
 			}
 			if diff := cmp.Diff(want, got, protocmp.Transform()); diff != "" {
 				t.Fatalf("(-want,+got)\n%v", diff)
@@ -184,7 +184,7 @@ func TestWithInclude(t *testing.T) {
 		t.Run("body filter", func(t *testing.T) {
 			got := c.List(WithInclude(func(id string, item proto.Message) bool {
 				itemVal := item.(*traits.OnOff)
-				return itemVal.State != traits.OnOff_UNKNOWN
+				return itemVal.State != traits.OnOff_STATE_UNSPECIFIED
 			}))
 			want := []proto.Message{
 				&traits.OnOff{State: traits.OnOff_ON},
@@ -200,7 +200,7 @@ func TestWithInclude(t *testing.T) {
 		v := NewCollection()
 		add(t, v, "A", &traits.OnOff{State: traits.OnOff_ON})
 		add(t, v, "B", &traits.OnOff{State: traits.OnOff_OFF})
-		add(t, v, "C", &traits.OnOff{State: traits.OnOff_UNKNOWN})
+		add(t, v, "C", &traits.OnOff{State: traits.OnOff_STATE_UNSPECIFIED})
 
 		ctx, done := context.WithCancel(context.Background())
 		t.Cleanup(done)

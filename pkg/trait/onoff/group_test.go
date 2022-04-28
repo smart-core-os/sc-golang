@@ -21,7 +21,7 @@ import (
 func TestGroup_GetOnOff(t *testing.T) {
 	tester := newOnOffTester(t, "A", "B")
 	// initial state
-	tester.assertGet(traits.OnOff_UNKNOWN)
+	tester.assertGet(traits.OnOff_STATE_UNSPECIFIED)
 	// one off
 	tester.prepare(traits.OnOff_OFF, "B")
 	tester.assertGet(traits.OnOff_OFF)
@@ -39,7 +39,7 @@ func TestGroup_GetOnOff(t *testing.T) {
 func TestGroup_UpdateOnOff(t *testing.T) {
 	tester := newOnOffTester(t, "A", "B")
 	// check no writes happen without us knowing
-	tester.confirm(traits.OnOff_UNKNOWN, "A", "B")
+	tester.confirm(traits.OnOff_STATE_UNSPECIFIED, "A", "B")
 	// turn everything on
 	tester.assertUpdate(traits.OnOff_ON)
 	tester.confirm(traits.OnOff_ON, "A", "B")
@@ -55,7 +55,7 @@ func TestGroup_UpdateOnOff(t *testing.T) {
 func TestGroup_PullOnOff(t *testing.T) {
 	tester := newOnOffTester(t, "A", "B").pull()
 	// current value sent immediately
-	tester.assertPull(traits.OnOff_UNKNOWN)
+	tester.assertPull(traits.OnOff_STATE_UNSPECIFIED)
 	// message on first change
 	tester.prepare(traits.OnOff_ON, "A")
 	tester.assertPull(traits.OnOff_ON)
@@ -75,7 +75,7 @@ type onOffTester struct {
 
 func newOnOffTester(t *testing.T, members ...string) *onOffTester {
 	devices := NewApiRouter(WithOnOffApiClientFactory(func(name string) (traits.OnOffApiClient, error) {
-		return WrapApi(NewModelServer(NewModel(traits.OnOff_UNKNOWN))), nil
+		return WrapApi(NewModelServer(NewModel(traits.OnOff_STATE_UNSPECIFIED))), nil
 	}))
 	impl := WrapApi(devices)
 	group := NewGroup(impl, members...)

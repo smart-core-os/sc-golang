@@ -196,7 +196,7 @@ func (s *Group) reduceOnOff(acc, v *traits.OnOff) *traits.OnOff {
 	}
 
 	// max strategy
-	if acc.State == traits.OnOff_UNKNOWN {
+	if acc.State == traits.OnOff_STATE_UNSPECIFIED {
 		acc.State = v.State
 	} else if v.State == traits.OnOff_ON {
 		acc.State = traits.OnOff_ON

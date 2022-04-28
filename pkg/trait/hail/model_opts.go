@@ -36,7 +36,6 @@ func calcModelArgs(opts ...resource.Option) modelArgs {
 
 type modelArgs struct {
 	keepAlive time.Duration
-	clock     resource.Clock
 
 	hailsOptions []resource.Option
 }

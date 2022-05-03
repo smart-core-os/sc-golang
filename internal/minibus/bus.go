@@ -111,5 +111,5 @@ func (l *listener) stop() {
 }
 
 func (l *listener) alive() bool {
-	return l.ctx.Err() != nil
+	return l.ctx.Err() == nil
 }

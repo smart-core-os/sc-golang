@@ -66,6 +66,7 @@ func (s *MemoryDevice) UpdateBrightness(ctx context.Context, request *traits.Upd
 				if request.Delta {
 					next.LevelPercent += current.LevelPercent
 				}
+				capLevelPercent(next)
 				// move properties into their tween equivalents
 				next.TargetLevelPercent = next.LevelPercent
 				next.LevelPercent = current.LevelPercent
@@ -124,11 +125,12 @@ func (s *MemoryDevice) UpdateBrightness(ctx context.Context, request *traits.Upd
 		// if there's a tween in progress, clear the tween props
 		resource.WithResetPaths("target_level_percent", "brightness_tween"),
 		resource.InterceptBefore(func(old, change proto.Message) {
+			oldVal := old.(*traits.Brightness)
+			newVal := change.(*traits.Brightness)
 			if request.Delta {
-				val := old.(*traits.Brightness)
-				delta := change.(*traits.Brightness)
-				delta.LevelPercent += val.LevelPercent
+				newVal.LevelPercent += oldVal.LevelPercent
 			}
+			capLevelPercent(newVal)
 		}))
 	if err != nil {
 		return nil, err
@@ -161,4 +163,13 @@ func (s *MemoryDevice) PullBrightness(request *traits.PullBrightnessRequest, ser
 	}
 
 	return server.Context().Err()
+}
+
+func capLevelPercent(next *traits.Brightness) {
+	if next.LevelPercent < 0 {
+		next.LevelPercent = 0
+	}
+	if next.LevelPercent > 100 {
+		next.LevelPercent = 100
+	}
 }

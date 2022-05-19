@@ -228,7 +228,7 @@ func (c *Collection) Pull(ctx context.Context, opts ...ReadOption) <-chan *Colle
 				continue
 			}
 			change = change.filter(filter)
-			if c.equivalence != nil && c.equivalence.Compare(change.OldValue, change.NewValue) {
+			if c.equivalence != nil && c.equivalence(change.OldValue, change.NewValue) {
 				continue
 			}
 			select {

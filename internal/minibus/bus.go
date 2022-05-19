@@ -5,14 +5,14 @@ import (
 	"sync"
 )
 
-type Bus struct {
+type Bus[T any] struct {
 	listenerM sync.RWMutex
-	listeners []*listener
+	listeners []*listener[T]
 }
 
-func (b *Bus) Send(ctx context.Context, event interface{}) (ok bool) {
+func (b *Bus[T]) Send(ctx context.Context, event T) (ok bool) {
 	// create a copy of the listeners so avoid holding the mutex a long time
-	var listeners []*listener
+	var listeners []*listener[T]
 	b.listenerM.RLock()
 	for _, l := range b.listeners {
 		listeners = append(listeners, l)
@@ -40,11 +40,11 @@ func (b *Bus) Send(ctx context.Context, event interface{}) (ok bool) {
 	return true
 }
 
-func (b *Bus) collect() {
+func (b *Bus[T]) collect() {
 	b.listenerM.Lock()
 	defer b.listenerM.Unlock()
 
-	var activeListeners []*listener
+	var activeListeners []*listener[T]
 	for _, l := range b.listeners {
 		if l.alive() {
 			activeListeners = append(activeListeners, l)
@@ -54,10 +54,10 @@ func (b *Bus) collect() {
 	b.listeners = activeListeners
 }
 
-func (b *Bus) Listen(ctx context.Context) <-chan interface{} {
-	ch := make(chan interface{})
+func (b *Bus[T]) Listen(ctx context.Context) <-chan T {
+	ch := make(chan T)
 
-	l := &listener{
+	l := &listener[T]{
 		ch:  ch,
 		ctx: ctx,
 	}
@@ -75,13 +75,13 @@ func (b *Bus) Listen(ctx context.Context) <-chan interface{} {
 	return ch
 }
 
-type listener struct {
+type listener[T any] struct {
 	m   sync.RWMutex
-	ch  chan interface{}
+	ch  chan T
 	ctx context.Context
 }
 
-func (l *listener) send(ctx context.Context, event interface{}) (ok bool, active bool) {
+func (l *listener[T]) send(ctx context.Context, event T) (ok bool, active bool) {
 	l.m.RLock()
 	defer l.m.RUnlock()
 
@@ -101,7 +101,7 @@ func (l *listener) send(ctx context.Context, event interface{}) (ok bool, active
 	}
 }
 
-func (l *listener) stop() {
+func (l *listener[T]) stop() {
 	l.m.Lock()
 	defer l.m.Unlock()
 	if l.ch != nil {
@@ -110,6 +110,6 @@ func (l *listener) stop() {
 	}
 }
 
-func (l *listener) alive() bool {
+func (l *listener[T]) alive() bool {
 	return l.ctx.Err() == nil
 }

@@ -3,11 +3,11 @@ package minibus
 // DropExcess will wrap a channel to break backpressure between its input and output.
 // It will drop incoming messages when the consumer can't process them fast enough.
 // When the consumer receives, it will always get the most recent message sent by the producer.
-func DropExcess(in <-chan interface{}) <-chan interface{} {
-	out := make(chan interface{})
+func DropExcess[T any](in <-chan T) <-chan T {
+	out := make(chan T)
 	go func() {
 		defer close(out)
-		var message interface{}
+		var message T
 		hasMessage := false
 		for {
 			if hasMessage {

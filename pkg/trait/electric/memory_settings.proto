@@ -4,7 +4,7 @@ package smartcore.go.trait.electric;
 
 option go_package = "github.com/smart-core-os/sc-golang/pkg/trait/electric";
 
-import "github.com/smart-core-os/sc-api/protobuf/traits/electric.proto";
+import "traits/electric.proto";
 import "google/protobuf/field_mask.proto";
 import "google/protobuf/empty.proto";
 

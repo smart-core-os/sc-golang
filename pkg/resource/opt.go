@@ -20,7 +20,7 @@ type Option interface {
 	apply(s *config)
 }
 
-// EmptyOption returns an Option that makes no changes to the semantics of the resource.
+// EmptyOption is an Option that makes no changes to the semantics of the resource.
 // Useful for embedding in another struct to enable custom resource options.
 type EmptyOption struct {
 }

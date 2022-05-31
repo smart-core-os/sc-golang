@@ -88,41 +88,6 @@ func (c *Collection) Add(id string, body proto.Message, opts ...WriteOption) (pr
 	return c.Update(id, body, opts...)
 }
 
-// AddFn adds an entry to the collection by invoking create with a newly allocated ID.
-func (c *Collection) AddFn(create CreateFn) (proto.Message, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	body, _, err := c.add("", create)
-	return body, err
-}
-
-func (c *Collection) add(id string, create CreateFn) (proto.Message, string, error) {
-	// todo: convert Collection.Add to use WriteOption
-
-	if id == "" {
-		var err error
-		if id, err = c.genID(); err != nil {
-			return nil, "", err
-		}
-	} else {
-		if _, exists := c.byId[id]; exists {
-			return nil, "", status.Errorf(codes.AlreadyExists, "%s cannot be created, already exists", id)
-		}
-	}
-
-	body := create(id)
-	c.byId[id] = &item{body: body, changeTime: c.clock.Now()}
-	c.bus.Send(context.TODO(), &CollectionChange{
-		Id:         id,
-		ChangeTime: c.clock.Now(), // todo: allow specifying the writeTime, as part of using WriteOption
-		ChangeType: types.ChangeType_ADD,
-		NewValue:   body,
-	})
-
-	return body, id, nil
-}
-
 func (c *Collection) Update(id string, msg proto.Message, opts ...WriteOption) (proto.Message, error) {
 	writeRequest := computeWriteConfig(opts...)
 	writer := writeRequest.fieldUpdater(c.writableFields)

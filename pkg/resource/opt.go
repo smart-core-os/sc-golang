@@ -428,7 +428,7 @@ func WithMoreWritablePaths(writablePaths ...string) WriteOption {
 }
 
 // ExpectedValuePreconditionFailed is returned when an update configured WithExpectedValue fails its comparison.
-var ExpectedValuePreconditionFailed = status.Errorf(codes.FailedPrecondition, "current value is not as expected")
+var ExpectedValuePreconditionFailed = status.Error(codes.FailedPrecondition, "current value is not as expected")
 
 // WithExpectedValue instructs the update to only proceed if the current value is equal to expectedValue.
 // If the precondition fails the update will return the error ExpectedValuePreconditionFailed.

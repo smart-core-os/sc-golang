@@ -46,6 +46,7 @@ const (
 	OpenClose        Name = "smartcore.traits.OpenClose"
 	Parent           Name = "smartcore.traits.Parent"
 	PowerSupply      Name = "smartcore.traits.PowerSupply"
+	Publication      Name = "smartcore.traits.Publication"
 	Ptz              Name = "smartcore.traits.Ptz"
 	Speaker          Name = "smartcore.traits.Speaker"
 	Vending          Name = "smartcore.traits.Vending"

@@ -150,6 +150,9 @@ func (c *Collection) Update(id string, msg proto.Message, opts ...WriteOption) (
 
 			val, exists := c.byId[id]
 			if exists {
+				if writeRequest.expectAbsent {
+					return nil, ExpectAbsentPreconditionFailed
+				}
 				return val.body, nil
 			}
 			if !writeRequest.createIfAbsent {

@@ -256,6 +256,8 @@ type writeRequest struct {
 	updateMask    *fieldmaskpb.FieldMask
 	resetMask     *fieldmaskpb.FieldMask
 	expectedValue proto.Message
+	expectAbsent  bool
+	expectedCheck func(old proto.Message) error
 
 	interceptBefore UpdateInterceptor
 	interceptAfter  UpdateInterceptor
@@ -292,6 +294,11 @@ func (wr writeRequest) changeFn(writer *masks.FieldUpdater, value proto.Message)
 		if wr.expectedValue != nil {
 			if !proto.Equal(old, wr.expectedValue) {
 				return ExpectedValuePreconditionFailed
+			}
+		}
+		if wr.expectedCheck != nil {
+			if err := wr.expectedCheck(old); err != nil {
+				return err
 			}
 		}
 
@@ -429,6 +436,27 @@ var ExpectedValuePreconditionFailed = status.Errorf(codes.FailedPrecondition, "c
 func WithExpectedValue(expectedValue proto.Message) WriteOption {
 	return writeOptionFunc(func(request *writeRequest) {
 		request.expectedValue = expectedValue
+	})
+}
+
+// ExpectAbsentPreconditionFailed is returned when an update configured WithExpectAbsent already has a value.
+var ExpectAbsentPreconditionFailed = status.Error(codes.AlreadyExists, "value already exists")
+
+// WithExpectAbsent instructs the update to only proceed if the current value is absent.
+// If the precondition fails the update will return the error ExpectAbsentPreconditionFailed.
+// The precondition will be checked _before_ InterceptBefore.
+func WithExpectAbsent() WriteOption {
+	return writeOptionFunc(func(request *writeRequest) {
+		request.expectAbsent = true
+	})
+}
+
+// WithExpectedCheck instructs the update to only proceed if the current value, when passed to fn, returns no error.
+// The error returned from fn will be returned from the update call.
+// The precondition will be checked _before_ InterceptBefore.
+func WithExpectedCheck(fn func(msg proto.Message) error) WriteOption {
+	return writeOptionFunc(func(request *writeRequest) {
+		request.expectedCheck = fn
 	})
 }
 

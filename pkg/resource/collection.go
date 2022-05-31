@@ -136,6 +136,18 @@ func (c *Collection) Update(id string, msg proto.Message, opts ...WriteOption) (
 			if created != nil {
 				return created, nil
 			}
+
+			// handle empty ids, generating them, and invoking callbacks
+			if id == "" && writeRequest.genEmptyID {
+				id, err = c.genID()
+				if err != nil {
+					return nil, err
+				}
+				if writeRequest.idCallback != nil {
+					writeRequest.idCallback(id)
+				}
+			}
+
 			val, exists := c.byId[id]
 			if exists {
 				return val.body, nil

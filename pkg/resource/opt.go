@@ -265,6 +265,9 @@ type writeRequest struct {
 
 	createIfAbsent  bool
 	createdCallback func()
+
+	genEmptyID bool
+	idCallback func(id string)
 }
 
 func (wr writeRequest) fieldUpdater(writableFields *fieldmaskpb.FieldMask) *masks.FieldUpdater {
@@ -444,5 +447,24 @@ func WithCreateIfAbsent() WriteOption {
 func WithCreatedCallback(cb func()) WriteOption {
 	return writeOptionFunc(func(wr *writeRequest) {
 		wr.createdCallback = cb
+	})
+}
+
+// WithGenIDIfAbsent instructs an update operation to generate an ID if one isn't provided.
+// Typically only useful when WithCreateIfAbsent is used, otherwise the update will fail with NotFound.
+// See WithIDCallback if the ID is stored as a property in the resource type.
+func WithGenIDIfAbsent() WriteOption {
+	return writeOptionFunc(func(wr *writeRequest) {
+		wr.genEmptyID = true
+	})
+}
+
+// WithIDCallback calls cb with an ID that has been generated, typically during create calls.
+// Applicable only to Collection updates.
+// If the resource being stored in the collection has a property that holds the id, then cb should set that property
+// using the given id string.
+func WithIDCallback(cb func(id string)) WriteOption {
+	return writeOptionFunc(func(wr *writeRequest) {
+		wr.idCallback = cb
 	})
 }

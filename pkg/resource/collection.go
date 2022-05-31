@@ -77,14 +77,15 @@ func (c *Collection) List(opts ...ReadOption) []proto.Message {
 
 // Add associates the given body with the id.
 // If id already exists then an error is returned.
-func (c *Collection) Add(id string, body proto.Message) (proto.Message, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	body, _, err := c.add(id, func(id string) proto.Message {
-		return body
-	})
-	return body, err
+// A common set of options is WithGenIDIfAbsent() and WithIDCallback, which allows this function to generate a unique
+// id if the given id is empty.
+//
+// Calling Add is equivalent to calling Update(id, body, WithExpectAbsent(), WithCreateIfAbsent(), opts...)
+func (c *Collection) Add(id string, body proto.Message, opts ...WriteOption) (proto.Message, error) {
+	opts = append([]WriteOption{
+		WithExpectAbsent(), WithCreateIfAbsent(),
+	}, opts...)
+	return c.Update(id, body, opts...)
 }
 
 // AddFn adds an entry to the collection by invoking create with a newly allocated ID.

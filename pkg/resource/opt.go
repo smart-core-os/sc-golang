@@ -132,6 +132,14 @@ type ReadOption interface {
 	apply(rr *readRequest)
 }
 
+// EmptyReadOption is a ReadOption that makes no changes to the semantics of the read.
+// Useful for embedding in another struct to enable custom read options.
+type EmptyReadOption struct {
+}
+
+func (e EmptyReadOption) apply(_ *readRequest) {
+}
+
 // WithReadMask configures the properties that will be filled in the response value.
 func WithReadMask(mask *fieldmaskpb.FieldMask) ReadOption {
 	return readOptionFunc(func(rr *readRequest) {
@@ -223,6 +231,13 @@ func (r readOptionFunc) apply(rr *readRequest) {
 }
 
 type WriteOption interface{ apply(wr *writeRequest) }
+
+// EmptyWriteOption is a WriteOption that makes no changes to the semantics of the write.
+// Useful for embedding in another struct to enable custom write options.
+type EmptyWriteOption struct{}
+
+func (e EmptyWriteOption) apply(_ *writeRequest) {
+}
 
 func computeWriteConfig(opts ...WriteOption) writeRequest {
 	req := &writeRequest{}

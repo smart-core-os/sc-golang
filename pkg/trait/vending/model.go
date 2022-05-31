@@ -35,16 +35,9 @@ func NewModel(opts ...resource.Option) *Model {
 // If consumable.Name is specified it will be used as the key, it absent a new name will be invented.
 // If the consumables name already exists, an error will be returned.
 func (m *Model) CreateConsumable(consumable *traits.Consumable) (*traits.Consumable, error) {
-	if consumable.Name == "" {
-		msg, err := m.consumables.AddFn(func(id string) proto.Message {
-			consumable.Name = id
-			return consumable
-		})
-		return castConsumable(msg, err)
-	}
-
-	msg, err := m.consumables.Add(consumable.Name, consumable)
-	return castConsumable(msg, err)
+	return castConsumable(m.consumables.Add(consumable.Name, consumable, resource.WithGenIDIfAbsent(), resource.WithIDCallback(func(id string) {
+		consumable.Name = id
+	})))
 }
 
 func (m *Model) GetConsumable(name string, opts ...resource.ReadOption) (*traits.Consumable, bool) {
@@ -135,16 +128,9 @@ func (m *Model) PullConsumables(ctx context.Context, opts ...resource.ReadOption
 // If stock.Consumable is not supplied, a new consumable name will be invented.
 // Errors if the stock.Consumable already exists as a known stock entry.
 func (m *Model) CreateStock(stock *traits.Consumable_Stock) (*traits.Consumable_Stock, error) {
-	if stock.Consumable == "" {
-		msg, err := m.inventory.AddFn(func(id string) proto.Message {
-			stock.Consumable = id
-			return stock
-		})
-		return castStock(msg, err)
-	}
-
-	msg, err := m.inventory.Add(stock.Consumable, stock)
-	return castStock(msg, err)
+	return castStock(m.inventory.Add(stock.Consumable, stock, resource.WithGenIDIfAbsent(), resource.WithIDCallback(func(id string) {
+		stock.Consumable = id
+	})))
 }
 
 func (m *Model) GetStock(consumable string, opts ...resource.ReadOption) (*traits.Consumable_Stock, bool) {

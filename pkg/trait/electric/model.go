@@ -272,22 +272,13 @@ func (m *Model) createOrAddMode(mode *traits.ElectricMode) (*traits.ElectricMode
 		}
 	}
 
-	if mode.Id == "" {
-		msg, err := m.modes.AddFn(func(id string) proto.Message {
-			mode.Id = id
-			return mode
-		})
-		if err != nil {
-			return nil, err
-		}
+	msg, err := m.modes.Add(mode.Id, mode, resource.WithGenIDIfAbsent(), resource.WithIDCallback(func(id string) {
+		mode.Id = id
+	}))
+	if msg != nil {
 		mode = msg.(*traits.ElectricMode)
-	} else {
-		if _, err := m.modes.Add(mode.Id, mode); err != nil {
-			return nil, err
-		}
 	}
-
-	return mode, nil
+	return mode, err
 }
 
 // DeleteMode will remove the mode with the given Id from the device.

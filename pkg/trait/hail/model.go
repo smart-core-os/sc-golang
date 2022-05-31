@@ -36,16 +36,9 @@ func NewModel(opts ...resource.Option) *Model {
 
 func (m *Model) CreateHail(hail *traits.Hail) (*traits.Hail, error) {
 	defer m.gc()
-	if hail.Id != "" {
-		msg, err := m.hails.Add(hail.Id, hail)
-		return castReturn(msg, err)
-	}
-
-	msg, err := m.hails.AddFn(func(id string) proto.Message {
+	return castReturn(m.hails.Add("", hail, resource.WithGenIDIfAbsent(), resource.WithIDCallback(func(id string) {
 		hail.Id = id
-		return hail
-	})
-	return castReturn(msg, err)
+	})))
 }
 
 func (m *Model) GetHail(id string, opts ...resource.ReadOption) (*traits.Hail, bool) {

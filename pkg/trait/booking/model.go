@@ -9,7 +9,6 @@ import (
 	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/proto"
 )
 
 // Model models the Booking trait.
@@ -34,16 +33,9 @@ func (m *Model) ListBookings(opts ...resource.ReadOption) []*traits.Booking {
 }
 
 func (m *Model) CreateBooking(booking *traits.Booking) (*traits.Booking, error) {
-	var msg proto.Message
-	var err error
-	if booking.Id == "" {
-		msg, err = m.bookings.AddFn(func(id string) proto.Message {
-			booking.Id = id
-			return booking
-		})
-	} else {
-		msg, err = m.bookings.Add(booking.Id, booking)
-	}
+	msg, err := m.bookings.Add(booking.Id, booking, resource.WithGenIDIfAbsent(), resource.WithIDCallback(func(id string) {
+		booking.Id = id
+	}))
 	if msg == nil {
 		return nil, err
 	}

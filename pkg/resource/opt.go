@@ -258,6 +258,7 @@ type writeRequest struct {
 	expectedValue proto.Message
 	expectAbsent  bool
 	expectedCheck func(old proto.Message) error
+	allowMissing  bool
 
 	interceptBefore UpdateInterceptor
 	interceptAfter  UpdateInterceptor
@@ -448,6 +449,13 @@ var ExpectAbsentPreconditionFailed = status.Error(codes.AlreadyExists, "value al
 func WithExpectAbsent() WriteOption {
 	return writeOptionFunc(func(request *writeRequest) {
 		request.expectAbsent = true
+	})
+}
+
+// WithAllowMissing instructs a delete to not return an error if the item is absent.
+func WithAllowMissing(allowMissing bool) WriteOption {
+	return writeOptionFunc(func(request *writeRequest) {
+		request.allowMissing = allowMissing
 	})
 }
 

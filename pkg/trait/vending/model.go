@@ -56,12 +56,8 @@ func (m *Model) UpdateConsumable(consumable *traits.Consumable, opts ...resource
 	return castConsumable(msg, err)
 }
 
-func (m *Model) DeleteConsumable(name string) *traits.Consumable {
-	msg := m.consumables.Delete(name)
-	if msg == nil {
-		return nil
-	}
-	return msg.(*traits.Consumable)
+func (m *Model) DeleteConsumable(name string, opts ...resource.WriteOption) (*traits.Consumable, error) {
+	return castConsumable(m.consumables.Delete(name, opts...))
 }
 
 type ConsumableChange struct {
@@ -149,12 +145,8 @@ func (m *Model) UpdateStock(stock *traits.Consumable_Stock, opts ...resource.Wri
 	return castStock(msg, err)
 }
 
-func (m *Model) DeleteStock(consumable string) *traits.Consumable_Stock {
-	msg := m.inventory.Delete(consumable)
-	if msg == nil {
-		return nil
-	}
-	return msg.(*traits.Consumable_Stock)
+func (m *Model) DeleteStock(consumable string, opts ...resource.WriteOption) (*traits.Consumable_Stock, error) {
+	return castStock(m.inventory.Delete(consumable, opts...))
 }
 
 type StockChange struct {

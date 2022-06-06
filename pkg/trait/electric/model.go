@@ -285,19 +285,22 @@ func (m *Model) createOrAddMode(mode *traits.ElectricMode) (*traits.ElectricMode
 // If the mode does not exist, then ErrModeNotFound is returned.
 // If the mode specified is the active mode, then ErrDeleteActiveMode is returned and the mode is not deleted.
 // Otherwise, the operation succeeded and nil is returned.
-func (m *Model) DeleteMode(id string) error {
+func (m *Model) DeleteMode(id string, opts ...resource.WriteOption) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.deleteMode(id)
+	return m.deleteMode(id, opts...)
 }
 
-func (m *Model) deleteMode(id string) error {
+func (m *Model) deleteMode(id string, opts ...resource.WriteOption) error {
 	active := m.activeMode.Get().(*traits.ElectricMode)
 	if id == active.Id {
 		return ErrDeleteActiveMode
 	}
 
-	msg := m.modes.Delete(id)
+	msg, err := m.modes.Delete(id, opts...)
+	if err != nil {
+		return err
+	}
 	if msg == nil {
 		return ErrModeNotFound
 	}

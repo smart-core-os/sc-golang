@@ -57,12 +57,8 @@ func (m *Model) UpdateHail(hail *traits.Hail, opts ...resource.WriteOption) (*tr
 	return castReturn(msg, err)
 }
 
-func (m *Model) DeleteHail(id string) *traits.Hail {
-	old := m.hails.Delete(id)
-	if old == nil {
-		return nil
-	}
-	return old.(*traits.Hail)
+func (m *Model) DeleteHail(id string, opts ...resource.WriteOption) (*traits.Hail, error) {
+	return castReturn(m.hails.Delete(id, opts...))
 }
 
 //goland:noinspection GoNameStartsWithPackageName
@@ -148,7 +144,7 @@ func (m *Model) gc() {
 	for _, msg := range m.hails.List() {
 		hail := msg.(*traits.Hail)
 		if arrivedBefore(hail, t) {
-			m.hails.Delete(hail.Id)
+			_, _ = m.hails.Delete(hail.Id, resource.WithAllowMissing(true), resource.WithExpectedValue(hail))
 		}
 	}
 }

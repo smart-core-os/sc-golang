@@ -52,11 +52,8 @@ func (m *ModelServer) UpdateHail(_ context.Context, request *traits.UpdateHailRe
 }
 
 func (m *ModelServer) DeleteHail(_ context.Context, request *traits.DeleteHailRequest) (*traits.DeleteHailResponse, error) {
-	oldHail := m.model.DeleteHail(request.Id)
-	if oldHail == nil && !request.AllowMissing {
-		return nil, status.Errorf(codes.NotFound, "id:%v", request.Id)
-	}
-	return &traits.DeleteHailResponse{}, nil
+	_, err := m.model.DeleteHail(request.Id, resource.WithAllowMissing(request.AllowMissing))
+	return &traits.DeleteHailResponse{}, err
 }
 
 func (m *ModelServer) PullHail(request *traits.PullHailRequest, server traits.HailApi_PullHailServer) error {

@@ -142,8 +142,9 @@ func (c *Collection) Update(id string, msg proto.Message, opts ...WriteOption) (
 		return nil, err
 	}
 	changeType := types.ChangeType_UPDATE
-	if oldValue == nil {
+	if oldValue == nil || created != nil {
 		changeType = types.ChangeType_ADD
+		oldValue = nil
 	}
 	c.bus.Send(context.TODO(), &CollectionChange{
 		Id:         id,
@@ -156,23 +157,54 @@ func (c *Collection) Update(id string, msg proto.Message, opts ...WriteOption) (
 }
 
 // Delete removes the item with the given id from this collection.
-// The removed item will be returned, or nil if the item did not exist.
-func (c *Collection) Delete(id string) proto.Message {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
+// The removed item will be returned.
+// If the id is unknown an error will be returned, unless WithAllowMissing is specified.
+// Read-update-write operations can be checked via WithExpectedValue or WithExpectedCheck options.
+func (c *Collection) Delete(id string, opts ...WriteOption) (proto.Message, error) {
+	args := computeWriteConfig(opts...)
+	// Read lock first, we don't want to hold the lock when we pass control to callback functions
+	c.mu.RLock()
 	oldVal, exists := c.byId[id]
-	if !exists {
-		return nil
+	c.mu.RUnlock()
+
+	for attempt := 0; attempt < 5; attempt++ {
+		if !exists {
+			if !args.allowMissing {
+				return nil, status.Error(codes.NotFound, "not found")
+			}
+			return nil, nil
+		}
+		if args.expectedCheck != nil {
+			if err := args.expectedCheck(oldVal.body); err != nil {
+				return oldVal.body, err
+			}
+		}
+		if args.expectedValue != nil && !proto.Equal(oldVal.body, args.expectedValue) {
+			return oldVal.body, ExpectedValuePreconditionFailed
+		}
+
+		c.mu.Lock()
+		oldVal2, exists2 := c.byId[id]
+		if oldVal2 != oldVal || exists2 != exists{
+			// someone changed something while we were checking the value, try again
+			c.mu.Unlock()
+			oldVal, exists = oldVal2, exists2
+			continue
+		}
+
+		// actually do the delete
+		delete(c.byId, id)
+		c.bus.Send(context.TODO(), &CollectionChange{
+			Id:         id,
+			ChangeTime: c.clock.Now(),
+			ChangeType: types.ChangeType_REMOVE,
+			OldValue:   oldVal.body,
+		})
+		c.mu.Unlock()
+		return oldVal.body, nil
 	}
-	delete(c.byId, id)
-	c.bus.Send(context.TODO(), &CollectionChange{
-		Id:         id,
-		ChangeTime: c.clock.Now(),
-		ChangeType: types.ChangeType_REMOVE,
-		OldValue:   oldVal.body,
-	})
-	return oldVal.body
+
+	return nil, status.Error(codes.Unavailable, "concurrent writes")
 }
 
 func (c *Collection) Pull(ctx context.Context, opts ...ReadOption) <-chan *CollectionChange {

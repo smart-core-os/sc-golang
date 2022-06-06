@@ -38,13 +38,12 @@ func (m *Model) AddChild(child *traits.Child) {
 }
 
 // RemoveChildByName removes a child from this model matching the given name.
-// If no such child exists then nil, false will be returned, else the removed child and true.
-func (m *Model) RemoveChildByName(name string) (child *traits.Child, existed bool) {
-	old := m.children.Delete(name)
-	if old == nil {
-		return nil, false
+func (m *Model) RemoveChildByName(name string, opts ...resource.WriteOption) (*traits.Child, error) {
+	msg, err := m.children.Delete(name, opts...)
+	if msg == nil {
+		return nil, err
 	}
-	return old.(*traits.Child), true
+	return msg.(*traits.Child), err
 }
 
 // AddChildTrait ensures that a child with the given name and list of trait names exists in this model.

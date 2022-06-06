@@ -2,7 +2,6 @@ package electric
 
 import (
 	"context"
-	"errors"
 
 	"github.com/smart-core-os/sc-api/go/traits"
 	"google.golang.org/grpc/codes"
@@ -42,10 +41,6 @@ func (s *ModelServer) DeleteMode(_ context.Context, request *DeleteModeRequest) 
 		return nil, status.Error(codes.InvalidArgument, "id is required")
 	}
 
-	err := s.model.DeleteMode(request.Id)
-	if request.AllowMissing && errors.Is(err, ErrModeNotFound) {
-		// the client specified that deleting a non-existent mode is OK and should not error
-		err = nil
-	}
+	err := s.model.DeleteMode(request.Id, resource.WithAllowMissing(request.AllowMissing))
 	return &emptypb.Empty{}, err
 }

@@ -14,9 +14,9 @@ import (
 func GenerateUniqueId(rng io.Reader, exists func(candidate string) bool) (string, error) {
 	tries := 10
 	for i := 0; i < tries; i++ {
-		r := make([]byte, 16)
+		r := make([]byte, 6 + i)
 		_, _ = rng.Read(r)
-		idCandidate := base64.StdEncoding.EncodeToString(r)
+		idCandidate := base64.RawURLEncoding.EncodeToString(r)
 		if idCandidate != "" && !exists(idCandidate) {
 			return idCandidate, nil
 		}

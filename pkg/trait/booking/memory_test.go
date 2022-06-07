@@ -14,7 +14,7 @@ import (
 )
 
 var randIds = []string{
-	"Uv38ByGCZU8WP18PmmIdcg==",
+	"Uv38ByGC",
 }
 
 func TestBookingApi_CreateBooking(t *testing.T) {

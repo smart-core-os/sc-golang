@@ -71,6 +71,8 @@ github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6L
 github.com/sirupsen/logrus v1.4.2/go.mod h1:tLMulIdttU9McNUspp0xgXVQah82FyeX6MwdIuYE2rE=
 github.com/smart-core-os/sc-api/go v1.0.0-beta.36.0.20220606102732-9ce233efef86 h1:agCD1S1wOALMuNburaWFj2RbpZQh6/PqhRBQF1ob21I=
 github.com/smart-core-os/sc-api/go v1.0.0-beta.36.0.20220606102732-9ce233efef86/go.mod h1:6mSjMPKk2EMSZWcAu4BUZuOFvyO9Vs09z7c3PGDLlmY=
+github.com/smart-core-os/sc-api/go v1.0.0-beta.38 h1:vRMY7wgNFiHTft9JHDqNhBWsePigLk6BXSChaMd1kaw=
+github.com/smart-core-os/sc-api/go v1.0.0-beta.38/go.mod h1:6mSjMPKk2EMSZWcAu4BUZuOFvyO9Vs09z7c3PGDLlmY=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=

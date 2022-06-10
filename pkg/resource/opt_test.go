@@ -16,11 +16,11 @@ func TestWithUpdatesOnly(t *testing.T) {
 	t.Parallel()
 
 	t.Run("Value (default)", func(t *testing.T) {
-		v := NewValue(WithInitialValue(&traits.OnOff{State: traits.OnOff_ON}))
+		v := NewValue[*traits.OnOff](WithInitialValue[*traits.OnOff](&traits.OnOff{State: traits.OnOff_ON}))
 		ctx, done := context.WithCancel(context.Background())
 		t.Cleanup(done)
 		c := v.Pull(ctx)
-		var events []*ValueChange
+		var events []*ValueChange[*traits.OnOff]
 		complete := make(chan struct{})
 		go func() {
 			defer close(complete)
@@ -51,11 +51,11 @@ func TestWithUpdatesOnly(t *testing.T) {
 		}
 	})
 	t.Run("Value (updates only)", func(t *testing.T) {
-		v := NewValue(WithInitialValue(&traits.OnOff{State: traits.OnOff_ON}))
+		v := NewValue[*traits.OnOff](WithInitialValue[*traits.OnOff](&traits.OnOff{State: traits.OnOff_ON}))
 		ctx, done := context.WithCancel(context.Background())
 		t.Cleanup(done)
 		c := v.Pull(ctx, WithUpdatesOnly(true))
-		var events []*ValueChange
+		var events []*ValueChange[*traits.OnOff]
 		complete := make(chan struct{})
 		go func() {
 			defer close(complete)
@@ -87,13 +87,13 @@ func TestWithUpdatesOnly(t *testing.T) {
 	})
 
 	t.Run("Collection (default)", func(t *testing.T) {
-		v := NewCollection()
+		v := NewCollection[*traits.OnOff]()
 		add(t, v, "A", &traits.OnOff{State: traits.OnOff_ON})
 
 		ctx, done := context.WithCancel(context.Background())
 		t.Cleanup(done)
 		c := v.Pull(ctx)
-		var events []*CollectionChange
+		var events []*CollectionChange[*traits.OnOff]
 		complete := make(chan struct{})
 		go func() {
 			defer close(complete)
@@ -124,13 +124,13 @@ func TestWithUpdatesOnly(t *testing.T) {
 		}
 	})
 	t.Run("Collection (updates only)", func(t *testing.T) {
-		v := NewCollection()
+		v := NewCollection[*traits.OnOff]()
 		add(t, v, "A", &traits.OnOff{State: traits.OnOff_ON})
 
 		ctx, done := context.WithCancel(context.Background())
 		t.Cleanup(done)
 		c := v.Pull(ctx, WithUpdatesOnly(true))
-		var events []*CollectionChange
+		var events []*CollectionChange[*traits.OnOff]
 		complete := make(chan struct{})
 		go func() {
 			defer close(complete)
@@ -163,7 +163,7 @@ func TestWithUpdatesOnly(t *testing.T) {
 
 func TestWithInclude(t *testing.T) {
 	t.Run("List", func(t *testing.T) {
-		c := NewCollection()
+		c := NewCollection[*traits.OnOff]()
 		add(t, c, "A", &traits.OnOff{State: traits.OnOff_ON})
 		add(t, c, "B", &traits.OnOff{State: traits.OnOff_OFF})
 		add(t, c, "C", &traits.OnOff{State: traits.OnOff_STATE_UNSPECIFIED})
@@ -197,7 +197,7 @@ func TestWithInclude(t *testing.T) {
 	})
 
 	t.Run("Pull", func(t *testing.T) {
-		v := NewCollection()
+		v := NewCollection[*traits.OnOff]()
 		add(t, v, "A", &traits.OnOff{State: traits.OnOff_ON})
 		add(t, v, "B", &traits.OnOff{State: traits.OnOff_OFF})
 		add(t, v, "C", &traits.OnOff{State: traits.OnOff_STATE_UNSPECIFIED})
@@ -210,7 +210,7 @@ func TestWithInclude(t *testing.T) {
 			itemVal := item.(*traits.OnOff)
 			return itemVal.State == traits.OnOff_OFF
 		}))
-		var events []*CollectionChange
+		var events []*CollectionChange[*traits.OnOff]
 		complete := make(chan struct{})
 		go func() {
 			defer close(complete)
@@ -306,7 +306,7 @@ type collectionChange struct {
 	ChangeType         types.ChangeType
 }
 
-func add(t *testing.T, c *Collection, id string, msg proto.Message) {
+func add[T Message](t *testing.T, c *Collection[T], id string, msg T) {
 	t.Helper()
 	_, err := c.Add(id, msg)
 	if err != nil {

@@ -9,16 +9,16 @@ import (
 )
 
 // CreateFn is called to generate a message based on the ID the message is going to have.
-type CreateFn func(id string) proto.Message
+type CreateFn[T Message] func(id string) T
 
 // GetFn is called to retrieve the message from the external store.
-type GetFn func() (item proto.Message, err error)
+type GetFn[T Message] func() (item T, err error)
 
 // ChangeFn is called to apply changes to the new proto.Message.
-type ChangeFn func(old, new proto.Message) error
+type ChangeFn[T Message] func(old, new T) error
 
 // SaveFn is called to save the message in the external store.
-type SaveFn func(msg proto.Message)
+type SaveFn[T Message] func(msg T)
 
 // GetAndUpdate applies an atomic get and update operation in the context of proto messages.
 // mu.RLock will be held during the get call.
@@ -26,15 +26,17 @@ type SaveFn func(msg proto.Message)
 // No locks will be held during the change call.
 //
 // An error will be returned if the value returned by get changes during the change call.
-func GetAndUpdate(mu *sync.RWMutex, get GetFn, change ChangeFn, save SaveFn) (oldValue proto.Message, newValue proto.Message, err error) {
+func GetAndUpdate[T Message](mu *sync.RWMutex, get GetFn[T], change ChangeFn[T],
+	save SaveFn[T]) (oldValue T, newValue T, err error) {
+
 	mu.RLock()
 	oldValue, err = get()
 	mu.RUnlock()
 	if err != nil {
-		return nil, nil, err
+		return zero[T](), zero[T](), err
 	}
 
-	newValue = proto.Clone(oldValue)
+	newValue = proto.Clone(oldValue).(T)
 	if err := change(oldValue, newValue); err != nil {
 		return oldValue, newValue, err
 	}

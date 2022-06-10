@@ -16,62 +16,64 @@ import (
 )
 
 // Option configures a resource value or collection.
-type Option func(*config)
+type Option[T Message] func(*config[T])
 
 // EmptyOption returns an Option that makes no changes to the semantics of the resource.
 // Useful for embedding in another struct to enable custom resource options.
-func EmptyOption() Option {
-	return func(c *config) {}
+func EmptyOption[T Message]() Option[T] {
+	return func(c *config[T]) {}
 }
 
 // WithClock configures the clock used when time is needed.
 // Defaults to a Clock backed by the time package.
-func WithClock(c Clock) Option {
-	return func(s *config) {
+func WithClock[T Message](c Clock) Option[T] {
+	return func(s *config[T]) {
 		s.clock = c
 	}
 }
 
 // WithEquivalence configures how consecutive emissions are compared, equivalent emissions are not emitted.
 // Defaults to nil, no equivalence checking is performed, all events will be emitted.
-func WithEquivalence(e Comparer) Option {
-	return func(s *config) {
+func WithEquivalence[T Message](e Comparer[T]) Option[T] {
+	return func(s *config[T]) {
 		s.equivalence = e
 	}
 }
 
 // WithMessageEquivalence is like WithEquivalence but using a cmp.Message.
-func WithMessageEquivalence(e cmp.Message) Option {
-	return WithEquivalence(Comparer(e))
+func WithMessageEquivalence[T Message](e cmp.Message) Option[T] {
+	return WithEquivalence[T](func(x, y T) bool {
+		return e(x, y)
+	})
 }
 
 // WithNoDuplicates is like WithMessageEquivalence(cmp.Equal()).
-func WithNoDuplicates() Option {
-	return WithMessageEquivalence(cmp.Equal())
+func WithNoDuplicates[T Message]() Option[T] {
+	return WithMessageEquivalence[T](cmp.Equal())
 }
 
 // WithRNG configures the source of randomness for the resource.
 // Defaults to rand.Rand with a time seed.
-func WithRNG(rng io.Reader) Option {
-	return func(s *config) {
+func WithRNG[T Message](rng io.Reader) Option[T] {
+	return func(s *config[T]) {
 		s.rng = rng
 	}
 }
 
 // WithInitialValue configures the initial value for the resource.
 // Applies only to Value.
-func WithInitialValue(initialValue proto.Message) Option {
-	return func(s *config) {
+func WithInitialValue[T Message](initialValue T) Option[T] {
+	return func(s *config[T]) {
 		s.initialValue = initialValue
 	}
 }
 
 // WithInitialRecord configures an initial record for a collection resource.
 // Panics if a record with the given id has already been configured.
-func WithInitialRecord(id string, value proto.Message) Option {
-	return func(s *config) {
+func WithInitialRecord[T Message](id string, value T) Option[T] {
+	return func(s *config[T]) {
 		if s.initialRecords == nil {
-			s.initialRecords = make(map[string]proto.Message)
+			s.initialRecords = make(map[string]T)
 		}
 		if _, ok := s.initialRecords[id]; ok {
 			panic(fmt.Sprintf("initial record id:%v already exists", id))
@@ -82,32 +84,32 @@ func WithInitialRecord(id string, value proto.Message) Option {
 
 // WithWritableFields configures write operations on the resource to accept updates to the given fields only.
 // Explicit writes to fields not in this mask will fail.
-func WithWritableFields(mask *fieldmaskpb.FieldMask) Option {
-	return func(s *config) {
+func WithWritableFields[T Message](mask *fieldmaskpb.FieldMask) Option[T] {
+	return func(s *config[T]) {
 		s.writableFields = mask
 	}
 }
 
 // WithWritablePaths is like WithWritableFields using fieldmaskpb.New.
-func WithWritablePaths(m proto.Message, paths ...string) Option {
+func WithWritablePaths[T Message](m proto.Message, paths ...string) Option[T] {
 	mask, err := fieldmaskpb.New(m, paths...)
 	if err != nil {
 		panic(err)
 	}
-	return WithWritableFields(mask)
+	return WithWritableFields[T](mask)
 }
 
-type config struct {
+type config[T Message] struct {
 	clock          Clock
-	equivalence    Comparer
+	equivalence    Comparer[T]
 	rng            io.Reader
-	initialValue   proto.Message
-	initialRecords map[string]proto.Message
+	initialValue   T
+	initialRecords map[string]T
 	writableFields *fieldmaskpb.FieldMask
 }
 
-func computeConfig(opts ...Option) *config {
-	c := &config{
+func computeConfig[T Message](opts ...Option[T]) *config[T] {
+	c := &config[T]{
 		clock: WallClock(),
 		rng:   rand.New(rand.NewSource(time.Now().Unix())),
 	}
@@ -204,10 +206,10 @@ func (rr *readRequest) Exclude(id string, m proto.Message) bool {
 	return rr.include != nil && !rr.include(id, m)
 }
 
-type WriteOption func(wr *writeRequest)
+type WriteOption[T Message] func(wr *writeRequest[T])
 
-func computeWriteConfig(opts ...WriteOption) writeRequest {
-	req := &writeRequest{}
+func computeWriteConfig[T Message](opts ...WriteOption[T]) writeRequest[T] {
+	req := &writeRequest[T]{}
 	for _, opt := range opts {
 		opt(req)
 	}
@@ -215,17 +217,17 @@ func computeWriteConfig(opts ...WriteOption) writeRequest {
 }
 
 // UpdateInterceptor describes a function that applies changes to an existing message
-type UpdateInterceptor func(old, new proto.Message)
+type UpdateInterceptor[T Message] func(old, new T)
 
-type writeRequest struct {
+type writeRequest[T Message] struct {
 	writeTime *time.Time
 
 	updateMask    *fieldmaskpb.FieldMask
 	resetMask     *fieldmaskpb.FieldMask
-	expectedValue proto.Message
+	expectedValue T
 
-	interceptBefore UpdateInterceptor
-	interceptAfter  UpdateInterceptor
+	interceptBefore UpdateInterceptor[T]
+	interceptAfter  UpdateInterceptor[T]
 
 	nilWritableFields  bool
 	moreWritableFields *fieldmaskpb.FieldMask
@@ -234,7 +236,7 @@ type writeRequest struct {
 	createdCallback func()
 }
 
-func (wr writeRequest) fieldUpdater(writableFields *fieldmaskpb.FieldMask) *masks.FieldUpdater {
+func (wr writeRequest[T]) fieldUpdater(writableFields *fieldmaskpb.FieldMask) *masks.FieldUpdater {
 	opts := []masks.FieldUpdaterOption{
 		masks.WithUpdateMask(wr.updateMask),
 		masks.WithResetMask(wr.resetMask),
@@ -251,9 +253,9 @@ func (wr writeRequest) fieldUpdater(writableFields *fieldmaskpb.FieldMask) *mask
 	return masks.NewFieldUpdater(opts...)
 }
 
-func (wr writeRequest) changeFn(writer *masks.FieldUpdater, value proto.Message) ChangeFn {
-	return func(old, new proto.Message) error {
-		if wr.expectedValue != nil {
+func (wr writeRequest[T]) changeFn(writer *masks.FieldUpdater, value T) ChangeFn[T] {
+	return func(old, new T) error {
+		if wr.expectedValue != zero[T]() {
 			if !proto.Equal(old, wr.expectedValue) {
 				return ExpectedValuePreconditionFailed
 			}
@@ -274,7 +276,7 @@ func (wr writeRequest) changeFn(writer *masks.FieldUpdater, value proto.Message)
 	}
 }
 
-func (wr writeRequest) updateTime(clock Clock) time.Time {
+func (wr writeRequest[T]) updateTime(clock Clock) time.Time {
 	if wr.writeTime != nil {
 		return *wr.writeTime
 	}
@@ -284,8 +286,8 @@ func (wr writeRequest) updateTime(clock Clock) time.Time {
 // WithWriteTime configures the update to behave as if the write happened at time t, instead of now.
 // Any change events that may be emitted with this write use t as their ChangeTime.
 // Computational values, for example tweening, can use this to correctly determine the computed value.
-func WithWriteTime(t time.Time) WriteOption {
-	return func(wr *writeRequest) {
+func WithWriteTime[T Message](t time.Time) WriteOption[T] {
+	return func(wr *writeRequest[T]) {
 		wr.writeTime = &t
 	}
 }
@@ -293,29 +295,29 @@ func WithWriteTime(t time.Time) WriteOption {
 // WithUpdateMask configures the update to only apply to these fields.
 // nil will update all writable fields.
 // Fields specified here that aren't in the Resources writable fields will result in an error
-func WithUpdateMask(mask *fieldmaskpb.FieldMask) WriteOption {
-	return func(request *writeRequest) {
+func WithUpdateMask[T Message](mask *fieldmaskpb.FieldMask) WriteOption[T] {
+	return func(request *writeRequest[T]) {
 		request.updateMask = mask
 	}
 }
 
 // WithUpdatePaths is like WithUpdateMask but the FieldMask is made from the given paths.
-func WithUpdatePaths(paths ...string) WriteOption {
-	return WithUpdateMask(&fieldmaskpb.FieldMask{Paths: paths})
+func WithUpdatePaths[T Message](paths ...string) WriteOption[T] {
+	return WithUpdateMask[T](&fieldmaskpb.FieldMask{Paths: paths})
 }
 
 // WithResetMask configures the update to clear these fields from the final value.
 // This will happen after InterceptBefore, but before InterceptAfter.
 // WithWritableFields does not affect this.
-func WithResetMask(mask *fieldmaskpb.FieldMask) WriteOption {
-	return func(request *writeRequest) {
+func WithResetMask[T Message](mask *fieldmaskpb.FieldMask) WriteOption[T] {
+	return func(request *writeRequest[T]) {
 		request.resetMask = mask
 	}
 }
 
 // WithResetPaths is like WithResetMask but the FieldMask is made from the given paths.
-func WithResetPaths(paths ...string) WriteOption {
-	return WithResetMask(&fieldmaskpb.FieldMask{Paths: paths})
+func WithResetPaths[T Message](paths ...string) WriteOption[T] {
+	return WithResetMask[T](&fieldmaskpb.FieldMask{Paths: paths})
 }
 
 // InterceptBefore registers a function that will be called before the update occurs.
@@ -332,8 +334,8 @@ func WithResetPaths(paths ...string) WriteOption {
 //       change.Quantity += old.Quantity
 //     }
 //   }))
-func InterceptBefore(interceptor UpdateInterceptor) WriteOption {
-	return func(request *writeRequest) {
+func InterceptBefore[T Message](interceptor UpdateInterceptor[T]) WriteOption[T] {
+	return func(request *writeRequest[T]) {
 		request.interceptBefore = interceptor
 	}
 }
@@ -350,8 +352,8 @@ func InterceptBefore(interceptor UpdateInterceptor) WriteOption {
 //       new.UpdateTime = timestamppb.Now()
 //     }
 //   }))
-func InterceptAfter(interceptor UpdateInterceptor) WriteOption {
-	return func(request *writeRequest) {
+func InterceptAfter[T Message](interceptor UpdateInterceptor[T]) WriteOption[T] {
+	return func(request *writeRequest[T]) {
 		request.interceptAfter = interceptor
 	}
 }
@@ -359,23 +361,23 @@ func InterceptAfter(interceptor UpdateInterceptor) WriteOption {
 // WithAllFieldsWritable instructs the update to ignore the resources configured writable fields.
 // All fields will be writable if using this option.
 // Prefer WithMoreWritableFields if possible.
-func WithAllFieldsWritable() WriteOption {
-	return func(request *writeRequest) {
+func WithAllFieldsWritable[T Message]() WriteOption[T] {
+	return func(request *writeRequest[T]) {
 		request.nilWritableFields = true
 	}
 }
 
 // WithMoreWritableFields adds the given fields to the resources configured writable fields before validating the update.
 // Prefer this over WithAllFieldsWritable.
-func WithMoreWritableFields(writableFields *fieldmaskpb.FieldMask) WriteOption {
-	return func(request *writeRequest) {
+func WithMoreWritableFields[T Message](writableFields *fieldmaskpb.FieldMask) WriteOption[T] {
+	return func(request *writeRequest[T]) {
 		request.moreWritableFields = fieldmaskpb.Union(request.moreWritableFields, writableFields)
 	}
 }
 
 // WithMoreWritablePaths is like WithMoreWritableFields but with paths instead.
-func WithMoreWritablePaths(writablePaths ...string) WriteOption {
-	return WithMoreWritableFields(&fieldmaskpb.FieldMask{Paths: writablePaths})
+func WithMoreWritablePaths[T Message](writablePaths ...string) WriteOption[T] {
+	return WithMoreWritableFields[T](&fieldmaskpb.FieldMask{Paths: writablePaths})
 }
 
 // ExpectedValuePreconditionFailed is returned when an update configured WithExpectedValue fails its comparison.
@@ -384,8 +386,8 @@ var ExpectedValuePreconditionFailed = status.Errorf(codes.FailedPrecondition, "c
 // WithExpectedValue instructs the update to only proceed if the current value is equal to expectedValue.
 // If the precondition fails the update will return the error ExpectedValuePreconditionFailed.
 // The precondition will be checked _before_ InterceptBefore.
-func WithExpectedValue(expectedValue proto.Message) WriteOption {
-	return func(request *writeRequest) {
+func WithExpectedValue[T Message](expectedValue T) WriteOption[T] {
+	return func(request *writeRequest[T]) {
 		request.expectedValue = expectedValue
 	}
 }
@@ -393,8 +395,8 @@ func WithExpectedValue(expectedValue proto.Message) WriteOption {
 // WithCreateIfAbsent instructs the write to create an entry if none already exist.
 // Applicable only to Collection updates.
 // When specified any interceptors will receive a zero old value of the collection item type.
-func WithCreateIfAbsent() WriteOption {
-	return func(wr *writeRequest) {
+func WithCreateIfAbsent[T Message]() WriteOption[T] {
+	return func(wr *writeRequest[T]) {
 		wr.createIfAbsent = true
 	}
 }
@@ -402,8 +404,8 @@ func WithCreateIfAbsent() WriteOption {
 // WithCreatedCallback calls cb if during an update, a new value is created.
 // Applicable only to Collection updates.
 // Use the response from the Update call to get the actual value.
-func WithCreatedCallback(cb func()) WriteOption {
-	return func(wr *writeRequest) {
+func WithCreatedCallback[T Message](cb func()) WriteOption[T] {
+	return func(wr *writeRequest[T]) {
 		wr.createdCallback = cb
 	}
 }

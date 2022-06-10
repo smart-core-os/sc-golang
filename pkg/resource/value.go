@@ -14,32 +14,32 @@ import (
 
 // Value represents a simple state field in an object. Think Temperature or Volume or Occupancy. Use a Value to
 // gain thread safe reads/writes that also support FieldMasks and update notifications.
-type Value struct {
-	*config
+type Value[T Message] struct {
+	*config[T]
 
 	mu         sync.RWMutex
-	value      proto.Message
+	value      T
 	changeTime time.Time
 
-	bus minibus.Bus
+	bus minibus.Bus[*ValueChange[T]]
 }
 
-func NewValue(opts ...Option) *Value {
+func NewValue[T Message](opts ...Option[T]) *Value[T] {
 	c := computeConfig(opts...)
-	res := &Value{
+	res := &Value[T]{
 		config: c,
 	}
 	res.value = c.initialValue
 	res.changeTime = c.clock.Now()
-	c.initialValue = nil // clear so it can be GC'd when the value changes
+	c.initialValue = zero[T]() // clear so it can be GC'd when the value changes
 	return res
 }
 
-func (r *Value) Get(opts ...ReadOption) proto.Message {
+func (r *Value[T]) Get(opts ...ReadOption) proto.Message {
 	return r.get(computeReadConfig(opts...))
 }
 
-func (r *Value) get(req *readRequest) proto.Message {
+func (r *Value[T]) get(req *readRequest) proto.Message {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return req.FilterClone(r.value)
@@ -48,24 +48,24 @@ func (r *Value) get(req *readRequest) proto.Message {
 // Set updates the current value of this Value with the given value.
 // Returns the new value.
 // Provide WriteOption to control masks and other variables during the update.
-func (r *Value) Set(value proto.Message, opts ...WriteOption) (proto.Message, error) {
-	return r.set(value, computeWriteConfig(opts...))
+func (r *Value[T]) Set(value T, opts ...WriteOption[T]) (T, error) {
+	return r.set(value, computeWriteConfig[T](opts...))
 }
 
-func (r *Value) set(value proto.Message, request writeRequest) (proto.Message, error) {
+func (r *Value[T]) set(value T, request writeRequest[T]) (T, error) {
 	writer := request.fieldUpdater(r.writableFields)
 	if err := writer.Validate(value); err != nil {
-		return nil, err
+		return zero[T](), err
 	}
 
 	disarm := timeoutAlarm(time.Second, "GetAndUpdate took too long")
-	_, newValue, err := GetAndUpdate(
+	_, newValue, err := GetAndUpdate[T](
 		&r.mu,
-		func() (proto.Message, error) {
+		func() (T, error) {
 			return r.value, nil
 		},
 		request.changeFn(writer, value),
-		func(message proto.Message) {
+		func(message T) {
 			r.value = message
 			r.changeTime = request.updateTime(r.clock)
 		},
@@ -73,17 +73,17 @@ func (r *Value) set(value proto.Message, request writeRequest) (proto.Message, e
 	disarm()
 
 	if err != nil {
-		return nil, err
+		return zero[T](), err
 	}
 
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Second*5)
 	defer cancel()
-	r.bus.Send(ctx, &ValueChange{
+	r.bus.Send(ctx, &ValueChange[T]{
 		Value:      newValue,
 		ChangeTime: request.updateTime(r.clock),
 	})
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-		return nil, errors.New("bus.Send blocked for too long")
+		return zero[T](), errors.New("bus.Send blocked for too long")
 	}
 
 	return newValue, err
@@ -93,16 +93,16 @@ func (r *Value) set(value proto.Message, request writeRequest) (proto.Message, e
 // The changes emitted can be adjusted using WithEquivalence.
 // The returned chan will be closed when no more events will be emitted, either because ctx was cancelled or for other
 // reasons.
-func (r *Value) Pull(ctx context.Context, opts ...ReadOption) <-chan *ValueChange {
+func (r *Value[T]) Pull(ctx context.Context, opts ...ReadOption) <-chan *ValueChange[T] {
 	readConfig := computeReadConfig(opts...)
 	filter := readConfig.ResponseFilter()
 	on, currentValue, changeTime := r.onUpdate(ctx, readConfig)
-	typedEvents := make(chan *ValueChange)
+	typedEvents := make(chan *ValueChange[T])
 	go func() {
 		defer close(typedEvents)
 
-		if currentValue != nil {
-			change := &ValueChange{Value: currentValue, ChangeTime: changeTime}
+		if currentValue != zero[T]() {
+			change := &ValueChange[T]{Value: currentValue, ChangeTime: changeTime}
 			change = change.filter(filter)
 			select {
 			case <-ctx.Done():
@@ -111,9 +111,9 @@ func (r *Value) Pull(ctx context.Context, opts ...ReadOption) <-chan *ValueChang
 			}
 		}
 
-		var last proto.Message
+		var last T
 		for event := range on {
-			change := event.(*ValueChange).filter(filter)
+			change := event.filter(filter)
 			if r.equivalence != nil && r.equivalence(last, change.Value) {
 				continue
 			}
@@ -128,9 +128,9 @@ func (r *Value) Pull(ctx context.Context, opts ...ReadOption) <-chan *ValueChang
 	return typedEvents
 }
 
-func (r *Value) onUpdate(ctx context.Context, config *readRequest) (<-chan interface{}, proto.Message, time.Time) {
+func (r *Value[T]) onUpdate(ctx context.Context, config *readRequest) (<-chan *ValueChange[T], T, time.Time) {
 	var (
-		value      proto.Message
+		value      T
 		changeTime time.Time
 	)
 	if !config.updatesOnly {
@@ -162,6 +162,6 @@ func timeoutAlarm(duration time.Duration, fmt string, args ...interface{}) (disa
 }
 
 // Clock returns the clock used by this resource for reporting time.
-func (r *Value) Clock() Clock {
+func (r *Value[T]) Clock() Clock {
 	return r.clock
 }

@@ -4,45 +4,44 @@ import (
 	"time"
 
 	"github.com/smart-core-os/sc-api/go/types"
-	"google.golang.org/protobuf/proto"
 
 	"github.com/smart-core-os/sc-golang/pkg/masks"
 )
 
 // Comparer compares two messages for equivalence.
 // This is used during the Pull operation to de-duplicate consecutive emissions.
-type Comparer func(x, y proto.Message) bool
+type Comparer[T Message] func(x, y T) bool
 
 // ValueChange contains information about a change to a Value.
-type ValueChange struct {
-	Value      proto.Message
+type ValueChange[T Message] struct {
+	Value      T
 	ChangeTime time.Time
 }
 
-func (v *ValueChange) filter(filter *masks.ResponseFilter) *ValueChange {
-	newValue := filter.FilterClone(v.Value)
+func (v *ValueChange[T]) filter(filter *masks.ResponseFilter) *ValueChange[T] {
+	newValue := filter.FilterClone(v.Value).(T)
 	if newValue == v.Value {
 		return v
 	}
-	return &ValueChange{Value: newValue, ChangeTime: v.ChangeTime}
+	return &ValueChange[T]{Value: newValue, ChangeTime: v.ChangeTime}
 }
 
 // CollectionChange contains information about a change to a Collection.
-type CollectionChange struct {
+type CollectionChange[T Message] struct {
 	Id         string
 	ChangeTime time.Time
 	ChangeType types.ChangeType
-	OldValue   proto.Message
-	NewValue   proto.Message
+	OldValue   T
+	NewValue   T
 }
 
-func (c *CollectionChange) filter(filter *masks.ResponseFilter) *CollectionChange {
-	newNewValue := filter.FilterClone(c.NewValue)
-	newOldValue := filter.FilterClone(c.OldValue)
+func (c *CollectionChange[T]) filter(filter *masks.ResponseFilter) *CollectionChange[T] {
+	newNewValue := filter.FilterClone(c.NewValue).(T)
+	newOldValue := filter.FilterClone(c.OldValue).(T)
 	if newNewValue == c.NewValue && newOldValue == c.OldValue {
 		return c
 	}
-	return &CollectionChange{
+	return &CollectionChange[T]{
 		Id:         c.Id,
 		ChangeType: c.ChangeType,
 		ChangeTime: c.ChangeTime,
@@ -55,7 +54,7 @@ func (c *CollectionChange) filter(filter *masks.ResponseFilter) *CollectionChang
 // If items are being filtered, then an UPDATE that causes an items inclusion to change will report an ADD or REMOVE
 // as needed. A new CollectionChange is returned if the underlying change type isn't accurate anymore.
 // The ok return value will be true if an update should be sent, and false if the change shouldn't be forwarded on.
-func (c *CollectionChange) include(includeFunc FilterFunc) (newChange *CollectionChange, ok bool) {
+func (c *CollectionChange[T]) include(includeFunc FilterFunc) (newChange *CollectionChange[T], ok bool) {
 	if includeFunc == nil {
 		return c, true
 	}
@@ -69,7 +68,7 @@ func (c *CollectionChange) include(includeFunc FilterFunc) (newChange *Collectio
 
 	if newInclude {
 		// treat this like an Add
-		return &CollectionChange{
+		return &CollectionChange[T]{
 			Id:         c.Id,
 			ChangeType: types.ChangeType_ADD,
 			ChangeTime: c.ChangeTime,
@@ -78,7 +77,7 @@ func (c *CollectionChange) include(includeFunc FilterFunc) (newChange *Collectio
 	}
 
 	// treat this like a remove
-	return &CollectionChange{
+	return &CollectionChange[T]{
 		Id:         c.Id,
 		ChangeType: types.ChangeType_REMOVE,
 		ChangeTime: c.ChangeTime,

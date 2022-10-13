@@ -28,7 +28,7 @@ func (w *apiWrapper) UnwrapServer() traits.SpeakerApiServer {
 }
 
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
-func (w *apiWrapper) Unwrap() interface{} {
+func (w *apiWrapper) Unwrap() any {
 	return w.UnwrapServer()
 }
 

@@ -26,7 +26,7 @@ func (w *sensorInfoWrapper) UnwrapServer() traits.MotionSensorSensorInfoServer {
 }
 
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
-func (w *sensorInfoWrapper) Unwrap() interface{} {
+func (w *sensorInfoWrapper) Unwrap() any {
 	return w.UnwrapServer()
 }
 

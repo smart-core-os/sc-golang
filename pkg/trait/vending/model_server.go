@@ -23,7 +23,7 @@ func NewModelServer(model *Model) *ModelServer {
 	return &ModelServer{model: model}
 }
 
-func (m *ModelServer) Unwrap() interface{} {
+func (m *ModelServer) Unwrap() any {
 	return m.model
 }
 
@@ -171,4 +171,3 @@ func (m *ModelServer) StopDispense(ctx context.Context, request *traits.StopDisp
 	// always succeeds, we always dispense immediately
 	return m.GetStock(ctx, &traits.GetStockRequest{Consumable: request.Name})
 }
-

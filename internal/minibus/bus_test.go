@@ -13,7 +13,7 @@ func TestBus_OneToMany(t *testing.T) {
 
 	// start the listeners
 	const numListeners = 10
-	var listenChs []<-chan interface{}
+	var listenChs []<-chan any
 	for i := 0; i < numListeners; i++ {
 		listenChs = append(listenChs, bus.Listen(listenCtx))
 	}
@@ -47,7 +47,7 @@ func TestBus_OneToMany(t *testing.T) {
 	}
 }
 
-func collector(source <-chan interface{}) (collected []interface{}) {
+func collector(source <-chan any) (collected []any) {
 	for data := range source {
 		collected = append(collected, data)
 	}

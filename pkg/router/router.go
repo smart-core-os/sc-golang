@@ -13,32 +13,32 @@ type Router interface {
 	// Add adds a named client to this Router.
 	// Add returns the old client associated with this name, or nil if there wasn't one.
 	// If HoldsType returns false for the given client, this will panic.
-	Add(name string, client interface{}) interface{}
+	Add(name string, client any) any
 	// HoldsType returns true if this Router holds clients of the specified type.
-	HoldsType(client interface{}) bool
+	HoldsType(client any) bool
 	// Remove removes and returns a named client.
-	Remove(name string) interface{}
+	Remove(name string) any
 	// Has returns true if this Router has a client with the given name.
 	Has(name string) bool
 	// Get returns the client for the given name.
 	// An error will be returned if no such client exists.
-	Get(name string) (interface{}, error)
+	Get(name string) (any, error)
 }
 
 type router struct {
 	mu       sync.RWMutex
-	registry map[string]interface{} // of type MyServiceClient
+	registry map[string]any // of type MyServiceClient
 	factory  Factory
 	fallback Factory
 
 	onChange func(Change)
 }
-type Factory func(string) (interface{}, error) // returns the type MyServiceClient
+type Factory func(string) (any, error) // returns the type MyServiceClient
 
 // NewRouter creates a new instance of Router with the given options.
 func NewRouter(opts ...Option) Router {
 	r := &router{
-		registry: make(map[string]interface{}),
+		registry: make(map[string]any),
 	}
 	for _, opt := range opts {
 		opt(r)
@@ -46,7 +46,7 @@ func NewRouter(opts ...Option) Router {
 	return r
 }
 
-func (r *router) Add(name string, client interface{}) interface{} {
+func (r *router) Add(name string, client any) any {
 	r.mu.Lock()
 	old := r.registry[name]
 	r.registry[name] = client
@@ -58,11 +58,11 @@ func (r *router) Add(name string, client interface{}) interface{} {
 	return old
 }
 
-func (r *router) HoldsType(_ interface{}) bool {
+func (r *router) HoldsType(_ any) bool {
 	return true
 }
 
-func (r *router) Remove(name string) interface{} {
+func (r *router) Remove(name string) any {
 	r.mu.Lock()
 	old, ok := r.registry[name]
 	if !ok {
@@ -91,11 +91,12 @@ func (r *router) Has(name string) bool {
 //  2. The factory is invoked to create a new client, configured via WithFactory.
 //     If the factory successfully creates a client, and no concurrent call already created a client, it is remembered
 //     and the callback registered via WithOnCommit is notified.
+//
 // If no client can be found or created, this returns an error suitable for return by a gRPC method,
 // i.e. one representing codes.NotFound.
 //
 // Note, no locks are held when invoking fallbacks, factories, or callbacks.
-func (r *router) Get(name string) (child interface{}, err error) {
+func (r *router) Get(name string) (child any, err error) {
 	r.mu.RLock()
 	child, exists := r.registry[name]
 	r.mu.RUnlock()
@@ -128,7 +129,7 @@ func (r *router) Get(name string) (child interface{}, err error) {
 	}
 	return
 }
-func invoke(name string, f Factory) (interface{}, bool, error) {
+func invoke(name string, f Factory) (any, bool, error) {
 	if f == nil {
 		return nil, false, nil
 	}
@@ -171,9 +172,9 @@ type Change struct {
 	// Name is the name of the entry being changed.
 	Name string
 	// Old holds the original value, or nil if there was no original.
-	Old interface{}
+	Old any
 	// New holds the new value, or nil if there is no new value.
-	New interface{}
+	New any
 	// Auto is true if New was created via a Factory.
 	Auto bool
 }

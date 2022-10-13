@@ -27,7 +27,7 @@ func (w *memorySettingsApiWrapper) UnwrapServer() MemorySettingsApiServer {
 }
 
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
-func (w *memorySettingsApiWrapper) Unwrap() interface{} {
+func (w *memorySettingsApiWrapper) Unwrap() any {
 	return w.UnwrapServer()
 }
 

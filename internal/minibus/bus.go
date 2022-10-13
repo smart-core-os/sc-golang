@@ -10,7 +10,7 @@ type Bus struct {
 	listeners []*listener
 }
 
-func (b *Bus) Send(ctx context.Context, event interface{}) (ok bool) {
+func (b *Bus) Send(ctx context.Context, event any) (ok bool) {
 	// create a copy of the listeners so avoid holding the mutex a long time
 	var listeners []*listener
 	b.listenerM.RLock()
@@ -54,8 +54,8 @@ func (b *Bus) collect() {
 	b.listeners = activeListeners
 }
 
-func (b *Bus) Listen(ctx context.Context) <-chan interface{} {
-	ch := make(chan interface{})
+func (b *Bus) Listen(ctx context.Context) <-chan any {
+	ch := make(chan any)
 
 	l := &listener{
 		ch:  ch,
@@ -77,11 +77,11 @@ func (b *Bus) Listen(ctx context.Context) <-chan interface{} {
 
 type listener struct {
 	m   sync.RWMutex
-	ch  chan interface{}
+	ch  chan any
 	ctx context.Context
 }
 
-func (l *listener) send(ctx context.Context, event interface{}) (ok bool, active bool) {
+func (l *listener) send(ctx context.Context, event any) (ok bool, active bool) {
 	l.m.RLock()
 	defer l.m.RUnlock()
 

@@ -26,7 +26,7 @@ func (w *infoWrapper) UnwrapServer() traits.OnOffInfoServer {
 }
 
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
-func (w *infoWrapper) Unwrap() interface{} {
+func (w *infoWrapper) Unwrap() any {
 	return w.UnwrapServer()
 }
 

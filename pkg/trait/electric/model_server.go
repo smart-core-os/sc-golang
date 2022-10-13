@@ -28,7 +28,7 @@ func NewModelServer(model *Model) *ModelServer {
 	}
 }
 
-func (s *ModelServer) Unwrap() interface{} {
+func (s *ModelServer) Unwrap() any {
 	return s.model
 }
 

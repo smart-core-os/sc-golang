@@ -20,7 +20,7 @@ func NewAuthProvider(creds credentials.TransportCredentials, logger *zap.Logger)
 	}
 }
 
-func (a *AuthProvider) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+func (a *AuthProvider) UnaryInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	a.logger.Debug("Unary interceptor:", zap.String("method", info.FullMethod))
 	return handler(ctx, req)
 }

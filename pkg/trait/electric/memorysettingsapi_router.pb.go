@@ -30,7 +30,7 @@ func NewMemorySettingsApiRouter(opts ...router.Option) *MemorySettingsApiRouter 
 // WithMemorySettingsApiClientFactory instructs the router to create a new
 // client the first time Get is called for that name.
 func WithMemorySettingsApiClientFactory(f func(name string) (MemorySettingsApiClient, error)) router.Option {
-	return router.WithFactory(func(name string) (interface{}, error) {
+	return router.WithFactory(func(name string) (any, error) {
 		return f(name)
 	})
 }
@@ -40,14 +40,14 @@ func (r *MemorySettingsApiRouter) Register(server *grpc.Server) {
 }
 
 // Add extends Router.Add to panic if client is not of type MemorySettingsApiClient.
-func (r *MemorySettingsApiRouter) Add(name string, client interface{}) interface{} {
+func (r *MemorySettingsApiRouter) Add(name string, client any) any {
 	if !r.HoldsType(client) {
 		panic(fmt.Sprintf("not correct type: client of type %T is not a MemorySettingsApiClient", client))
 	}
 	return r.Router.Add(name, client)
 }
 
-func (r *MemorySettingsApiRouter) HoldsType(client interface{}) bool {
+func (r *MemorySettingsApiRouter) HoldsType(client any) bool {
 	_, ok := client.(MemorySettingsApiClient)
 	return ok
 }

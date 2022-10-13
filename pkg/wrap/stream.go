@@ -16,8 +16,8 @@ type ClientServerStream struct {
 	header     metadata.MD
 	headerCond *sync.Cond
 	headerSent bool
-	serverSend chan interface{}
-	clientSend chan interface{}
+	serverSend chan any
+	clientSend chan any
 	trailer    metadata.MD
 	closed     context.CancelFunc
 	closeErr   error
@@ -29,8 +29,8 @@ func NewClientServerStream(ctx context.Context) *ClientServerStream {
 		ctx:        newCtx,
 		closed:     closed,
 		headerCond: sync.NewCond(&sync.Mutex{}),
-		serverSend: make(chan interface{}),
-		clientSend: make(chan interface{}),
+		serverSend: make(chan any),
+		clientSend: make(chan any),
 	}
 }
 
@@ -74,7 +74,7 @@ func (c *clientStream) Context() context.Context {
 	return c.ctx
 }
 
-func (c *clientStream) SendMsg(m interface{}) error {
+func (c *clientStream) SendMsg(m any) error {
 	select {
 	case <-c.ctx.Done():
 		return c.closeErr
@@ -83,7 +83,7 @@ func (c *clientStream) SendMsg(m interface{}) error {
 	}
 }
 
-func (c *clientStream) RecvMsg(m interface{}) error {
+func (c *clientStream) RecvMsg(m any) error {
 	select {
 	case <-c.Context().Done():
 		return c.closeErr
@@ -125,7 +125,7 @@ func (s *serverStream) Context() context.Context {
 	return s.ctx
 }
 
-func (s *serverStream) SendMsg(m interface{}) error {
+func (s *serverStream) SendMsg(m any) error {
 	if !s.headerSent {
 		_ = s.SendHeader(nil)
 	}
@@ -137,7 +137,7 @@ func (s *serverStream) SendMsg(m interface{}) error {
 	}
 }
 
-func (s *serverStream) RecvMsg(m interface{}) error {
+func (s *serverStream) RecvMsg(m any) error {
 	if !s.headerSent {
 		_ = s.SendHeader(nil)
 	}

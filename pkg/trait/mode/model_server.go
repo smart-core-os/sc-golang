@@ -25,7 +25,7 @@ func (m *ModelServer) Register(server *grpc.Server) {
 	traits.RegisterModeApiServer(server, m)
 }
 
-func (m *ModelServer) Unwrap() interface{} {
+func (m *ModelServer) Unwrap() any {
 	return m.model
 }
 

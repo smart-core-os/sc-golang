@@ -128,7 +128,7 @@ func (r *Value) Pull(ctx context.Context, opts ...ReadOption) <-chan *ValueChang
 	return typedEvents
 }
 
-func (r *Value) onUpdate(ctx context.Context, config *readRequest) (<-chan interface{}, proto.Message, time.Time) {
+func (r *Value) onUpdate(ctx context.Context, config *readRequest) (<-chan any, proto.Message, time.Time) {
 	var (
 		value      proto.Message
 		changeTime time.Time
@@ -148,7 +148,7 @@ func (r *Value) onUpdate(ctx context.Context, config *readRequest) (<-chan inter
 	return ch, value, changeTime
 }
 
-func timeoutAlarm(duration time.Duration, fmt string, args ...interface{}) (disarm func()) {
+func timeoutAlarm(duration time.Duration, fmt string, args ...any) (disarm func()) {
 	ctx, cancel := context.WithTimeout(context.Background(), duration)
 
 	go func() {

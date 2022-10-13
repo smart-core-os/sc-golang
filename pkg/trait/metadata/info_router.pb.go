@@ -28,7 +28,7 @@ func NewInfoRouter(opts ...router.Option) *InfoRouter {
 // WithMetadataInfoClientFactory instructs the router to create a new
 // client the first time Get is called for that name.
 func WithMetadataInfoClientFactory(f func(name string) (traits.MetadataInfoClient, error)) router.Option {
-	return router.WithFactory(func(name string) (interface{}, error) {
+	return router.WithFactory(func(name string) (any, error) {
 		return f(name)
 	})
 }
@@ -38,14 +38,14 @@ func (r *InfoRouter) Register(server *grpc.Server) {
 }
 
 // Add extends Router.Add to panic if client is not of type traits.MetadataInfoClient.
-func (r *InfoRouter) Add(name string, client interface{}) interface{} {
+func (r *InfoRouter) Add(name string, client any) any {
 	if !r.HoldsType(client) {
 		panic(fmt.Sprintf("not correct type: client of type %T is not a traits.MetadataInfoClient", client))
 	}
 	return r.Router.Add(name, client)
 }
 
-func (r *InfoRouter) HoldsType(client interface{}) bool {
+func (r *InfoRouter) HoldsType(client any) bool {
 	_, ok := client.(traits.MetadataInfoClient)
 	return ok
 }

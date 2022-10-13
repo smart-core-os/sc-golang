@@ -11,7 +11,7 @@ import (
 // IfAbsentUnaryInterceptor defines a server unary interceptor that sets the request name to name if it is unset.
 // Useful to implement the Smart Core property that an absent name should refer to the server serving the request.
 func IfAbsentUnaryInterceptor(name string) grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 		replaceEmptyNameField(req, name)
 		return handler(ctx, req)
 	}
@@ -20,7 +20,7 @@ func IfAbsentUnaryInterceptor(name string) grpc.UnaryServerInterceptor {
 // IfAbsentStreamInterceptor defines a server stream interceptor that sets the request name to name if it is unset.
 // Useful to implement the Smart Core property that an absent name should refer to the server serving the request.
 func IfAbsentStreamInterceptor(name string) grpc.StreamServerInterceptor {
-	return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		return handler(srv, &absentNameReplaceServerStream{
 			ServerStream: ss,
 			name:         name,
@@ -28,7 +28,7 @@ func IfAbsentStreamInterceptor(name string) grpc.StreamServerInterceptor {
 	}
 }
 
-func replaceEmptyNameField(req interface{}, name string) {
+func replaceEmptyNameField(req any, name string) {
 	msg, ok := req.(proto.Message)
 	if !ok {
 		return // not a proto.Message
@@ -53,7 +53,7 @@ type absentNameReplaceServerStream struct {
 	name string
 }
 
-func (w *absentNameReplaceServerStream) RecvMsg(m interface{}) error {
+func (w *absentNameReplaceServerStream) RecvMsg(m any) error {
 	err := w.ServerStream.RecvMsg(m)
 	if err != nil {
 		return err

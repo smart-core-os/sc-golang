@@ -24,7 +24,7 @@ func New{{.RouterName}}(opts ...router.Option) *{{.RouterName}} {
 // With{{.ClientName.Exported}}Factory instructs the router to create a new
 // client the first time Get is called for that name.
 func With{{.ClientName.Exported}}Factory(f func(name string) ({{.ClientName.Qualified}}, error)) router.Option {
-  return router.WithFactory(func(name string) (interface{}, error) {
+  return router.WithFactory(func(name string) (any, error) {
     return f(name)
   })
 }
@@ -34,14 +34,14 @@ func (r *{{.RouterName}}) Register(server *grpc.Server) {
 }
 
 // Add extends Router.Add to panic if client is not of type {{.ClientName.Qualified}}.
-func (r *{{.RouterName}}) Add(name string, client interface{}) interface{} {
+func (r *{{.RouterName}}) Add(name string, client any) any {
   if !r.HoldsType(client) {
     panic(fmt.Sprintf("not correct type: client of type %T is not a {{.ClientName.Qualified}}", client))
   }
   return r.Router.Add(name, client)
 }
 
-func (r *{{.RouterName}}) HoldsType(client interface{}) bool {
+func (r *{{.RouterName}}) HoldsType(client any) bool {
   _, ok := client.({{.ClientName.Qualified}})
 	return ok
 }

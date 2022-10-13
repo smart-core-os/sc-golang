@@ -185,7 +185,7 @@ func (c *Collection) Delete(id string, opts ...WriteOption) (proto.Message, erro
 
 		c.mu.Lock()
 		oldVal2, exists2 := c.byId[id]
-		if oldVal2 != oldVal || exists2 != exists{
+		if oldVal2 != oldVal || exists2 != exists {
 			// someone changed something while we were checking the value, try again
 			c.mu.Unlock()
 			oldVal, exists = oldVal2, exists2
@@ -286,7 +286,7 @@ func (c *Collection) PullID(ctx context.Context, id string, opts ...ReadOption) 
 	return send
 }
 
-func (c *Collection) onUpdate(ctx context.Context, config *readRequest) (<-chan interface{}, []idItem) {
+func (c *Collection) onUpdate(ctx context.Context, config *readRequest) (<-chan any, []idItem) {
 	var res []idItem
 	if !config.updatesOnly {
 		c.mu.RLock()

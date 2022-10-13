@@ -2,6 +2,7 @@ package th
 
 import (
 	"context"
+	"google.golang.org/grpc/credentials/insecure"
 	"net"
 	"testing"
 	"time"
@@ -21,8 +22,10 @@ func CheckErr(t *testing.T, err error, msg string) {
 }
 
 func Dial(lis *bufconn.Listener) (*grpc.ClientConn, error) {
-	dialler := func(ctx context.Context, s string) (net.Conn, error) {
-		return lis.Dial()
-	}
-	return grpc.DialContext(Ctx, "test", grpc.WithContextDialer(dialler), grpc.WithInsecure())
+	return grpc.DialContext(Ctx, "test",
+		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
+			return lis.Dial()
+		}),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 }

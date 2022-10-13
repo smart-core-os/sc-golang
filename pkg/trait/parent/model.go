@@ -3,6 +3,8 @@ package parent
 import (
 	"context"
 	"fmt"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"sort"
 
 	"github.com/smart-core-os/sc-api/go/traits"
@@ -66,6 +68,25 @@ func (m *Model) AddChildTrait(name string, traitName ...trait.Name) (child *trai
 	return msg.(*traits.Child), created
 }
 
+// RemoveChildTrait ensures that the named child no longer mentions they support the given trait names.
+// If no child exists with the given name then nil will be returned.
+func (m *Model) RemoveChildTrait(name string, traitName ...trait.Name) *traits.Child {
+	msg, err := m.children.Update(name, &traits.Child{Name: name},
+		resource.InterceptBefore(func(old, value proto.Message) {
+			oldChild := old.(*traits.Child)
+			newChild := value.(*traits.Child)
+			newChild.Traits = traitRemove(oldChild.Traits, traitName...)
+		}))
+	if err != nil {
+		switch status.Code(err) {
+		case codes.NotFound:
+			return nil
+		}
+		panic(err) // NotFound is the only error we expect
+	}
+	return msg.(*traits.Child)
+}
+
 // ListChildren returns a slice of all known Child instances.
 func (m *Model) ListChildren() []*traits.Child {
 	msgs := m.children.List()
@@ -122,6 +143,25 @@ func traitUnion(has []*traits.Trait, more ...trait.Name) []*traits.Trait {
 			has = append(has[:insertIndex+1], has[insertIndex:]...)
 			has[insertIndex] = &traits.Trait{Name: ts}
 		}
+	}
+	return has
+}
+
+// traitRemove returns a slice containing only traits from has that aren't in remove.
+// The has slice should be sorted in ascending order by Trait.Name.
+// The returned slice will be sorted in ascending order by Trait.Name.
+func traitRemove(has []*traits.Trait, remove ...trait.Name) []*traits.Trait {
+	// has should be sorted by Trait.Name
+	for _, t := range remove {
+		ts := string(t)
+		insertIndex := sort.Search(len(has), func(i int) bool {
+			return has[i].Name >= ts
+		})
+		if insertIndex == len(has) {
+			continue // t isn't in has, nothing to do this iteration
+		}
+		copy(has[insertIndex:], has[insertIndex+1:])
+		has = has[:len(has)-1]
 	}
 	return has
 }

@@ -7,6 +7,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 	"io"
+	"sync"
 )
 
 // ClientServerStream combines both a grpc.ServerStream and grpc.ClientStream
@@ -14,6 +15,7 @@ type ClientServerStream struct {
 	ctx context.Context
 
 	header  metadata.MD
+	headerM sync.Mutex    // guards closing of headerC
 	headerC chan struct{} // closed once calls to clientStream.Header should return
 
 	serverSend chan any
@@ -109,8 +111,17 @@ func (s *serverStream) SetHeader(md metadata.MD) error {
 }
 
 func (s *serverStream) SendHeader(md metadata.MD) error {
+	s.headerM.Lock()
+	defer s.headerM.Unlock()
+
+	select {
+	case <-s.headerC:
+		return errors.New("headers already sent")
+	default:
+	}
 	s.header = metadata.Join(s.header, md)
-	return s.broadcastHeaderSent()
+	close(s.headerC)
+	return nil
 }
 
 func (s *serverStream) SetTrailer(md metadata.MD) {
@@ -147,22 +158,7 @@ func (s *serverStream) RecvMsg(m any) error {
 	}
 }
 
-func (s *serverStream) broadcastHeaderSent() (err error) {
-	defer func() {
-		// I don't like using panic/recover here but the headerC chan already deals with locking of the close
-		// and I don't want to have to do that here too
-		recover()
-		err = errors.New("headers already sent")
-	}()
-	close(s.headerC)
-	return nil
-}
-
 func (s *serverStream) sendHeaderIfNeeded() {
-	select {
-	case <-s.headerC:
-	// already sent header
-	default:
-		_ = s.SendHeader(nil)
-	}
+	// ignore error, SendHeader has no side effects if the headers have already been sent
+	_ = s.SendHeader(nil)
 }

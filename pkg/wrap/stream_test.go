@@ -2,10 +2,11 @@ package wrap
 
 import (
 	"context"
+	"errors"
+	"github.com/smart-core-os/sc-api/go/traits"
 	"reflect"
 	"testing"
-
-	"github.com/smart-core-os/sc-api/go/traits"
+	"time"
 )
 
 func Test_clientSend(t *testing.T) {
@@ -43,5 +44,38 @@ func Test_serverSend(t *testing.T) {
 
 	if !reflect.DeepEqual(sentMessage, receivedMessage) {
 		t.Errorf("%v != %v", sentMessage, receivedMessage)
+	}
+}
+
+func TestClientServerStream_headerReturnsOnClose(t *testing.T) {
+	t.Run("nil err", func(t *testing.T) {
+		assertHeaderErrOnClose(t, nil)
+	})
+	t.Run("non-nil err", func(t *testing.T) {
+		assertHeaderErrOnClose(t, errors.New("early closed"))
+	})
+}
+
+func assertHeaderErrOnClose(t *testing.T, wantErr error) {
+	ctx := context.Background()
+	cs := NewClientServerStream(ctx)
+	client := cs.Client()
+
+	go cs.Close(wantErr)
+
+	var gotErr error
+	headerDone := make(chan struct{})
+	go func() {
+		_, gotErr = client.Header()
+		close(headerDone)
+	}()
+
+	select {
+	case <-time.After(time.Second):
+		t.Fatalf("timeout waiting for Client.Header()")
+	case <-headerDone:
+	}
+	if gotErr != wantErr {
+		t.Fatalf("Header err want %v, got %v", wantErr, gotErr)
 	}
 }

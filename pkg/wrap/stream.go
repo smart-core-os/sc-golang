@@ -2,20 +2,20 @@ package wrap
 
 import (
 	"context"
-	"io"
-	"sync"
-
+	"errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
+	"io"
 )
 
 // ClientServerStream combines both a grpc.ServerStream and grpc.ClientStream
 type ClientServerStream struct {
-	ctx        context.Context
-	header     metadata.MD
-	headerCond *sync.Cond
-	headerSent bool
+	ctx context.Context
+
+	header  metadata.MD
+	headerC chan struct{} // closed once calls to clientStream.Header should return
+
 	serverSend chan any
 	clientSend chan any
 	trailer    metadata.MD
@@ -28,7 +28,7 @@ func NewClientServerStream(ctx context.Context) *ClientServerStream {
 	return &ClientServerStream{
 		ctx:        newCtx,
 		closed:     closed,
-		headerCond: sync.NewCond(&sync.Mutex{}),
+		headerC:    make(chan struct{}),
 		serverSend: make(chan any),
 		clientSend: make(chan any),
 	}
@@ -53,12 +53,12 @@ type clientStream struct {
 }
 
 func (c *clientStream) Header() (metadata.MD, error) {
-	c.headerCond.L.Lock()
-	for !c.headerSent {
-		c.headerCond.Wait()
+	select {
+	case <-c.ctx.Done():
+		return nil, c.closeErr
+	case <-c.headerC:
+		return c.header, nil
 	}
-	c.headerCond.L.Unlock()
-	return c.header, nil
 }
 
 func (c *clientStream) Trailer() metadata.MD {
@@ -110,11 +110,7 @@ func (s *serverStream) SetHeader(md metadata.MD) error {
 
 func (s *serverStream) SendHeader(md metadata.MD) error {
 	s.header = metadata.Join(s.header, md)
-	s.headerCond.L.Lock()
-	s.headerSent = true
-	s.headerCond.L.Unlock()
-	s.headerCond.Broadcast()
-	return nil
+	return s.broadcastHeaderSent()
 }
 
 func (s *serverStream) SetTrailer(md metadata.MD) {
@@ -126,9 +122,7 @@ func (s *serverStream) Context() context.Context {
 }
 
 func (s *serverStream) SendMsg(m any) error {
-	if !s.headerSent {
-		_ = s.SendHeader(nil)
-	}
+	s.sendHeaderIfNeeded()
 	select {
 	case <-s.ctx.Done():
 		return s.closeErr
@@ -138,9 +132,7 @@ func (s *serverStream) SendMsg(m any) error {
 }
 
 func (s *serverStream) RecvMsg(m any) error {
-	if !s.headerSent {
-		_ = s.SendHeader(nil)
-	}
+	s.sendHeaderIfNeeded()
 	select {
 	case <-s.Context().Done():
 		return s.closeErr
@@ -152,5 +144,25 @@ func (s *serverStream) RecvMsg(m any) error {
 		}
 		proto.Merge(m.(proto.Message), val.(proto.Message))
 		return nil
+	}
+}
+
+func (s *serverStream) broadcastHeaderSent() (err error) {
+	defer func() {
+		// I don't like using panic/recover here but the headerC chan already deals with locking of the close
+		// and I don't want to have to do that here too
+		recover()
+		err = errors.New("headers already sent")
+	}()
+	close(s.headerC)
+	return nil
+}
+
+func (s *serverStream) sendHeaderIfNeeded() {
+	select {
+	case <-s.headerC:
+	// already sent header
+	default:
+		_ = s.SendHeader(nil)
 	}
 }

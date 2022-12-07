@@ -2,6 +2,7 @@ package metadata
 
 import (
 	"context"
+	"sort"
 
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-golang/pkg/resource"
@@ -33,31 +34,54 @@ func (m *Model) UpdateMetadata(metadata *traits.Metadata, opts ...resource.Write
 	return res.(*traits.Metadata), nil
 }
 
-func (m *Model) UpdateTraitMetadata(traitMetadata *traits.TraitMetadata, opts ...resource.WriteOption) (*traits.Metadata, error) {
-	// update traits and merge equivalently named traits more metadata field.
-	// Note: if we specify "traits" as an update mask here, the traits slice will be merged.
-	// This should probably be fixed in update.go
-	opts = append([]resource.WriteOption{resource.InterceptBefore(func(old, new proto.Message) {
-		oldT := old.(*traits.Metadata)
-		newT := new.(*traits.Metadata)
-		proto.Merge(newT, oldT)
-		newT.Traits = mergeTraitMetadata(oldT.Traits, traitMetadata)
-	})}, opts...)
-	return m.UpdateMetadata(&traits.Metadata{}, opts...)
+// MergeMetadata writes any present fields in metadata to the existing data.
+// Traits that exist in the given metadata are merged with existing traits using
+func (m *Model) MergeMetadata(metadata *traits.Metadata, opts ...resource.WriteOption) (*traits.Metadata, error) {
+	newOpts := make([]resource.WriteOption, 1, len(opts)+1)
+	newOpts[0] = resource.InterceptBefore(func(old, new proto.Message) {
+		clean := proto.Clone(metadata).(*traits.Metadata)
+		// handle trait updates specially
+		cleanTraits := clean.Traits
+		clean.Traits = nil
+
+		proto.Merge(new, old)   // copy all the original values into new
+		proto.Merge(new, clean) // then copy our updates - excluding Traits - on top
+
+		// finally merge traits
+		// The default proto.Merge logic is to append src slices to dst slices.
+		// Instead we want to treat the Traits slice as if it were a map keyed by TraitMetadata.Name,
+		// so we have to do it ourselves.
+		oldVal := old.(*traits.Metadata)
+		newVal := new.(*traits.Metadata)
+		newVal.Traits = oldVal.Traits
+		for _, trait := range cleanTraits {
+			newVal.Traits = mergeTraitMetadata(newVal.Traits, trait)
+		}
+		// make the output consistent
+		sort.Slice(newVal.Traits, func(i, j int) bool {
+			return newVal.Traits[i].Name < newVal.Traits[j].Name
+		})
+	})
+	newOpts = append(newOpts, opts...)
+	return m.UpdateMetadata(metadata, newOpts...)
 }
 
+func (m *Model) UpdateTraitMetadata(traitMetadata *traits.TraitMetadata, opts ...resource.WriteOption) (*traits.Metadata, error) {
+	return m.MergeMetadata(&traits.Metadata{Traits: []*traits.TraitMetadata{traitMetadata}}, opts...)
+}
+
+// mergeTraitMetadata merged tmd into tmds and returns the updated slice.
+// If a trait with tmd.Name already exists in tmds then tmd will be merged into it.
+// Otherwise tmd will be added appended to the slice.
 func mergeTraitMetadata(tmds []*traits.TraitMetadata, tmd *traits.TraitMetadata) []*traits.TraitMetadata {
+	// todo: this would be more efficient if tmds were sorted by Name, so figure out how to do that.
+
 	if len(tmds) == 0 {
 		return []*traits.TraitMetadata{tmd}
 	}
 	for _, trait := range tmds {
 		if trait.Name == tmd.Name {
-			if trait.More == nil {
-				trait.More = make(map[string]string)
-			}
-			for k, v := range tmd.More {
-				trait.More[k] = v
-			}
+			proto.Merge(trait, tmd)
 			return tmds
 		}
 	}

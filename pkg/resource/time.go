@@ -19,3 +19,9 @@ type realClock struct{}
 func (r realClock) Now() time.Time {
 	return time.Now()
 }
+
+type clockFunc func() time.Time
+
+func (c clockFunc) Now() time.Time {
+	return c()
+}

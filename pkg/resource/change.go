@@ -28,6 +28,8 @@ func (c ComparerFunc) Compare(x, y proto.Message) bool {
 type ValueChange struct {
 	Value      proto.Message
 	ChangeTime time.Time
+	// SeedValue will be true if the change was part of sending initial data as opposed to an update.
+	SeedValue bool
 }
 
 func (v *ValueChange) filter(filter *masks.ResponseFilter) *ValueChange {
@@ -35,7 +37,7 @@ func (v *ValueChange) filter(filter *masks.ResponseFilter) *ValueChange {
 	if newValue == v.Value {
 		return v
 	}
-	return &ValueChange{Value: newValue, ChangeTime: v.ChangeTime}
+	return &ValueChange{Value: newValue, ChangeTime: v.ChangeTime, SeedValue: v.SeedValue}
 }
 
 // CollectionChange contains information about a change to a Collection.
@@ -45,6 +47,8 @@ type CollectionChange struct {
 	ChangeType types.ChangeType
 	OldValue   proto.Message
 	NewValue   proto.Message
+	// SeedValue will be true if the change was part of sending initial data as opposed to an update.
+	SeedValue bool
 }
 
 func (c *CollectionChange) filter(filter *masks.ResponseFilter) *CollectionChange {
@@ -59,6 +63,7 @@ func (c *CollectionChange) filter(filter *masks.ResponseFilter) *CollectionChang
 		ChangeTime: c.ChangeTime,
 		OldValue:   newOldValue,
 		NewValue:   newNewValue,
+		SeedValue:  c.SeedValue,
 	}
 }
 
@@ -85,6 +90,7 @@ func (c *CollectionChange) include(includeFunc FilterFunc) (newChange *Collectio
 			ChangeType: types.ChangeType_ADD,
 			ChangeTime: c.ChangeTime,
 			NewValue:   c.NewValue,
+			SeedValue:  c.SeedValue,
 		}, true
 	}
 
@@ -94,5 +100,6 @@ func (c *CollectionChange) include(includeFunc FilterFunc) (newChange *Collectio
 		ChangeType: types.ChangeType_REMOVE,
 		ChangeTime: c.ChangeTime,
 		OldValue:   c.OldValue,
+		SeedValue:  c.SeedValue,
 	}, true
 }

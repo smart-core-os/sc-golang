@@ -224,6 +224,7 @@ func (c *Collection) Pull(ctx context.Context, opts ...ReadOption) <-chan *Colle
 					ChangeTime: value.changeTime,
 					ChangeType: types.ChangeType_ADD,
 					NewValue:   value.body,
+					SeedValue:  true,
 				}
 				change = change.filter(filter)
 				select {
@@ -279,7 +280,7 @@ func (c *Collection) PullID(ctx context.Context, id string, opts ...ReadOption) 
 			select {
 			case <-ctx.Done():
 				return
-			case send <- &ValueChange{ChangeTime: change.ChangeTime, Value: change.NewValue}:
+			case send <- &ValueChange{ChangeTime: change.ChangeTime, Value: change.NewValue, SeedValue: change.SeedValue}:
 			}
 		}
 	}()

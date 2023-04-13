@@ -3,10 +3,14 @@ package wrap
 import (
 	"context"
 	"errors"
-	"github.com/smart-core-os/sc-api/go/traits"
+	"io"
 	"reflect"
 	"testing"
 	"time"
+
+	"google.golang.org/protobuf/types/known/emptypb"
+
+	"github.com/smart-core-os/sc-api/go/traits"
 )
 
 func Test_clientSend(t *testing.T) {
@@ -49,19 +53,20 @@ func Test_serverSend(t *testing.T) {
 
 func TestClientServerStream_headerReturnsOnClose(t *testing.T) {
 	t.Run("nil err", func(t *testing.T) {
-		assertHeaderErrOnClose(t, nil)
+		assertHeaderErrOnClose(t, nil, io.EOF)
 	})
 	t.Run("non-nil err", func(t *testing.T) {
-		assertHeaderErrOnClose(t, errors.New("early closed"))
+		err := errors.New("early closed")
+		assertHeaderErrOnClose(t, err, err)
 	})
 }
 
-func assertHeaderErrOnClose(t *testing.T, wantErr error) {
+func assertHeaderErrOnClose(t *testing.T, closeErr, wantErr error) {
 	ctx := context.Background()
 	cs := NewClientServerStream(ctx)
 	client := cs.Client()
 
-	go cs.Close(wantErr)
+	go cs.Close(closeErr)
 
 	var gotErr error
 	headerDone := make(chan struct{})
@@ -77,5 +82,40 @@ func assertHeaderErrOnClose(t *testing.T, wantErr error) {
 	}
 	if gotErr != wantErr {
 		t.Fatalf("Header err want %v, got %v", wantErr, gotErr)
+	}
+}
+
+func TestClientServerStream_RecvMsg_errOnClose(t *testing.T) {
+	t.Run("nil err", func(t *testing.T) {
+		assertRecvMsgErrOnClose(t, nil, io.EOF)
+	})
+	t.Run("non-nil err", func(t *testing.T) {
+		err := errors.New("early closed")
+		assertRecvMsgErrOnClose(t, err, err)
+	})
+}
+
+func assertRecvMsgErrOnClose(t *testing.T, closeErr, wantErr error) {
+	ctx := context.Background()
+	cs := NewClientServerStream(ctx)
+	client := cs.Client()
+
+	go cs.Close(closeErr)
+
+	var gotErr error
+	gotMsg := &emptypb.Empty{}
+	recvDone := make(chan struct{})
+	go func() {
+		gotErr = client.RecvMsg(gotMsg)
+		close(recvDone)
+	}()
+
+	select {
+	case <-time.After(time.Second):
+		t.Fatalf("timeout waiting for Client.RecvMsg()")
+	case <-recvDone:
+	}
+	if gotErr != wantErr {
+		t.Fatalf("RecvMsg err want %v, got %v", wantErr, gotErr)
 	}
 }

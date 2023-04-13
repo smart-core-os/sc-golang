@@ -3,11 +3,12 @@ package wrap
 import (
 	"context"
 	"errors"
+	"io"
+	"sync"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
-	"io"
-	"sync"
 )
 
 // ClientServerStream combines both a grpc.ServerStream and grpc.ClientStream
@@ -42,6 +43,13 @@ func (s *ClientServerStream) Close(err error) {
 	s.closed()
 }
 
+func (s *ClientServerStream) closeErrLocked() error {
+	if s.closeErr == nil {
+		return io.EOF
+	}
+	return s.closeErr
+}
+
 func (s *ClientServerStream) Client() grpc.ClientStream {
 	return &clientStream{s}
 }
@@ -57,7 +65,7 @@ type clientStream struct {
 func (c *clientStream) Header() (metadata.MD, error) {
 	select {
 	case <-c.ctx.Done():
-		return nil, c.closeErr
+		return nil, c.closeErrLocked()
 	case <-c.headerC:
 		return c.header, nil
 	}
@@ -79,7 +87,7 @@ func (c *clientStream) Context() context.Context {
 func (c *clientStream) SendMsg(m any) error {
 	select {
 	case <-c.ctx.Done():
-		return c.closeErr
+		return c.closeErrLocked()
 	case c.clientSend <- m:
 		return nil
 	}
@@ -88,13 +96,10 @@ func (c *clientStream) SendMsg(m any) error {
 func (c *clientStream) RecvMsg(m any) error {
 	select {
 	case <-c.Context().Done():
-		return c.closeErr
+		return c.closeErrLocked()
 	case val, ok := <-c.serverSend:
 		if !ok {
-			if c.closeErr != nil {
-				return c.closeErr
-			}
-			return io.EOF
+			return c.closeErrLocked()
 		}
 		proto.Merge(m.(proto.Message), val.(proto.Message))
 		return nil
@@ -136,7 +141,7 @@ func (s *serverStream) SendMsg(m any) error {
 	s.sendHeaderIfNeeded()
 	select {
 	case <-s.ctx.Done():
-		return s.closeErr
+		return s.closeErrLocked()
 	case s.serverSend <- m:
 		return nil
 	}
@@ -146,7 +151,7 @@ func (s *serverStream) RecvMsg(m any) error {
 	s.sendHeaderIfNeeded()
 	select {
 	case <-s.Context().Done():
-		return s.closeErr
+		return s.closeErrLocked()
 	case val, ok := <-s.clientSend:
 		if !ok {
 			// we shouldn't send any more

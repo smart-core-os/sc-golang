@@ -3,9 +3,10 @@ package resource
 import (
 	"time"
 
+	"google.golang.org/protobuf/proto"
+
 	"github.com/smart-core-os/sc-api/go/types"
 	"github.com/smart-core-os/sc-golang/pkg/masks"
-	"google.golang.org/protobuf/proto"
 )
 
 // Comparer compares two messages for equivalence.
@@ -28,8 +29,11 @@ func (c ComparerFunc) Compare(x, y proto.Message) bool {
 type ValueChange struct {
 	Value      proto.Message
 	ChangeTime time.Time
+	// Deprecated, use LastSeedValue instead.
 	// SeedValue will be true if the change was part of sending initial data as opposed to an update.
 	SeedValue bool
+	// LastSeedValue will be true if this change is the last change as part of the seed values.
+	LastSeedValue bool
 }
 
 func (v *ValueChange) filter(filter *masks.ResponseFilter) *ValueChange {
@@ -37,7 +41,7 @@ func (v *ValueChange) filter(filter *masks.ResponseFilter) *ValueChange {
 	if newValue == v.Value {
 		return v
 	}
-	return &ValueChange{Value: newValue, ChangeTime: v.ChangeTime, SeedValue: v.SeedValue}
+	return &ValueChange{Value: newValue, ChangeTime: v.ChangeTime, SeedValue: v.SeedValue, LastSeedValue: v.LastSeedValue}
 }
 
 // CollectionChange contains information about a change to a Collection.
@@ -47,8 +51,11 @@ type CollectionChange struct {
 	ChangeType types.ChangeType
 	OldValue   proto.Message
 	NewValue   proto.Message
+	// Deprecated, use LastSeedValue instead.
 	// SeedValue will be true if the change was part of sending initial data as opposed to an update.
 	SeedValue bool
+	// LastSeedValue will be true if this change is the last change as part of the seed values.
+	LastSeedValue bool
 }
 
 func (c *CollectionChange) filter(filter *masks.ResponseFilter) *CollectionChange {
@@ -58,12 +65,13 @@ func (c *CollectionChange) filter(filter *masks.ResponseFilter) *CollectionChang
 		return c
 	}
 	return &CollectionChange{
-		Id:         c.Id,
-		ChangeType: c.ChangeType,
-		ChangeTime: c.ChangeTime,
-		OldValue:   newOldValue,
-		NewValue:   newNewValue,
-		SeedValue:  c.SeedValue,
+		Id:            c.Id,
+		ChangeType:    c.ChangeType,
+		ChangeTime:    c.ChangeTime,
+		OldValue:      newOldValue,
+		NewValue:      newNewValue,
+		SeedValue:     c.SeedValue,
+		LastSeedValue: c.LastSeedValue,
 	}
 }
 
@@ -91,6 +99,8 @@ func (c *CollectionChange) include(includeFunc FilterFunc) (newChange *Collectio
 			ChangeTime: c.ChangeTime,
 			NewValue:   c.NewValue,
 			SeedValue:  c.SeedValue,
+			// this is not safe, the caller needs to deal with this
+			// LastSeedValue: c.LastSeedValue,
 		}, true
 	}
 
@@ -100,6 +110,5 @@ func (c *CollectionChange) include(includeFunc FilterFunc) (newChange *Collectio
 		ChangeType: types.ChangeType_REMOVE,
 		ChangeTime: c.ChangeTime,
 		OldValue:   c.OldValue,
-		SeedValue:  c.SeedValue,
 	}, true
 }

@@ -102,7 +102,7 @@ func (r *Value) Pull(ctx context.Context, opts ...ReadOption) <-chan *ValueChang
 		defer close(typedEvents)
 
 		if currentValue != nil {
-			change := &ValueChange{Value: currentValue, ChangeTime: changeTime, SeedValue: true}
+			change := &ValueChange{Value: currentValue, ChangeTime: changeTime, SeedValue: true, LastSeedValue: true}
 			change = change.filter(filter)
 			select {
 			case <-ctx.Done():

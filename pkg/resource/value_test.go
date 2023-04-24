@@ -6,8 +6,9 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/smart-core-os/sc-api/go/traits"
 	"google.golang.org/protobuf/testing/protocmp"
+
+	"github.com/smart-core-os/sc-api/go/traits"
 )
 
 func TestValue_Pull(t *testing.T) {
@@ -26,9 +27,10 @@ func TestValue_Pull(t *testing.T) {
 		// first value when not using UpdatesOnly should say it's not an update
 		seed := waitForChan(t, changes, time.Second)
 		want := &ValueChange{
-			ChangeTime: now,
-			Value:      &traits.OnOff{State: traits.OnOff_ON},
-			SeedValue:  true,
+			ChangeTime:    now,
+			Value:         &traits.OnOff{State: traits.OnOff_ON},
+			SeedValue:     true,
+			LastSeedValue: true,
 		}
 		if diff := cmp.Diff(want, seed, protocmp.Transform()); diff != "" {
 			t.Fatalf("Seed Value (-want,+got)\n%s", diff)
@@ -38,9 +40,10 @@ func TestValue_Pull(t *testing.T) {
 		v.Set(&traits.OnOff{State: traits.OnOff_OFF})
 		next := waitForChan(t, changes, time.Second)
 		want = &ValueChange{
-			ChangeTime: now,
-			Value:      &traits.OnOff{State: traits.OnOff_OFF},
-			SeedValue:  false,
+			ChangeTime:    now,
+			Value:         &traits.OnOff{State: traits.OnOff_OFF},
+			SeedValue:     false,
+			LastSeedValue: false,
 		}
 		if diff := cmp.Diff(want, next, protocmp.Transform()); diff != "" {
 			t.Fatalf("Next Value (-want,+got)\n%s", diff)
@@ -66,9 +69,10 @@ func TestValue_Pull(t *testing.T) {
 		v.Set(&traits.OnOff{State: traits.OnOff_OFF})
 		change := waitForChan(t, changes, time.Second)
 		want := &ValueChange{
-			ChangeTime: now,
-			Value:      &traits.OnOff{State: traits.OnOff_OFF},
-			SeedValue:  false,
+			ChangeTime:    now,
+			Value:         &traits.OnOff{State: traits.OnOff_OFF},
+			SeedValue:     false,
+			LastSeedValue: false,
 		}
 		if diff := cmp.Diff(want, change, protocmp.Transform()); diff != "" {
 			t.Fatalf("Value (-want,+got)\n%s", diff)

@@ -7,10 +7,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/smart-core-os/sc-api/go/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/smart-core-os/sc-api/go/types"
 
 	"github.com/smart-core-os/sc-golang/internal/minibus"
 )
@@ -218,13 +219,18 @@ func (c *Collection) Pull(ctx context.Context, opts ...ReadOption) <-chan *Colle
 		defer close(send)
 
 		if len(currentValues) > 0 {
-			for _, value := range currentValues {
+			sort.Slice(currentValues, func(i, j int) bool {
+				return currentValues[i].id < currentValues[j].id
+			})
+			lastIndex := len(currentValues) - 1
+			for i, value := range currentValues {
 				change := &CollectionChange{
-					Id:         value.id,
-					ChangeTime: value.changeTime,
-					ChangeType: types.ChangeType_ADD,
-					NewValue:   value.body,
-					SeedValue:  true,
+					Id:            value.id,
+					ChangeTime:    value.changeTime,
+					ChangeType:    types.ChangeType_ADD,
+					NewValue:      value.body,
+					SeedValue:     true,
+					LastSeedValue: i == lastIndex,
 				}
 				change = change.filter(filter)
 				select {
@@ -280,7 +286,7 @@ func (c *Collection) PullID(ctx context.Context, id string, opts ...ReadOption) 
 			select {
 			case <-ctx.Done():
 				return
-			case send <- &ValueChange{ChangeTime: change.ChangeTime, Value: change.NewValue, SeedValue: change.SeedValue}:
+			case send <- &ValueChange{ChangeTime: change.ChangeTime, Value: change.NewValue, SeedValue: change.SeedValue, LastSeedValue: change.LastSeedValue}:
 			}
 		}
 	}()

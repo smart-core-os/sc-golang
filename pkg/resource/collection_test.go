@@ -6,9 +6,10 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/testing/protocmp"
+
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-api/go/types"
-	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestCollection_Pull(t *testing.T) {
@@ -19,6 +20,7 @@ func TestCollection_Pull(t *testing.T) {
 		})
 
 		c := NewCollection(WithClock(clock))
+		c.Add("three", &traits.OnOff{State: traits.OnOff_ON})
 		c.Add("one", &traits.OnOff{State: traits.OnOff_ON})
 
 		ctx, stop := context.WithCancel(context.Background())
@@ -28,11 +30,25 @@ func TestCollection_Pull(t *testing.T) {
 		// first value when not using UpdatesOnly should say it's not an update
 		seed := waitForChan(t, changes, time.Second)
 		want := &CollectionChange{
-			Id:         "one",
-			ChangeTime: now,
-			ChangeType: types.ChangeType_ADD,
-			NewValue:   &traits.OnOff{State: traits.OnOff_ON},
-			SeedValue:  true,
+			Id:            "one",
+			ChangeTime:    now,
+			ChangeType:    types.ChangeType_ADD,
+			NewValue:      &traits.OnOff{State: traits.OnOff_ON},
+			SeedValue:     true,
+			LastSeedValue: false,
+		}
+		if diff := cmp.Diff(want, seed, protocmp.Transform()); diff != "" {
+			t.Fatalf("Seed Value (-want,+got)\n%s", diff)
+		}
+		// second value is still a seed value, but should say its the last seed value
+		seed = waitForChan(t, changes, time.Second)
+		want = &CollectionChange{
+			Id:            "three",
+			ChangeTime:    now,
+			ChangeType:    types.ChangeType_ADD,
+			NewValue:      &traits.OnOff{State: traits.OnOff_ON},
+			SeedValue:     true,
+			LastSeedValue: true,
 		}
 		if diff := cmp.Diff(want, seed, protocmp.Transform()); diff != "" {
 			t.Fatalf("Seed Value (-want,+got)\n%s", diff)

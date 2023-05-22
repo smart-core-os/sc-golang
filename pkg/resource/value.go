@@ -111,7 +111,7 @@ func (r *Value) Pull(ctx context.Context, opts ...ReadOption) <-chan *ValueChang
 			}
 		}
 
-		var last proto.Message
+		last := currentValue
 		for event := range on {
 			change := event.(*ValueChange).filter(filter)
 			if r.equivalence != nil && r.equivalence.Compare(last, change.Value) {

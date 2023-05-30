@@ -35,6 +35,7 @@ func (m *Model) PullAirTemperature(ctx context.Context, opts ...resource.ReadOpt
 
 	recv := m.airTemperature.Pull(ctx, opts...)
 	go func() {
+		defer close(send)
 		for change := range recv {
 			value := change.Value.(*traits.AirTemperature)
 			send <- PullAirTemperatureChange{

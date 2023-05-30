@@ -37,6 +37,7 @@ func (m *Model) PullOnOff(ctx context.Context, opts ...resource.ReadOption) <-ch
 
 	recv := m.onOff.Pull(ctx, opts...)
 	go func() {
+		defer close(send)
 		for change := range recv {
 			value := change.Value.(*traits.OnOff)
 			send <- PullOnOffChange{

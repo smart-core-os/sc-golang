@@ -3,16 +3,18 @@ package parent
 import (
 	"context"
 	"fmt"
+	"sort"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"sort"
+
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"github.com/smart-core-os/sc-golang/pkg/time/clock"
 	"github.com/smart-core-os/sc-golang/pkg/trait"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Model models a collection of children.
@@ -103,6 +105,7 @@ func (m *Model) PullChildren(ctx context.Context, opts ...resource.ReadOption) <
 	changes := m.children.Pull(ctx, opts...)
 
 	go func() {
+		defer close(out)
 		for change := range changes {
 			out <- childrenChangeToProto(change)
 		}

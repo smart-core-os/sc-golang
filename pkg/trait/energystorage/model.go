@@ -47,6 +47,7 @@ func (m *Model) PullEnergyLevel(ctx context.Context, opts ...resource.ReadOption
 
 	recv := m.energyLevel.Pull(ctx, opts...)
 	go func() {
+		defer close(send)
 		for change := range recv {
 			demand := change.Value.(*traits.EnergyLevel)
 			send <- PullEnergyLevelChange{

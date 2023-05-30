@@ -4,10 +4,11 @@ import (
 	"context"
 	"sort"
 
-	"github.com/smart-core-os/sc-api/go/traits"
-	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/smart-core-os/sc-api/go/traits"
+	"github.com/smart-core-os/sc-golang/pkg/resource"
 )
 
 type Model struct {
@@ -95,6 +96,7 @@ func (m *Model) PullMetadata(ctx context.Context, opts ...resource.ReadOption) <
 	// when ctx is cancelled, then the resource will close recv for us
 	recv := m.metadata.Pull(ctx, opts...)
 	go func() {
+		defer close(send)
 		for change := range recv {
 			select {
 			case <-ctx.Done():

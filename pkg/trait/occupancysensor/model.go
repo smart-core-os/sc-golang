@@ -36,6 +36,7 @@ func (m *Model) PullOccupancy(ctx context.Context, opts ...resource.ReadOption) 
 
 	recv := m.occupancy.Pull(ctx, opts...)
 	go func() {
+		close(send)
 		for change := range recv {
 			value := change.Value.(*traits.Occupancy)
 			send <- PullOccupancyChange{

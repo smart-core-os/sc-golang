@@ -35,6 +35,7 @@ func (m *Model) PullAirQuality(ctx context.Context, opts ...resource.ReadOption)
 
 	recv := m.airQuality.Pull(ctx, opts...)
 	go func() {
+		defer close(send)
 		for change := range recv {
 			value := change.Value.(*traits.AirQuality)
 			send <- PullAirQualityChange{

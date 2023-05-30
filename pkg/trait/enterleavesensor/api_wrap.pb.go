@@ -61,3 +61,11 @@ type pullEnterLeaveEventsApiServerWrapper struct {
 func (s *pullEnterLeaveEventsApiServerWrapper) Send(response *traits.PullEnterLeaveEventsResponse) error {
 	return s.ServerStream.SendMsg(response)
 }
+
+func (w *apiWrapper) GetEnterLeaveEvent(ctx context.Context, req *traits.GetEnterLeaveEventRequest, _ ...grpc.CallOption) (*traits.EnterLeaveEvent, error) {
+	return w.server.GetEnterLeaveEvent(ctx, req)
+}
+
+func (w *apiWrapper) ResetEnterLeaveTotals(ctx context.Context, req *traits.ResetEnterLeaveTotalsRequest, _ ...grpc.CallOption) (*traits.ResetEnterLeaveTotalsResponse, error) {
+	return w.server.ResetEnterLeaveTotals(ctx, req)
+}

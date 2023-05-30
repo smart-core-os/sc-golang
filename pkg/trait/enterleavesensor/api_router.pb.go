@@ -137,3 +137,21 @@ func (r *ApiRouter) PullEnterLeaveEvents(request *traits.PullEnterLeaveEventsReq
 		return err
 	}
 }
+
+func (r *ApiRouter) GetEnterLeaveEvent(ctx context.Context, request *traits.GetEnterLeaveEventRequest) (*traits.EnterLeaveEvent, error) {
+	child, err := r.GetEnterLeaveSensorApiClient(request.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	return child.GetEnterLeaveEvent(ctx, request)
+}
+
+func (r *ApiRouter) ResetEnterLeaveTotals(ctx context.Context, request *traits.ResetEnterLeaveTotalsRequest) (*traits.ResetEnterLeaveTotalsResponse, error) {
+	child, err := r.GetEnterLeaveSensorApiClient(request.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	return child.ResetEnterLeaveTotals(ctx, request)
+}

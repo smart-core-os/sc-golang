@@ -1,8 +1,11 @@
 package enterleavesensor
 
 import (
+	"context"
+
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-golang/pkg/resource"
+
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -23,6 +26,14 @@ func (m *ModelServer) Unwrap() any {
 
 func (m *ModelServer) Register(server *grpc.Server) {
 	traits.RegisterEnterLeaveSensorApiServer(server, m)
+}
+
+func (m *ModelServer) GetEnterLeaveEvent(ctx context.Context, request *traits.GetEnterLeaveEventRequest) (*traits.EnterLeaveEvent, error) {
+	return m.model.GetEnterLeaveEvent(resource.WithReadMask(request.ReadMask))
+}
+
+func (m *ModelServer) ResetEnterLeaveTotals(ctx context.Context, request *traits.ResetEnterLeaveTotalsRequest) (*traits.ResetEnterLeaveTotalsResponse, error) {
+	return &traits.ResetEnterLeaveTotalsResponse{}, m.model.ResetTotals()
 }
 
 func (m *ModelServer) PullEnterLeaveEvents(request *traits.PullEnterLeaveEventsRequest, server traits.EnterLeaveSensorApi_PullEnterLeaveEventsServer) error {

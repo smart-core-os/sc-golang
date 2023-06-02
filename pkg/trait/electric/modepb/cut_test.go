@@ -1,9 +1,11 @@
 package modepb
 
 import (
-	"reflect"
 	"testing"
 	"time"
+
+	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	"github.com/smart-core-os/sc-api/go/traits"
 )
@@ -34,11 +36,11 @@ func TestCut(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotBefore, gotAfter, gotOutside := Cut(tt.t, tt.mode)
-			if !reflect.DeepEqual(gotBefore, tt.wantBefore) {
-				t.Errorf("Cut() gotBefore = %v, want %v", gotBefore, tt.wantBefore)
+			if diff := cmp.Diff(tt.wantBefore, gotBefore, protocmp.Transform()); diff != "" {
+				t.Errorf("Cut() gotBefore (-want,+got)\n%s", diff)
 			}
-			if !reflect.DeepEqual(gotAfter, tt.wantAfter) {
-				t.Errorf("Cut() gotAfter = %v, want %v", gotAfter, tt.wantAfter)
+			if diff := cmp.Diff(tt.wantAfter, gotAfter, protocmp.Transform()); diff != "" {
+				t.Errorf("Cut() gotAfter (-want,+got)\n%s", diff)
 			}
 			if gotOutside != tt.wantOutside {
 				t.Errorf("Cut() gotOutside = %v, want %v", gotOutside, tt.wantOutside)

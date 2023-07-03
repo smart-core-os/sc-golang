@@ -178,12 +178,12 @@ func WithInclude(include FilterFunc) ReadOption {
 	})
 }
 
-// WithBackpressure will enabled or disable backpressure for Pull calls. Defaults to true.
+// WithBackpressure will enabled or disable backpressure for Pull calls. Defaults to false.
 // It has no effect on Get calls.
 // Pulls with backpressure enabled will block the corresponding call to Set until the update has been received, so
 // the Pull will always receive all changes.
-// If backpressure is disabled, then if the Pull channel receiver can't keep up, older updates will be silently
-// dropped in favour of just the most recent data.
+// If backpressure is disabled, then if the Pull channel receiver can't keep up, older updates will be dropped or
+// merged into newer updates while attempting to keep the semantics of the pull.
 func WithBackpressure(backpressure bool) ReadOption {
 	return readOptionFunc(func(rr *readRequest) {
 		rr.backpressure = backpressure
@@ -191,9 +191,7 @@ func WithBackpressure(backpressure bool) ReadOption {
 }
 
 func computeReadConfig(opts ...ReadOption) *readRequest {
-	rr := &readRequest{
-		backpressure: true,
-	}
+	rr := &readRequest{}
 	for _, opt := range opts {
 		opt.apply(rr)
 	}
@@ -376,12 +374,12 @@ func WithResetPaths(paths ...string) WriteOption {
 //
 // Example
 //
-//   r.Set(val, InterceptBefore(func(old, change proto.Message) {
-//     if val.Delta {
-//       // assume casting
-//       change.Quantity += old.Quantity
-//     }
-//   }))
+//	r.Set(val, InterceptBefore(func(old, change proto.Message) {
+//	  if val.Delta {
+//	    // assume casting
+//	    change.Quantity += old.Quantity
+//	  }
+//	}))
 func InterceptBefore(interceptor UpdateInterceptor) WriteOption {
 	return writeOptionFunc(func(request *writeRequest) {
 		request.interceptBefore = interceptor
@@ -394,12 +392,12 @@ func InterceptBefore(interceptor UpdateInterceptor) WriteOption {
 //
 // Example
 //
-//   r.Set(val, InterceptAfter(func(old, new proto.Message) {
-//     // assume casting
-//     if old.Quantity != new.Quantity {
-//       new.UpdateTime = timestamppb.Now()
-//     }
-//   }))
+//	r.Set(val, InterceptAfter(func(old, new proto.Message) {
+//	  // assume casting
+//	  if old.Quantity != new.Quantity {
+//	    new.UpdateTime = timestamppb.Now()
+//	  }
+//	}))
 func InterceptAfter(interceptor UpdateInterceptor) WriteOption {
 	return writeOptionFunc(func(request *writeRequest) {
 		request.interceptAfter = interceptor

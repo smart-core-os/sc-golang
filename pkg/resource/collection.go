@@ -303,7 +303,7 @@ func (c *Collection) onUpdate(ctx context.Context, config *readRequest) (<-chan 
 
 	ch := c.bus.Listen(ctx)
 	if !config.backpressure {
-		ch = minibus.DropExcess(ch)
+		ch = mergeCollectionExcess(ch)
 	}
 
 	return ch, res

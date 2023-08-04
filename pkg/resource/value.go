@@ -36,10 +36,10 @@ func NewValue(opts ...Option) *Value {
 }
 
 func (r *Value) Get(opts ...ReadOption) proto.Message {
-	return r.get(computeReadConfig(opts...))
+	return r.get(ComputeReadConfig(opts...))
 }
 
-func (r *Value) get(req *readRequest) proto.Message {
+func (r *Value) get(req *ReadRequest) proto.Message {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return req.FilterClone(r.value)
@@ -49,10 +49,10 @@ func (r *Value) get(req *readRequest) proto.Message {
 // Returns the new value.
 // Provide WriteOption to control masks and other variables during the update.
 func (r *Value) Set(value proto.Message, opts ...WriteOption) (proto.Message, error) {
-	return r.set(value, computeWriteConfig(opts...))
+	return r.set(value, ComputeWriteConfig(opts...))
 }
 
-func (r *Value) set(value proto.Message, request writeRequest) (proto.Message, error) {
+func (r *Value) set(value proto.Message, request WriteRequest) (proto.Message, error) {
 	writer := request.fieldUpdater(r.writableFields)
 	if err := writer.Validate(value); err != nil {
 		return nil, err
@@ -94,7 +94,7 @@ func (r *Value) set(value proto.Message, request writeRequest) (proto.Message, e
 // The returned chan will be closed when no more events will be emitted, either because ctx was cancelled or for other
 // reasons.
 func (r *Value) Pull(ctx context.Context, opts ...ReadOption) <-chan *ValueChange {
-	readConfig := computeReadConfig(opts...)
+	readConfig := ComputeReadConfig(opts...)
 	filter := readConfig.ResponseFilter()
 	on, currentValue, changeTime := r.onUpdate(ctx, readConfig)
 	typedEvents := make(chan *ValueChange)
@@ -128,12 +128,12 @@ func (r *Value) Pull(ctx context.Context, opts ...ReadOption) <-chan *ValueChang
 	return typedEvents
 }
 
-func (r *Value) onUpdate(ctx context.Context, config *readRequest) (<-chan any, proto.Message, time.Time) {
+func (r *Value) onUpdate(ctx context.Context, config *ReadRequest) (<-chan any, proto.Message, time.Time) {
 	var (
 		value      proto.Message
 		changeTime time.Time
 	)
-	if !config.updatesOnly {
+	if !config.UpdatesOnly {
 		r.mu.RLock()
 		defer r.mu.RUnlock()
 		value = r.value
@@ -141,7 +141,7 @@ func (r *Value) onUpdate(ctx context.Context, config *readRequest) (<-chan any, 
 	}
 
 	ch := r.bus.Listen(ctx)
-	if !config.backpressure {
+	if !config.Backpressure {
 		ch = minibus.DropExcess(ch)
 	}
 

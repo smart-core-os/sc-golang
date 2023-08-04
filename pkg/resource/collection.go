@@ -44,7 +44,7 @@ func NewCollection(options ...Option) *Collection {
 
 // Get will find the entry with the given ID. If no such entry exists, returns false.
 func (c *Collection) Get(id string, opts ...ReadOption) (proto.Message, bool) {
-	readConfig := computeReadConfig(opts...)
+	readConfig := ComputeReadConfig(opts...)
 
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -59,7 +59,7 @@ func (c *Collection) Get(id string, opts ...ReadOption) (proto.Message, bool) {
 
 // List returns a list of all the entries, sorted by their ID.
 func (c *Collection) List(opts ...ReadOption) []proto.Message {
-	readConfig := computeReadConfig(opts...)
+	readConfig := ComputeReadConfig(opts...)
 
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -90,7 +90,7 @@ func (c *Collection) Add(id string, body proto.Message, opts ...WriteOption) (pr
 }
 
 func (c *Collection) Update(id string, msg proto.Message, opts ...WriteOption) (proto.Message, error) {
-	writeRequest := computeWriteConfig(opts...)
+	writeRequest := ComputeWriteConfig(opts...)
 	writer := writeRequest.fieldUpdater(c.writableFields)
 	if err := writer.Validate(msg); err != nil {
 		return nil, err
@@ -162,7 +162,7 @@ func (c *Collection) Update(id string, msg proto.Message, opts ...WriteOption) (
 // If the id is unknown an error will be returned, unless WithAllowMissing is specified.
 // Read-update-write operations can be checked via WithExpectedValue or WithExpectedCheck options.
 func (c *Collection) Delete(id string, opts ...WriteOption) (proto.Message, error) {
-	args := computeWriteConfig(opts...)
+	args := ComputeWriteConfig(opts...)
 	// Read lock first, we don't want to hold the lock when we pass control to callback functions
 	c.mu.RLock()
 	oldVal, exists := c.byId[id]
@@ -209,7 +209,7 @@ func (c *Collection) Delete(id string, opts ...WriteOption) (proto.Message, erro
 }
 
 func (c *Collection) Pull(ctx context.Context, opts ...ReadOption) <-chan *CollectionChange {
-	readConfig := computeReadConfig(opts...)
+	readConfig := ComputeReadConfig(opts...)
 	filter := readConfig.ResponseFilter()
 
 	emit, currentValues := c.onUpdate(ctx, readConfig)
@@ -243,7 +243,7 @@ func (c *Collection) Pull(ctx context.Context, opts ...ReadOption) <-chan *Colle
 
 		for event := range emit {
 			change := event.(*CollectionChange)
-			change, ok := change.include(readConfig.include)
+			change, ok := change.include(readConfig.Include)
 			if !ok {
 				continue
 			}
@@ -293,16 +293,16 @@ func (c *Collection) PullID(ctx context.Context, id string, opts ...ReadOption) 
 	return send
 }
 
-func (c *Collection) onUpdate(ctx context.Context, config *readRequest) (<-chan any, []idItem) {
+func (c *Collection) onUpdate(ctx context.Context, config *ReadRequest) (<-chan any, []idItem) {
 	var res []idItem
-	if !config.updatesOnly {
+	if !config.UpdatesOnly {
 		c.mu.RLock()
 		defer c.mu.RUnlock()
 		res = c.itemSlice(config)
 	}
 
 	ch := c.bus.Listen(ctx)
-	if !config.backpressure {
+	if !config.Backpressure {
 		ch = mergeCollectionExcess(ch)
 	}
 
@@ -314,8 +314,8 @@ func (c *Collection) Clock() Clock {
 	return c.clock
 }
 
-// itemSlice returns all the values in byId adjusted to match readConfig settings like readRequest.include.
-func (c *Collection) itemSlice(readConfig *readRequest) []idItem {
+// itemSlice returns all the values in byId adjusted to match readConfig settings like ReadRequest.Include.
+func (c *Collection) itemSlice(readConfig *ReadRequest) []idItem {
 	res := make([]idItem, 0, len(c.byId))
 	for id, value := range c.byId {
 		if readConfig.Exclude(id, value.body) {

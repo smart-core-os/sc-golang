@@ -129,7 +129,7 @@ func (f optionFunc) apply(s *config) {
 
 // ReadOption configures settings for reading data.
 type ReadOption interface {
-	apply(rr *readRequest)
+	apply(rr *ReadRequest)
 }
 
 // EmptyReadOption is a ReadOption that makes no changes to the semantics of the read.
@@ -137,13 +137,13 @@ type ReadOption interface {
 type EmptyReadOption struct {
 }
 
-func (e EmptyReadOption) apply(_ *readRequest) {
+func (e EmptyReadOption) apply(_ *ReadRequest) {
 }
 
 // WithReadMask configures the properties that will be filled in the response value.
 func WithReadMask(mask *fieldmaskpb.FieldMask) ReadOption {
-	return readOptionFunc(func(rr *readRequest) {
-		rr.readMask = mask
+	return readOptionFunc(func(rr *ReadRequest) {
+		rr.ReadMask = mask
 	})
 }
 
@@ -160,8 +160,8 @@ func WithReadPaths(m proto.Message, paths ...string) ReadOption {
 // WithUpdatesOnly instructs Pull methods to only send updates.
 // The default behaviour is to send the current value, followed by future updates.
 func WithUpdatesOnly(updatesOnly bool) ReadOption {
-	return readOptionFunc(func(rr *readRequest) {
-		rr.updatesOnly = updatesOnly
+	return readOptionFunc(func(rr *ReadRequest) {
+		rr.UpdatesOnly = updatesOnly
 	})
 }
 
@@ -173,8 +173,8 @@ type FilterFunc func(id string, item proto.Message) bool
 // inclusion for that type in the response set.
 // For example if the item wasn't included in the response, then was updated so that include now returns true, then the change is an ADD.
 func WithInclude(include FilterFunc) ReadOption {
-	return readOptionFunc(func(rr *readRequest) {
-		rr.include = include
+	return readOptionFunc(func(rr *ReadRequest) {
+		rr.Include = include
 	})
 }
 
@@ -185,60 +185,62 @@ func WithInclude(include FilterFunc) ReadOption {
 // If backpressure is disabled, then if the Pull channel receiver can't keep up, older updates will be dropped or
 // merged into newer updates while attempting to keep the semantics of the pull.
 func WithBackpressure(backpressure bool) ReadOption {
-	return readOptionFunc(func(rr *readRequest) {
-		rr.backpressure = backpressure
+	return readOptionFunc(func(rr *ReadRequest) {
+		rr.Backpressure = backpressure
 	})
 }
 
-func computeReadConfig(opts ...ReadOption) *readRequest {
-	rr := &readRequest{}
+// ComputeReadConfig returns a ReadRequest configured using the given ReadOptions.
+func ComputeReadConfig(opts ...ReadOption) *ReadRequest {
+	rr := &ReadRequest{}
 	for _, opt := range opts {
 		opt.apply(rr)
 	}
 	return rr
 }
 
-type readRequest struct {
-	readMask *fieldmaskpb.FieldMask
+// ReadRequest configures the properties of a read operation.
+type ReadRequest struct {
+	ReadMask *fieldmaskpb.FieldMask
 
-	updatesOnly  bool
-	backpressure bool
+	UpdatesOnly  bool
+	Backpressure bool
 
-	include FilterFunc
+	Include FilterFunc
 }
 
 // ResponseFilter returns a masks.ResponseFilter configured using this readRequest properties.
-func (rr *readRequest) ResponseFilter() *masks.ResponseFilter {
-	return masks.NewResponseFilter(masks.WithFieldMask(rr.readMask))
+func (rr *ReadRequest) ResponseFilter() *masks.ResponseFilter {
+	return masks.NewResponseFilter(masks.WithFieldMask(rr.ReadMask))
 }
 
 // FilterClone in the equivalent of rr.ResponseFilter().FilterClone(m).
-func (rr *readRequest) FilterClone(m proto.Message) proto.Message {
+func (rr *ReadRequest) FilterClone(m proto.Message) proto.Message {
 	return rr.ResponseFilter().FilterClone(m)
 }
 
 // Exclude returns true if the given message should be excluded from responses to collection List or Pull.
-func (rr *readRequest) Exclude(id string, m proto.Message) bool {
-	return rr.include != nil && !rr.include(id, m)
+func (rr *ReadRequest) Exclude(id string, m proto.Message) bool {
+	return rr.Include != nil && !rr.Include(id, m)
 }
 
-type readOptionFunc func(rr *readRequest)
+type readOptionFunc func(rr *ReadRequest)
 
-func (r readOptionFunc) apply(rr *readRequest) {
+func (r readOptionFunc) apply(rr *ReadRequest) {
 	r(rr)
 }
 
-type WriteOption interface{ apply(wr *writeRequest) }
+type WriteOption interface{ apply(wr *WriteRequest) }
 
 // EmptyWriteOption is a WriteOption that makes no changes to the semantics of the write.
 // Useful for embedding in another struct to enable custom write options.
 type EmptyWriteOption struct{}
 
-func (e EmptyWriteOption) apply(_ *writeRequest) {
+func (e EmptyWriteOption) apply(_ *WriteRequest) {
 }
 
-func computeWriteConfig(opts ...WriteOption) writeRequest {
-	req := &writeRequest{}
+func ComputeWriteConfig(opts ...WriteOption) WriteRequest {
+	req := &WriteRequest{}
 	for _, opt := range opts {
 		opt.apply(req)
 	}
@@ -248,10 +250,10 @@ func computeWriteConfig(opts ...WriteOption) writeRequest {
 // UpdateInterceptor describes a function that applies changes to an existing message
 type UpdateInterceptor func(old, new proto.Message)
 
-type writeRequest struct {
+type WriteRequest struct {
 	writeTime *time.Time
 
-	updateMask    *fieldmaskpb.FieldMask
+	UpdateMask    *fieldmaskpb.FieldMask
 	resetMask     *fieldmaskpb.FieldMask
 	expectedValue proto.Message
 	expectAbsent  bool
@@ -271,9 +273,9 @@ type writeRequest struct {
 	idCallback func(id string)
 }
 
-func (wr writeRequest) fieldUpdater(writableFields *fieldmaskpb.FieldMask) *masks.FieldUpdater {
+func (wr WriteRequest) fieldUpdater(writableFields *fieldmaskpb.FieldMask) *masks.FieldUpdater {
 	opts := []masks.FieldUpdaterOption{
-		masks.WithUpdateMask(wr.updateMask),
+		masks.WithUpdateMask(wr.UpdateMask),
 		masks.WithResetMask(wr.resetMask),
 	}
 	if !wr.nilWritableFields {
@@ -288,7 +290,7 @@ func (wr writeRequest) fieldUpdater(writableFields *fieldmaskpb.FieldMask) *mask
 	return masks.NewFieldUpdater(opts...)
 }
 
-func (wr writeRequest) changeFn(writer *masks.FieldUpdater, value proto.Message) ChangeFn {
+func (wr WriteRequest) changeFn(writer *masks.FieldUpdater, value proto.Message) ChangeFn {
 	return func(old, new proto.Message) error {
 		if wr.expectedValue != nil {
 			if !proto.Equal(old, wr.expectedValue) {
@@ -316,16 +318,16 @@ func (wr writeRequest) changeFn(writer *masks.FieldUpdater, value proto.Message)
 	}
 }
 
-func (wr writeRequest) updateTime(clock Clock) time.Time {
+func (wr WriteRequest) updateTime(clock Clock) time.Time {
 	if wr.writeTime != nil {
 		return *wr.writeTime
 	}
 	return clock.Now()
 }
 
-type writeOptionFunc func(wr *writeRequest)
+type writeOptionFunc func(wr *WriteRequest)
 
-func (w writeOptionFunc) apply(wr *writeRequest) {
+func (w writeOptionFunc) apply(wr *WriteRequest) {
 	w(wr)
 }
 
@@ -333,7 +335,7 @@ func (w writeOptionFunc) apply(wr *writeRequest) {
 // Any change events that may be emitted with this write use t as their ChangeTime.
 // Computational values, for example tweening, can use this to correctly determine the computed value.
 func WithWriteTime(t time.Time) WriteOption {
-	return writeOptionFunc(func(wr *writeRequest) {
+	return writeOptionFunc(func(wr *WriteRequest) {
 		wr.writeTime = &t
 	})
 }
@@ -342,8 +344,8 @@ func WithWriteTime(t time.Time) WriteOption {
 // nil will update all writable fields.
 // Fields specified here that aren't in the Resources writable fields will result in an error
 func WithUpdateMask(mask *fieldmaskpb.FieldMask) WriteOption {
-	return writeOptionFunc(func(request *writeRequest) {
-		request.updateMask = mask
+	return writeOptionFunc(func(request *WriteRequest) {
+		request.UpdateMask = mask
 	})
 }
 
@@ -356,7 +358,7 @@ func WithUpdatePaths(paths ...string) WriteOption {
 // This will happen after InterceptBefore, but before InterceptAfter.
 // WithWritableFields does not affect this.
 func WithResetMask(mask *fieldmaskpb.FieldMask) WriteOption {
-	return writeOptionFunc(func(request *writeRequest) {
+	return writeOptionFunc(func(request *WriteRequest) {
 		request.resetMask = mask
 	})
 }
@@ -381,7 +383,7 @@ func WithResetPaths(paths ...string) WriteOption {
 //	  }
 //	}))
 func InterceptBefore(interceptor UpdateInterceptor) WriteOption {
-	return writeOptionFunc(func(request *writeRequest) {
+	return writeOptionFunc(func(request *WriteRequest) {
 		request.interceptBefore = interceptor
 	})
 }
@@ -399,7 +401,7 @@ func InterceptBefore(interceptor UpdateInterceptor) WriteOption {
 //	  }
 //	}))
 func InterceptAfter(interceptor UpdateInterceptor) WriteOption {
-	return writeOptionFunc(func(request *writeRequest) {
+	return writeOptionFunc(func(request *WriteRequest) {
 		request.interceptAfter = interceptor
 	})
 }
@@ -408,7 +410,7 @@ func InterceptAfter(interceptor UpdateInterceptor) WriteOption {
 // All fields will be writable if using this option.
 // Prefer WithMoreWritableFields if possible.
 func WithAllFieldsWritable() WriteOption {
-	return writeOptionFunc(func(request *writeRequest) {
+	return writeOptionFunc(func(request *WriteRequest) {
 		request.nilWritableFields = true
 	})
 }
@@ -416,7 +418,7 @@ func WithAllFieldsWritable() WriteOption {
 // WithMoreWritableFields adds the given fields to the resources configured writable fields before validating the update.
 // Prefer this over WithAllFieldsWritable.
 func WithMoreWritableFields(writableFields *fieldmaskpb.FieldMask) WriteOption {
-	return writeOptionFunc(func(request *writeRequest) {
+	return writeOptionFunc(func(request *WriteRequest) {
 		request.moreWritableFields = fieldmaskpb.Union(request.moreWritableFields, writableFields)
 	})
 }
@@ -433,7 +435,7 @@ var ExpectedValuePreconditionFailed = status.Error(codes.FailedPrecondition, "cu
 // If the precondition fails the update will return the error ExpectedValuePreconditionFailed.
 // The precondition will be checked _before_ InterceptBefore.
 func WithExpectedValue(expectedValue proto.Message) WriteOption {
-	return writeOptionFunc(func(request *writeRequest) {
+	return writeOptionFunc(func(request *WriteRequest) {
 		request.expectedValue = expectedValue
 	})
 }
@@ -445,14 +447,14 @@ var ExpectAbsentPreconditionFailed = status.Error(codes.AlreadyExists, "value al
 // If the precondition fails the update will return the error ExpectAbsentPreconditionFailed.
 // The precondition will be checked _before_ InterceptBefore.
 func WithExpectAbsent() WriteOption {
-	return writeOptionFunc(func(request *writeRequest) {
+	return writeOptionFunc(func(request *WriteRequest) {
 		request.expectAbsent = true
 	})
 }
 
 // WithAllowMissing instructs a delete to not return an error if the item is absent.
 func WithAllowMissing(allowMissing bool) WriteOption {
-	return writeOptionFunc(func(request *writeRequest) {
+	return writeOptionFunc(func(request *WriteRequest) {
 		request.allowMissing = allowMissing
 	})
 }
@@ -461,7 +463,7 @@ func WithAllowMissing(allowMissing bool) WriteOption {
 // The error returned from fn will be returned from the update call.
 // The precondition will be checked _before_ InterceptBefore.
 func WithExpectedCheck(fn func(msg proto.Message) error) WriteOption {
-	return writeOptionFunc(func(request *writeRequest) {
+	return writeOptionFunc(func(request *WriteRequest) {
 		request.expectedCheck = fn
 	})
 }
@@ -470,7 +472,7 @@ func WithExpectedCheck(fn func(msg proto.Message) error) WriteOption {
 // Applicable only to Collection updates.
 // When specified any interceptors will receive a zero old value of the collection item type.
 func WithCreateIfAbsent() WriteOption {
-	return writeOptionFunc(func(wr *writeRequest) {
+	return writeOptionFunc(func(wr *WriteRequest) {
 		wr.createIfAbsent = true
 	})
 }
@@ -479,7 +481,7 @@ func WithCreateIfAbsent() WriteOption {
 // Applicable only to Collection updates.
 // Use the response from the Update call to get the actual value.
 func WithCreatedCallback(cb func()) WriteOption {
-	return writeOptionFunc(func(wr *writeRequest) {
+	return writeOptionFunc(func(wr *WriteRequest) {
 		wr.createdCallback = cb
 	})
 }
@@ -488,7 +490,7 @@ func WithCreatedCallback(cb func()) WriteOption {
 // Typically only useful when WithCreateIfAbsent is used, otherwise the update will fail with NotFound.
 // See WithIDCallback if the ID is stored as a property in the resource type.
 func WithGenIDIfAbsent() WriteOption {
-	return writeOptionFunc(func(wr *writeRequest) {
+	return writeOptionFunc(func(wr *WriteRequest) {
 		wr.genEmptyID = true
 	})
 }
@@ -498,7 +500,7 @@ func WithGenIDIfAbsent() WriteOption {
 // If the resource being stored in the collection has a property that holds the id, then cb should set that property
 // using the given id string.
 func WithIDCallback(cb func(id string)) WriteOption {
-	return writeOptionFunc(func(wr *writeRequest) {
+	return writeOptionFunc(func(wr *WriteRequest) {
 		wr.idCallback = cb
 	})
 }

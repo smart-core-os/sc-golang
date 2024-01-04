@@ -4,11 +4,12 @@ import (
 	"context"
 	"time"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-api/go/types"
 	"github.com/smart-core-os/sc-golang/pkg/resource"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 // Model models the Booking trait.
@@ -17,9 +18,10 @@ type Model struct {
 }
 
 // NewModel creates a new Model without any bookings.
-func NewModel() *Model {
+func NewModel(opts ...resource.Option) *Model {
+	args := calcModelArgs(opts...)
 	return &Model{
-		bookings: resource.NewCollection(),
+		bookings: resource.NewCollection(args.bookingOpts...),
 	}
 }
 

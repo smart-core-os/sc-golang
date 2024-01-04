@@ -13,7 +13,6 @@ import (
 
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-golang/pkg/resource"
-	"github.com/smart-core-os/sc-golang/pkg/time/clock"
 	"github.com/smart-core-os/sc-golang/pkg/trait"
 )
 
@@ -22,9 +21,10 @@ type Model struct {
 	children *resource.Collection
 }
 
-func NewModel() *Model {
+func NewModel(opts ...resource.Option) *Model {
+	args := calcModelArgs(opts...)
 	return &Model{
-		children: resource.NewCollection(resource.WithClock(clock.Real())),
+		children: resource.NewCollection(args.childrenOpts...),
 	}
 }
 
@@ -32,13 +32,24 @@ func NewModel() *Model {
 // If a child with the given Child.Name already exists, no changes will be made.
 // Panics if child.Traits are not sorted in ascending order, required by AddChildTrait.
 func (m *Model) AddChild(child *traits.Child) {
-	// force traits to be sorted
-	if !sort.SliceIsSorted(child.Traits, func(i, j int) bool {
-		return child.Traits[i].Name < child.Traits[j].Name
-	}) {
-		panic(fmt.Errorf("%v Traits are not sorted: %v", child.Name, child.Traits))
+	if err := validateChild(child); err != nil {
+		panic(err)
 	}
 	_, _ = m.children.Add(child.Name, child)
+}
+
+func validateChild(child *traits.Child) error {
+	if child.Name == "" {
+		return fmt.Errorf("child has no name")
+	}
+	sorted := sort.SliceIsSorted(child.Traits, func(i, j int) bool {
+		return child.Traits[i].Name < child.Traits[j].Name
+	})
+	if !sorted {
+		return fmt.Errorf("%v Traits are not sorted: %v", child.Name, child.Traits)
+	}
+
+	return nil
 }
 
 // RemoveChildByName removes a child from this model matching the given name.

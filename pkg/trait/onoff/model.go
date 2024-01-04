@@ -12,11 +12,10 @@ type Model struct {
 	onOff *resource.Value // of *traits.OnOff
 }
 
-func NewModel(initialState traits.OnOff_State) *Model {
+func NewModel(opts ...resource.Option) *Model {
+	args := calcModelArgs(opts...)
 	return &Model{
-		onOff: resource.NewValue(resource.WithInitialValue(&traits.OnOff{
-			State: initialState,
-		})),
+		onOff: resource.NewValue(args.onOffOpts...),
 	}
 }
 

@@ -9,11 +9,12 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/smart-core-os/sc-api/go/traits"
-	"github.com/smart-core-os/sc-golang/internal/th"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/testing/protocmp"
+
+	"github.com/smart-core-os/sc-api/go/traits"
+	"github.com/smart-core-os/sc-golang/internal/th"
 )
 
 // todo: test one, some, all failures for get, update, pull
@@ -75,7 +76,7 @@ type onOffTester struct {
 
 func newOnOffTester(t *testing.T, members ...string) *onOffTester {
 	devices := NewApiRouter(WithOnOffApiClientFactory(func(name string) (traits.OnOffApiClient, error) {
-		return WrapApi(NewModelServer(NewModel(traits.OnOff_STATE_UNSPECIFIED))), nil
+		return WrapApi(NewModelServer(NewModel())), nil
 	}))
 	impl := WrapApi(devices)
 	group := NewGroup(impl, members...)

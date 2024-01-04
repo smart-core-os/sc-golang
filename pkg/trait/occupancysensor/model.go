@@ -12,9 +12,10 @@ type Model struct {
 	occupancy *resource.Value
 }
 
-func NewModel(initialState *traits.Occupancy) *Model {
+func NewModel(opts ...resource.Option) *Model {
+	args := calcModelArgs(opts...)
 	return &Model{
-		occupancy: resource.NewValue(resource.WithInitialValue(initialState)),
+		occupancy: resource.NewValue(args.occupancyOpts...),
 	}
 }
 

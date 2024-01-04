@@ -12,9 +12,10 @@ type Model struct {
 	airQuality *resource.Value
 }
 
-func NewModel(initialState *traits.AirQuality) *Model {
+func NewModel(opts ...resource.Option) *Model {
+	args := calcModelArgs(opts...)
 	return &Model{
-		airQuality: resource.NewValue(resource.WithInitialValue(initialState)),
+		airQuality: resource.NewValue(args.airQualityOpts...),
 	}
 }
 

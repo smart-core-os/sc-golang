@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/smart-core-os/sc-api/go/traits"
-	"github.com/smart-core-os/sc-golang/pkg/cmp"
 	"github.com/smart-core-os/sc-golang/pkg/resource"
 )
 
@@ -13,14 +12,10 @@ type Model struct {
 	energyLevel *resource.Value // of traits.EnergyLevel
 }
 
-func NewModel() *Model {
-	eq := cmp.Equal(
-		cmp.FloatValueApprox(0, 0.1),
-		cmp.TimeValueWithin(1*time.Second),
-		cmp.DurationValueWithin(1*time.Second),
-	)
+func NewModel(opts ...resource.Option) *Model {
+	args := calcModelArgs(opts...)
 	return &Model{
-		energyLevel: resource.NewValue(resource.WithInitialValue(&traits.EnergyLevel{}), resource.WithMessageEquivalence(eq)),
+		energyLevel: resource.NewValue(args.energyLevelOpts...),
 	}
 }
 

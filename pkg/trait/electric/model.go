@@ -6,15 +6,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/smart-core-os/sc-api/go/traits"
-	"github.com/smart-core-os/sc-api/go/types"
-	"github.com/smart-core-os/sc-golang/pkg/cmp"
-	"github.com/smart-core-os/sc-golang/pkg/resource"
-	"github.com/smart-core-os/sc-golang/pkg/time/clock"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/smart-core-os/sc-api/go/traits"
+	"github.com/smart-core-os/sc-api/go/types"
+	"github.com/smart-core-os/sc-golang/pkg/resource"
+	"github.com/smart-core-os/sc-golang/pkg/time/clock"
 )
 
 var (
@@ -27,9 +27,9 @@ var (
 // any business logic.
 // For the implementation of the gRPC trait based on Model, see ModelServer.
 // Invariants:
-//   1. At most one mode has normal = true.
-//   2. The active mode cannot be deleted.
-//   3. Only a mode that exists can be active (except when the Model is first created, when a dummy mode is active)
+//  1. At most one mode has normal = true.
+//  2. The active mode cannot be deleted.
+//  3. Only a mode that exists can be active (except when the Model is first created, when a dummy mode is active)
 type Model struct {
 	demand     *resource.Value // of *traits.ElectricDemand
 	activeMode *resource.Value // of *traits.ElectricMode
@@ -42,27 +42,20 @@ type Model struct {
 }
 
 // NewModel constructs a Model with default values:
-//	 Current: 0
-//   Voltage: 240
-//   Rating: 13
+//
+//	Current: 0
+//	Voltage: 240
+//	Rating: 13
+//
 // No modes, active mode is empty.
-func NewModel(clk clock.Clock) *Model {
-	var voltage float32 = 240
-	demand := &traits.ElectricDemand{
-		Current: 0,
-		Voltage: &voltage,
-		Rating:  13,
-	}
-	*demand.Voltage = 240
-
-	mode := &traits.ElectricMode{}
-
+func NewModel(opts ...resource.Option) *Model {
+	args := calcModelArgs(opts...)
 	mem := &Model{
-		demand:     resource.NewValue(resource.WithInitialValue(demand), resource.WithMessageEquivalence(cmp.Equal(cmp.FloatValueApprox(0, 0.01)))),
-		activeMode: resource.NewValue(resource.WithInitialValue(mode), resource.WithNoDuplicates()),
-		modes:      resource.NewCollection(resource.WithClock(clk), resource.WithNoDuplicates()),
-		clock:      clk,
-		Rng:        rand.New(rand.NewSource(rand.Int63())),
+		demand:     resource.NewValue(args.demandOpts...),
+		activeMode: resource.NewValue(args.activeModeOpts...),
+		modes:      resource.NewCollection(args.modeOpts...),
+		clock:      args.clock,
+		Rng:        args.rng,
 	}
 
 	return mem

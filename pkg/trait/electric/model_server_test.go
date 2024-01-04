@@ -5,13 +5,11 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/smart-core-os/sc-golang/pkg/time/clock"
-
 	"github.com/smart-core-os/sc-api/go/traits"
 )
 
 func ExampleModelServer() {
-	mem := NewModel(clock.Real())
+	mem := NewModel()
 	device := NewModelServer(mem)
 
 	client := WrapApi(device)

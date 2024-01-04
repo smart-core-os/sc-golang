@@ -17,16 +17,9 @@ type Model struct {
 
 // NewModel constructs a new model with no prior enter or leave information.
 func NewModel(opts ...resource.Option) *Model {
-	var zero int32
-	defaultOpts := []resource.Option{
-		resource.WithInitialValue(&traits.EnterLeaveEvent{
-			EnterTotal: &zero,
-			LeaveTotal: &zero,
-		}),
-	}
-	opts = append(defaultOpts, opts...)
+	args := calcModelArgs(opts...)
 	return &Model{
-		enterLeaveEvents: resource.NewValue(opts...),
+		enterLeaveEvents: resource.NewValue(args.enterLeaveEventsOpts...),
 	}
 }
 

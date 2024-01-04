@@ -9,21 +9,21 @@ import (
 )
 
 type Model struct {
-	light *resource.Value
+	brightness *resource.Value
 }
 
 func NewModel(initialState *traits.Brightness) *Model {
 	return &Model{
-		light: resource.NewValue(resource.WithInitialValue(initialState)),
+		brightness: resource.NewValue(resource.WithInitialValue(initialState)),
 	}
 }
 
 func (m *Model) GetBrightness(opts ...resource.ReadOption) (*traits.Brightness, error) {
-	return m.light.Get(opts...).(*traits.Brightness), nil
+	return m.brightness.Get(opts...).(*traits.Brightness), nil
 }
 
 func (m *Model) UpdateBrightness(light *traits.Brightness, opts ...resource.WriteOption) (*traits.Brightness, error) {
-	res, err := m.light.Set(light, opts...)
+	res, err := m.brightness.Set(light, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func (m *Model) UpdateBrightness(light *traits.Brightness, opts ...resource.Writ
 func (m *Model) PullBrightness(ctx context.Context, opts ...resource.ReadOption) <-chan PullBrightnessChange {
 	send := make(chan PullBrightnessChange)
 
-	recv := m.light.Pull(ctx, opts...)
+	recv := m.brightness.Pull(ctx, opts...)
 	go func() {
 		defer close(send)
 		for change := range recv {

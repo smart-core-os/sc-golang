@@ -12,9 +12,10 @@ type Model struct {
 	airTemperature *resource.Value
 }
 
-func NewModel(initialState *traits.AirTemperature) *Model {
+func NewModel(opts ...resource.Option) *Model {
+	args := calcModelArgs(opts...)
 	return &Model{
-		airTemperature: resource.NewValue(resource.WithInitialValue(initialState)),
+		airTemperature: resource.NewValue(args.airTemperatureOpts...),
 	}
 }
 

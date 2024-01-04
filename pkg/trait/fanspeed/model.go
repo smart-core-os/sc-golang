@@ -4,12 +4,12 @@ import (
 	"context"
 	"time"
 
-	"github.com/smart-core-os/sc-api/go/traits"
-	"github.com/smart-core-os/sc-golang/pkg/cmp"
-	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/smart-core-os/sc-api/go/traits"
+	"github.com/smart-core-os/sc-golang/pkg/resource"
 )
 
 var DefaultPresets = []Preset{
@@ -34,23 +34,12 @@ type Model struct {
 }
 
 // NewModel constructs a Model with default values using the first of DefaultPresets.
-func NewModel() *Model {
-	presets := DefaultPresets
-	fanSpeed := &traits.FanSpeed{
-		Percentage: presets[0].Percentage,
-		Preset:     presets[0].Name,
-		Direction:  traits.FanSpeed_FORWARD,
+func NewModel(opts ...resource.Option) *Model {
+	args := calcModelArgs(opts...)
+	return &Model{
+		presets:  args.presets,
+		fanSpeed: resource.NewValue(args.fanSpeedOpts...),
 	}
-
-	model := &Model{
-		presets: presets,
-		fanSpeed: resource.NewValue(
-			resource.WithInitialValue(fanSpeed),
-			resource.WithMessageEquivalence(cmp.Equal(cmp.FloatValueApprox(0, 0.01))),
-		),
-	}
-
-	return model
 }
 
 // FanSpeed gets the current fan speed.

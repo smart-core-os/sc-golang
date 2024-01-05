@@ -51,6 +51,7 @@ func (a *modelArgs) apply(opts ...resource.Option) {
 	for _, opt := range opts {
 		if v, ok := opt.(ModelOption); ok {
 			v.applyModel(a)
+			continue
 		}
 		a.energyLevelOpts = append(a.energyLevelOpts, opt)
 	}

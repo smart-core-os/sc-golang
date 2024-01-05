@@ -69,13 +69,14 @@ func calcModelArgs(opts ...resource.Option) modelArgs {
 
 type modelArgs struct {
 	consumableOptions []resource.Option
-	inventoryOptions []resource.Option
+	inventoryOptions  []resource.Option
 }
 
 func (a *modelArgs) apply(opts ...resource.Option) {
 	for _, opt := range opts {
 		if v, ok := opt.(ModelOption); ok {
 			v.applyModel(a)
+			continue
 		}
 		a.consumableOptions = append(a.consumableOptions, opt)
 		a.inventoryOptions = append(a.inventoryOptions, opt)

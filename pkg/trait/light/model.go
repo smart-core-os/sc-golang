@@ -12,9 +12,10 @@ type Model struct {
 	brightness *resource.Value
 }
 
-func NewModel(initialState *traits.Brightness) *Model {
+func NewModel(opts ...resource.Option) *Model {
+	args := calcModelArgs(opts...)
 	return &Model{
-		brightness: resource.NewValue(resource.WithInitialValue(initialState)),
+		brightness: resource.NewValue(args.brightnessOpts...),
 	}
 }
 

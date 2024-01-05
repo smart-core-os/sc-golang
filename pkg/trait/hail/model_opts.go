@@ -44,6 +44,7 @@ func (a *modelArgs) apply(opts ...resource.Option) {
 	for _, opt := range opts {
 		if v, ok := opt.(ModelOption); ok {
 			v.applyModel(a)
+			continue
 		}
 		a.hailsOptions = append(a.hailsOptions, opt)
 	}

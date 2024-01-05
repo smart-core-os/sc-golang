@@ -9,12 +9,13 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/smart-core-os/sc-api/go/traits"
-	"github.com/smart-core-os/sc-golang/internal/th"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
+
+	"github.com/smart-core-os/sc-api/go/traits"
+	"github.com/smart-core-os/sc-golang/internal/th"
 )
 
 // todo: test one, some, all failures for get, update, pull
@@ -69,7 +70,7 @@ type brightnessTester struct {
 
 func newBrightnessTester(t *testing.T, members ...string) *brightnessTester {
 	devices := NewApiRouter(WithLightApiClientFactory(func(name string) (traits.LightApiClient, error) {
-		return WrapApi(NewMemoryDevice()), nil
+		return WrapApi(NewModelServer(NewModel())), nil
 	}))
 	impl := WrapApi(devices)
 	group := NewGroup(impl, members...)

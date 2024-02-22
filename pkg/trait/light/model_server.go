@@ -7,11 +7,13 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/smart-core-os/sc-api/go/traits"
+	"github.com/smart-core-os/sc-api/go/types"
 	"github.com/smart-core-os/sc-golang/pkg/resource"
 )
 
 type ModelServer struct {
 	traits.UnimplementedLightApiServer
+	traits.UnimplementedLightInfoServer
 	model *Model
 }
 
@@ -27,6 +29,7 @@ func (s *ModelServer) Unwrap() any {
 
 func (s *ModelServer) Register(server *grpc.Server) {
 	traits.RegisterLightApiServer(server, s)
+	traits.RegisterLightInfoServer(server, s)
 }
 
 func (s *ModelServer) GetBrightness(_ context.Context, req *traits.GetBrightnessRequest) (*traits.Brightness, error) {
@@ -54,4 +57,15 @@ func (s *ModelServer) PullBrightness(request *traits.PullBrightnessRequest, serv
 	}
 
 	return server.Context().Err()
+}
+
+func (s *ModelServer) DescribeBrightness(_ context.Context, _ *traits.DescribeBrightnessRequest) (*traits.BrightnessSupport, error) {
+	support := &traits.BrightnessSupport{
+		ResourceSupport: &types.ResourceSupport{
+			Readable: true, Writable: true, Observable: true,
+			PullSupport: types.PullSupport_PULL_SUPPORT_NATIVE,
+		},
+		Presets: s.model.ListPresets(),
+	}
+	return support, nil
 }

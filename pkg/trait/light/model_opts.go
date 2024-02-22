@@ -28,6 +28,13 @@ func WithInitialBrightness(brightness *traits.Brightness) resource.Option {
 	return WithBrightnessOption(resource.WithInitialValue(brightness))
 }
 
+// WithPreset instructs the model to set the light to the given level when preset p is selected.
+func WithPreset(levelPercent float32, p *traits.LightPreset) resource.Option {
+	return modelOptionFunc(func(args *modelArgs) {
+		args.presets = append(args.presets, preset{p, levelPercent})
+	})
+}
+
 func calcModelArgs(opts ...resource.Option) modelArgs {
 	args := new(modelArgs)
 	args.apply(DefaultModelOptions...)
@@ -37,6 +44,7 @@ func calcModelArgs(opts ...resource.Option) modelArgs {
 
 type modelArgs struct {
 	brightnessOpts []resource.Option
+	presets        []preset
 }
 
 func (a *modelArgs) apply(opts ...resource.Option) {

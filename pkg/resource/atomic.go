@@ -42,7 +42,7 @@ func GetAndUpdate(mu *sync.RWMutex, get GetFn, change ChangeFn, save SaveFn) (ol
 	mu.Lock()
 	defer mu.Unlock()
 	oldValueAgain, _ := get()
-	if oldValue != oldValueAgain {
+	if !proto.Equal(oldValue, oldValueAgain) {
 		return oldValue, newValue, status.Errorf(codes.Aborted, "concurrent update detected")
 	}
 

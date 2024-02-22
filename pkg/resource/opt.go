@@ -354,6 +354,21 @@ func WithUpdatePaths(paths ...string) WriteOption {
 	return WithUpdateMask(&fieldmaskpb.FieldMask{Paths: paths})
 }
 
+// WithMoreUpdateMask adds the given fields to the update mask.
+func WithMoreUpdateMask(mask *fieldmaskpb.FieldMask) WriteOption {
+	return writeOptionFunc(func(request *WriteRequest) {
+		if request.UpdateMask == nil {
+			return // a nil update mask means all fields are writable anyway
+		}
+		request.UpdateMask = fieldmaskpb.Union(request.UpdateMask, mask)
+	})
+}
+
+// WithMoreUpdatePaths is like WithMoreUpdateMask but with paths instead.
+func WithMoreUpdatePaths(paths ...string) WriteOption {
+	return WithMoreUpdateMask(&fieldmaskpb.FieldMask{Paths: paths})
+}
+
 // WithResetMask configures the update to clear these fields from the final value.
 // This will happen after InterceptBefore, but before InterceptAfter.
 // WithWritableFields does not affect this.

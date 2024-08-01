@@ -9,10 +9,11 @@ import (
 	"github.com/smart-core-os/sc-golang/pkg/resource"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/smart-core-os/sc-api/go/traits"
-	"github.com/smart-core-os/sc-api/go/types"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/durationpb"
+
+	"github.com/smart-core-os/sc-api/go/traits"
+	"github.com/smart-core-os/sc-api/go/types"
 )
 
 func TestMemoryDevice_UpdateBrightness(t *testing.T) {
@@ -23,7 +24,9 @@ func TestMemoryDevice_UpdateBrightness(t *testing.T) {
 		update := api.brightness.Pull(ctx, resource.WithUpdatesOnly(true))
 		t.Cleanup(done)
 		var updates []*resource.ValueChange
+		updatesDone := make(chan struct{})
 		go func() {
+			defer close(updatesDone)
 			for change := range update {
 				updates = append(updates, change)
 			}
@@ -55,6 +58,7 @@ func TestMemoryDevice_UpdateBrightness(t *testing.T) {
 
 		time.Sleep(duration * 2)
 		done()
+		<-updatesDone
 		if len(updates) <= 1 {
 			t.Fatalf("expected more than one change, got %v", len(updates))
 		}
@@ -104,7 +108,9 @@ func TestMemoryDevice_UpdateBrightness(t *testing.T) {
 
 		tweenStarted := make(chan struct{}, 3)
 		var updates []*resource.ValueChange
+		updatesDone := make(chan struct{})
 		go func() {
+			defer close(updatesDone)
 			for change := range update {
 				updates = append(updates, change)
 
@@ -141,6 +147,8 @@ func TestMemoryDevice_UpdateBrightness(t *testing.T) {
 		time.Sleep(duration * 2)
 
 		// expect between 4 and 5 updates, 3-4 from the initial tweening, and one from the final update
+		done()
+		<-updatesDone
 		updateCount := len(updates)
 		if updateCount != 4 {
 			t.Fatalf("update count, want 4, got %v", updateCount)

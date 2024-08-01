@@ -43,6 +43,7 @@ func (s *ClientServerStream) Close(err error) {
 	s.closed()
 }
 
+// safe to call if s.serverSend is closed
 func (s *ClientServerStream) closeErrLocked() error {
 	if s.closeErr == nil {
 		return io.EOF
@@ -96,7 +97,17 @@ func (c *clientStream) SendMsg(m any) error {
 func (c *clientStream) RecvMsg(m any) error {
 	select {
 	case <-c.Context().Done():
-		return c.closeErrLocked()
+		// closeErr may or may not be available depending on why the context has ended
+		//  1. if c.closed() was called by c.Close(...), then c.closeErr will be available
+		//  2. if the parent context was cancelled, then c.closeErr may not be available
+		select {
+		case _, ok := <-c.clientSend:
+			if !ok {
+				return c.closeErrLocked()
+			}
+		default:
+		}
+		return c.Context().Err()
 	case val, ok := <-c.serverSend:
 		if !ok {
 			return c.closeErrLocked()

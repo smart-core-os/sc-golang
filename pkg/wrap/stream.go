@@ -101,7 +101,7 @@ func (c *clientStream) RecvMsg(m any) error {
 		//  1. if c.closed() was called by c.Close(...), then c.closeErr will be available
 		//  2. if the parent context was cancelled, then c.closeErr may not be available
 		select {
-		case _, ok := <-c.clientSend:
+		case _, ok := <-c.serverSend:
 			if !ok {
 				return c.closeErrLocked()
 			}

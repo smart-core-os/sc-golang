@@ -53,12 +53,24 @@ func Test_serverSend(t *testing.T) {
 
 func TestClientServerStream_headerReturnsOnClose(t *testing.T) {
 	t.Run("nil err", func(t *testing.T) {
-		assertHeaderErrOnClose(t, nil, io.EOF)
+		assertHeaderErrOnClose(t, nil, nil)
 	})
 	t.Run("non-nil err", func(t *testing.T) {
 		err := errors.New("early closed")
-		assertHeaderErrOnClose(t, err, err)
+		assertHeaderErrOnClose(t, err, nil)
 	})
+}
+
+func TestClientStream_Header(t *testing.T) {
+	// check that closing the stream causes Header to nil,nil as documented on the interface
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s := NewClientServerStream(ctx)
+	s.Close(errors.New("some error"))
+	h, err := s.Client().Header()
+	if h != nil || err != nil {
+		t.Errorf("Header = %v, %v; want nil, nil", h, err)
+	}
 }
 
 func assertHeaderErrOnClose(t *testing.T, closeErr, wantErr error) {

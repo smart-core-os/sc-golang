@@ -12,6 +12,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -23,21 +25,36 @@ func TestWrapper_Unary(t *testing.T) {
 	srv := &testServer{}
 	conn := ServerToClient(testproto.TestApi_ServiceDesc, srv)
 	client := testproto.NewTestApiClient(conn)
-
 	ctx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs("a", "avalue", "b", "bvalue"))
-	var header metadata.MD
-	resp, err := client.Unary(ctx, &testproto.UnaryRequest{Msg: "hello"}, grpc.Header(&header))
-	if err != nil {
-		t.Fatalf("client.Unary(_, _) = _, %v; want _, nil", err)
-	}
-	if resp.Msg != "hello" {
-		t.Errorf("resp.Msg = %q; want %q", resp.Msg, "hello")
-	}
-	expectMD := metadata.Pairs("a", "avalue", "b", "bvalue")
-	if !maps.EqualFunc(header, expectMD, slices.Equal[[]string]) {
-		t.Errorf("header = %v; want %v", header, expectMD)
-	}
 
+	t.Run("success", func(t *testing.T) {
+		var header metadata.MD
+		resp, err := client.Unary(ctx, &testproto.UnaryRequest{Msg: "hello"}, grpc.Header(&header))
+		if err != nil {
+			t.Fatalf("client.Unary(_, _) = _, %v; want _, nil", err)
+		}
+		if resp.Msg != "hello" {
+			t.Errorf("resp.Msg = %q; want %q", resp.Msg, "hello")
+		}
+		expectMD := metadata.Pairs("a", "avalue", "b", "bvalue")
+		if !maps.EqualFunc(header, expectMD, slices.Equal[[]string]) {
+			t.Errorf("header = %v; want %v", header, expectMD)
+		}
+	})
+
+	t.Run("error", func(t *testing.T) {
+		_, err := client.Unary(ctx, &testproto.UnaryRequest{SimulateError: "foobar"})
+		statusErr, ok := status.FromError(err)
+		if !ok {
+			t.Fatalf("client.Unary(...) did not return a status error - got %v", err)
+		}
+		if want := codes.Aborted; statusErr.Code() != want {
+			t.Errorf("statusErr.Code() = %v; want %v", statusErr.Code(), want)
+		}
+		if want := "foobar"; statusErr.Message() != want {
+			t.Errorf("statusErr.Message() = %q; want %q", statusErr.Message(), want)
+		}
+	})
 }
 
 // tests that the wrapper passes server-streaming calls through correctly, including metadata
@@ -46,40 +63,60 @@ func TestWrapper_ServerStream(t *testing.T) {
 	conn := ServerToClient(testproto.TestApi_ServiceDesc, srv)
 	client := testproto.NewTestApiClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	// we expect the server to resend this metadata back to us
-	ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("a", "avalue", "b", "bvalue"))
-	stream, err := client.ServerStream(ctx, &testproto.ServerStreamRequest{NumRes: 3})
-	if err != nil {
-		t.Fatalf("client.ServerStream(_, _) = _, %v; want _, nil", err)
-	}
 
-	var received int32
-	for {
-		resp, err := stream.Recv()
-		if errors.Is(err, io.EOF) {
-			break
-		} else if err != nil {
-			t.Fatalf("stream.Recv() = _, %v; want _, nil", err)
+	t.Run("success", func(t *testing.T) {
+		// we expect the server to resend this metadata back to us
+		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("a", "avalue", "b", "bvalue"))
+		stream, err := client.ServerStream(ctx, &testproto.ServerStreamRequest{NumRes: 3})
+		if err != nil {
+			t.Fatalf("client.ServerStream(_, _) = _, %v; want _, nil", err)
 		}
-		if resp.Counter != received {
-			t.Errorf("resp.Counter = %v; want %v", resp.Counter, received)
-		}
-		received++
-	}
-	if received != 3 {
-		t.Errorf("received = %v; want 3", received)
-	}
-	md, err := stream.Header()
-	if err != nil {
-		t.Errorf("stream.Header() = _, %v; want _, nil", err)
-	}
-	expectMD := metadata.Pairs("a", "avalue", "b", "bvalue")
-	if diff := cmp.Diff(expectMD, md); diff != "" {
-		t.Errorf("stream.Header() mismatch (-want +got):\n%s", diff)
-	}
 
+		var received int32
+		for {
+			resp, err := stream.Recv()
+			if errors.Is(err, io.EOF) {
+				break
+			} else if err != nil {
+				t.Fatalf("stream.Recv() = _, %v; want _, nil", err)
+			}
+			if resp.Counter != received {
+				t.Errorf("resp.Counter = %v; want %v", resp.Counter, received)
+			}
+			received++
+		}
+		if received != 3 {
+			t.Errorf("received = %v; want 3", received)
+		}
+		md, err := stream.Header()
+		if err != nil {
+			t.Errorf("stream.Header() = _, %v; want _, nil", err)
+		}
+		expectMD := metadata.Pairs("a", "avalue", "b", "bvalue")
+		if diff := cmp.Diff(expectMD, md); diff != "" {
+			t.Errorf("stream.Header() mismatch (-want +got):\n%s", diff)
+		}
+	})
+
+	t.Run("error", func(t *testing.T) {
+		stream, err := client.ServerStream(ctx, &testproto.ServerStreamRequest{SimulateError: "foobar"})
+		if err != nil {
+			t.Fatalf("client.ServerStream(_, _) = _, %v; want _, nil", err)
+		}
+		_, err = stream.Recv()
+		statusErr, ok := status.FromError(err)
+		if !ok {
+			t.Fatalf("stream.Recv() did not return a status error - got %v", err)
+		}
+		if want := codes.Aborted; statusErr.Code() != want {
+			t.Errorf("statusErr.Code() = %v; want %v", statusErr.Code(), want)
+		}
+		if want := "foobar"; statusErr.Message() != want {
+			t.Errorf("statusErr.Message() = %q; want %q", statusErr.Message(), want)
+		}
+	})
 }
 
 func TestWrapper_ClientStream(t *testing.T) {
@@ -88,31 +125,55 @@ func TestWrapper_ClientStream(t *testing.T) {
 	client := testproto.NewTestApiClient(conn)
 
 	ctx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs("hello", "world"))
-	stream, err := client.ClientStream(ctx)
-	if err != nil {
-		t.Fatalf("client.ClientStream(_) = _, %v; want _, nil", err)
-	}
-	for _, msg := range []string{"a", "b", "c"} {
-		err = stream.Send(&testproto.ClientStreamRequest{Msg: msg})
+	t.Run("success", func(t *testing.T) {
+		stream, err := client.ClientStream(ctx)
 		if err != nil {
-			t.Fatalf("stream.Send(%q) = %v; want nil", msg, err)
+			t.Fatalf("client.ClientStream(_) = _, %v; want _, nil", err)
 		}
-	}
-	res, err := stream.CloseAndRecv()
-	if err != nil {
-		t.Fatalf("stream.CloseAndRecv() = _, %v; want _, nil", err)
-	}
-	if want := "abc"; res.Msg != want {
-		t.Errorf("res.Msg = %q; want %q", res.Msg, want)
-	}
-	md, err := stream.Header()
-	if err != nil {
-		t.Errorf("stream.Header() = _, %v; want _, nil", err)
-	}
-	expectMD := metadata.Pairs("hello", "world")
-	if diff := cmp.Diff(expectMD, md); diff != "" {
-		t.Errorf("stream.Header() mismatch (-want +got):\n%s", diff)
-	}
+		for _, msg := range []string{"a", "b", "c"} {
+			err = stream.Send(&testproto.ClientStreamRequest{Msg: msg})
+			if err != nil {
+				t.Fatalf("stream.Send(%q) = %v; want nil", msg, err)
+			}
+		}
+		res, err := stream.CloseAndRecv()
+		if err != nil {
+			t.Fatalf("stream.CloseAndRecv() = _, %v; want _, nil", err)
+		}
+		if want := "abc"; res.Msg != want {
+			t.Errorf("res.Msg = %q; want %q", res.Msg, want)
+		}
+		md, err := stream.Header()
+		if err != nil {
+			t.Errorf("stream.Header() = _, %v; want _, nil", err)
+		}
+		expectMD := metadata.Pairs("hello", "world")
+		if diff := cmp.Diff(expectMD, md); diff != "" {
+			t.Errorf("stream.Header() mismatch (-want +got):\n%s", diff)
+		}
+	})
+
+	t.Run("error", func(t *testing.T) {
+		stream, err := client.ClientStream(ctx)
+		if err != nil {
+			t.Fatalf("client.ClientStream(_) = _, %v; want _, nil", err)
+		}
+		err = stream.Send(&testproto.ClientStreamRequest{SimulateError: "foobar"})
+		if err != nil {
+			t.Fatalf("stream.Send(_) = %v; want nil", err)
+		}
+		_, err = stream.CloseAndRecv()
+		statusErr, ok := status.FromError(err)
+		if !ok {
+			t.Fatalf("stream.CloseAndRecv() did not return a status error - got %v", err)
+		}
+		if want := codes.Aborted; statusErr.Code() != want {
+			t.Errorf("statusErr.Code() = %v; want %v", statusErr.Code(), want)
+		}
+		if want := "foobar"; statusErr.Message() != want {
+			t.Errorf("statusErr.Message() = %q; want %q", statusErr.Message(), want)
+		}
+	})
 }
 
 func TestWrapper_BidiStream(t *testing.T) {
@@ -121,59 +182,85 @@ func TestWrapper_BidiStream(t *testing.T) {
 	client := testproto.NewTestApiClient(conn)
 
 	ctx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs("hello", "world"))
-	stream, err := client.BidiStream(ctx)
-	if err != nil {
-		t.Fatalf("client.BidiStream(_) = _, %v; want _, nil", err)
-	}
 
-	// each message should be echoed back to us
-	// after the first message, we can check the metadata
-	var metadataVerified bool
-	for _, msg := range []string{"a", "b", "c"} {
-		err = stream.Send(&testproto.BidiStreamRequest{Msg: msg})
+	t.Run("success", func(t *testing.T) {
+		stream, err := client.BidiStream(ctx)
 		if err != nil {
-			t.Fatalf("stream.Send(%q) = %v; want nil", msg, err)
+			t.Fatalf("client.BidiStream(_) = _, %v; want _, nil", err)
 		}
 
-		resp, err := stream.Recv()
-		if err != nil {
-			t.Fatalf("stream.Recv() = _, %v; want _, nil", err)
-		}
-		if resp.Msg != msg {
-			t.Errorf("resp.Msg = %q; want %q", resp.Msg, msg)
-		}
-
-		if !metadataVerified {
-			md, err := stream.Header()
+		// each message should be echoed back to us
+		// after the first message, we can check the metadata
+		var metadataVerified bool
+		for _, msg := range []string{"a", "b", "c"} {
+			err = stream.Send(&testproto.BidiStreamRequest{Msg: msg})
 			if err != nil {
-				t.Errorf("stream.Header() = _, %v; want _, nil", err)
+				t.Fatalf("stream.Send(%q) = %v; want nil", msg, err)
 			}
-			expectMD := metadata.Pairs("hello", "world")
-			if diff := cmp.Diff(expectMD, md); diff != "" {
-				t.Errorf("stream.Header() mismatch (-want +got):\n%s", diff)
+
+			resp, err := stream.Recv()
+			if err != nil {
+				t.Fatalf("stream.Recv() = _, %v; want _, nil", err)
 			}
-			metadataVerified = true
+			if resp.Msg != msg {
+				t.Errorf("resp.Msg = %q; want %q", resp.Msg, msg)
+			}
+
+			if !metadataVerified {
+				md, err := stream.Header()
+				if err != nil {
+					t.Errorf("stream.Header() = _, %v; want _, nil", err)
+				}
+				expectMD := metadata.Pairs("hello", "world")
+				if diff := cmp.Diff(expectMD, md); diff != "" {
+					t.Errorf("stream.Header() mismatch (-want +got):\n%s", diff)
+				}
+				metadataVerified = true
+			}
 		}
-	}
-	// signal to the server that we are done
-	err = stream.CloseSend()
-	if err != nil {
-		t.Errorf("stream.CloseSend() = %v; want nil", err)
-	}
-	// drain the stream
-	var extra int
-	for {
-		_, err := stream.Recv()
-		if errors.Is(err, io.EOF) {
-			break
-		} else if err != nil {
-			t.Errorf("stream.Recv() = _, %v; want _, nil", err)
+		// signal to the server that we are done
+		err = stream.CloseSend()
+		if err != nil {
+			t.Errorf("stream.CloseSend() = %v; want nil", err)
 		}
-		extra++
-	}
-	if extra != 0 {
-		t.Errorf("extra messages received: %d", extra)
-	}
+		// drain the stream
+		var extra int
+		for {
+			_, err := stream.Recv()
+			if errors.Is(err, io.EOF) {
+				break
+			} else if err != nil {
+				t.Errorf("stream.Recv() = _, %v; want _, nil", err)
+			}
+			extra++
+		}
+		if extra != 0 {
+			t.Errorf("extra messages received: %d", extra)
+		}
+	})
+
+	t.Run("error", func(t *testing.T) {
+		stream, err := client.BidiStream(ctx)
+		if err != nil {
+			t.Fatalf("client.BidiStream(_) = _, %v; want _, nil", err)
+		}
+
+		err = stream.Send(&testproto.BidiStreamRequest{SimulateError: "foobar"})
+		if err != nil {
+			t.Fatalf("stream.Send(_) = %v; want nil", err)
+		}
+		_, err = stream.Recv()
+		statusErr, ok := status.FromError(err)
+		if !ok {
+			t.Fatalf("stream.Recv() did not return a status error - got %v", err)
+		}
+		if want := codes.Aborted; statusErr.Code() != want {
+			t.Errorf("statusErr.Code() = %v; want %v", statusErr.Code(), want)
+		}
+		if want := "foobar"; statusErr.Message() != want {
+			t.Errorf("statusErr.Message() = %q; want %q", statusErr.Message(), want)
+		}
+	})
 }
 
 type testServer struct {
@@ -185,6 +272,10 @@ func (s *testServer) Unary(ctx context.Context, req *testproto.UnaryRequest) (*t
 		return nil, err
 	}
 
+	if req.SimulateError != "" {
+		return nil, status.Error(codes.Aborted, req.SimulateError)
+	}
+
 	// echo request to response
 	return &testproto.UnaryResponse{
 		Msg: req.Msg,
@@ -194,6 +285,10 @@ func (s *testServer) Unary(ctx context.Context, req *testproto.UnaryRequest) (*t
 func (s *testServer) ServerStream(req *testproto.ServerStreamRequest, srv testproto.TestApi_ServerStreamServer) error {
 	if err := copyMDStream(srv.Context(), srv); err != nil {
 		return err
+	}
+
+	if req.SimulateError != "" {
+		return status.Error(codes.Aborted, req.SimulateError)
 	}
 
 	// client requests a certain number of responses, we send them, counting up
@@ -224,6 +319,9 @@ func (s *testServer) ClientStream(srv testproto.TestApi_ClientStreamServer) erro
 			log.Printf("ClientStream server Recv error: %v", err)
 			return err
 		}
+		if req.SimulateError != "" {
+			return status.Error(codes.Aborted, req.SimulateError)
+		}
 		msg.WriteString(req.Msg)
 	}
 
@@ -249,6 +347,9 @@ func (s *testServer) BidiStream(srv testproto.TestApi_BidiStreamServer) error {
 		} else if err != nil {
 			log.Printf("BidiStream server Recv error: %v", err)
 			return err
+		}
+		if req.SimulateError != "" {
+			return status.Error(codes.Aborted, req.SimulateError)
 		}
 		err = srv.Send(&testproto.BidiStreamResponse{
 			Msg: req.Msg,

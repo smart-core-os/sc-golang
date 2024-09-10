@@ -7,16 +7,16 @@ package {{.PackageName}}
 
 // Wrap{{.Underlying.Exported}}	adapts a {{.QualifiedServerName}}	and presents it as a {{.QualifiedClientName}}
 func Wrap{{.Underlying.Exported}}(server {{.QualifiedServerName}}) {{.QualifiedClientName}} {
-  conn := {{.WrapServerToClient}}({{.QualifiedServiceDesc}}, server)
-  client := {{.QualifiedClientConstructor}}(conn)
+	conn := {{.WrapServerToClient}}({{.QualifiedServiceDesc}}, server)
+	client := {{.QualifiedClientConstructor}}(conn)
 	return &{{.Wrapper.Private}}{
-    {{.ClientName}}: client,
-    server: server,
+		{{.ClientName}}: client,
+		server: server,
 	}
 }
 
 type {{.Wrapper.Private}} struct {
-  {{.QualifiedClientName}}
+	{{.QualifiedClientName}}
 
 	server {{.QualifiedServerName}}
 }
@@ -26,10 +26,10 @@ var _ {{.QualifiedClientName}} = (*{{.Wrapper.Private}})(nil)
 
 // UnwrapServer returns the underlying server instance.
 func (w *{{$.Wrapper.Private}}) UnwrapServer() {{.QualifiedServerName}} {
-  return w.server
+	return w.server
 }
 
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *{{$.Wrapper.Private}}) Unwrap() any {
-  return w.UnwrapServer()
+	return w.UnwrapServer()
 }

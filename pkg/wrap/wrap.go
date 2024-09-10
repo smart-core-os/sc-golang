@@ -21,7 +21,7 @@ func ServerToClient(desc grpc.ServiceDesc, srv any) grpc.ClientConnInterface {
 	// check that srv is the right type to be a server for desc
 	expectType := reflect.TypeOf(desc.HandlerType).Elem()
 	if !reflect.TypeOf(srv).Implements(expectType) {
-		panic(fmt.Sprintf("grpcdynamic: srv must be of type %v", expectType))
+		panic(fmt.Sprintf("wrap: srv must be of type %v", expectType))
 	}
 
 	methods := make(map[string]grpc.MethodDesc)

@@ -18,27 +18,33 @@ func ServerToClient(desc grpc.ServiceDesc, srv any) grpc.ClientConnInterface {
 		panic(fmt.Sprintf("grpcdynamic: srv must be of type %v", expectType))
 	}
 
+	methods := make(map[string]grpc.MethodDesc)
+	for _, m := range desc.Methods {
+		fullName := fmt.Sprintf("/%s/%s", desc.ServiceName, m.MethodName)
+		methods[fullName] = m
+	}
+	streams := make(map[string]grpc.StreamDesc)
+	for _, s := range desc.Streams {
+		fullName := fmt.Sprintf("/%s/%s", desc.ServiceName, s.StreamName)
+		streams[fullName] = s
+	}
+
 	return &wrapper{
-		desc: desc,
-		srv:  srv,
+		methods: methods,
+		streams: streams,
+		srv:     srv,
 	}
 }
 
 type wrapper struct {
-	desc grpc.ServiceDesc
-	srv  any
+	methods map[string]grpc.MethodDesc
+	streams map[string]grpc.StreamDesc
+	srv     any
 }
 
 func (w *wrapper) Invoke(ctx context.Context, method string, args any, reply any, opts ...grpc.CallOption) error {
-	var matched *grpc.MethodDesc
-	for _, m := range w.desc.Methods {
-		methodName := fmt.Sprintf("/%s/%s", w.desc.ServiceName, m.MethodName)
-		if methodName == method {
-			matched = &m
-			break
-		}
-	}
-	if matched == nil {
+	matched, ok := w.methods[method]
+	if !ok {
 		return status.Error(codes.Unimplemented, "method not found")
 	}
 
@@ -82,16 +88,9 @@ func (w *wrapper) Invoke(ctx context.Context, method string, args any, reply any
 	return err
 }
 
-func (w *wrapper) NewStream(ctx context.Context, desc *grpc.StreamDesc, method string, opts ...grpc.CallOption) (grpc.ClientStream, error) {
-	var matched *grpc.StreamDesc
-	for _, s := range w.desc.Streams {
-		streamName := fmt.Sprintf("/%s/%s", w.desc.ServiceName, s.StreamName)
-		if streamName == method {
-			matched = &s
-			break
-		}
-	}
-	if matched == nil {
+func (w *wrapper) NewStream(ctx context.Context, desc *grpc.StreamDesc, method string, _ ...grpc.CallOption) (grpc.ClientStream, error) {
+	matched, ok := w.streams[method]
+	if !ok {
 		return nil, status.Error(codes.Unimplemented, "method not found")
 	}
 

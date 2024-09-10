@@ -3,17 +3,23 @@
 package light
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
-	grpc "google.golang.org/grpc"
+	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
 )
 
 // WrapInfo	adapts a traits.LightInfoServer	and presents it as a traits.LightInfoClient
 func WrapInfo(server traits.LightInfoServer) traits.LightInfoClient {
-	return &infoWrapper{server}
+	conn := wrap.ServerToClient(traits.LightInfo_ServiceDesc, server)
+	client := traits.NewLightInfoClient(conn)
+	return &infoWrapper{
+		LightInfoClient: client,
+		server:          server,
+	}
 }
 
 type infoWrapper struct {
+	traits.LightInfoClient
+
 	server traits.LightInfoServer
 }
 
@@ -28,8 +34,4 @@ func (w *infoWrapper) UnwrapServer() traits.LightInfoServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *infoWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *infoWrapper) DescribeBrightness(ctx context.Context, req *traits.DescribeBrightnessRequest, _ ...grpc.CallOption) (*traits.BrightnessSupport, error) {
-	return w.server.DescribeBrightness(ctx, req)
 }

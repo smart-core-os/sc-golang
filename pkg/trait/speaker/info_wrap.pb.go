@@ -3,17 +3,23 @@
 package speaker
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
-	grpc "google.golang.org/grpc"
+	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
 )
 
 // WrapInfo	adapts a traits.SpeakerInfoServer	and presents it as a traits.SpeakerInfoClient
 func WrapInfo(server traits.SpeakerInfoServer) traits.SpeakerInfoClient {
-	return &infoWrapper{server}
+	conn := wrap.ServerToClient(traits.SpeakerInfo_ServiceDesc, server)
+	client := traits.NewSpeakerInfoClient(conn)
+	return &infoWrapper{
+		SpeakerInfoClient: client,
+		server:            server,
+	}
 }
 
 type infoWrapper struct {
+	traits.SpeakerInfoClient
+
 	server traits.SpeakerInfoServer
 }
 
@@ -28,8 +34,4 @@ func (w *infoWrapper) UnwrapServer() traits.SpeakerInfoServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *infoWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *infoWrapper) DescribeVolume(ctx context.Context, req *traits.DescribeVolumeRequest, _ ...grpc.CallOption) (*traits.VolumeSupport, error) {
-	return w.server.DescribeVolume(ctx, req)
 }

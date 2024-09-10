@@ -4,14 +4,22 @@ package lockunlock
 
 import (
 	traits "github.com/smart-core-os/sc-api/go/traits"
+	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
 )
 
 // WrapInfo	adapts a traits.LockUnlockInfoServer	and presents it as a traits.LockUnlockInfoClient
 func WrapInfo(server traits.LockUnlockInfoServer) traits.LockUnlockInfoClient {
-	return &infoWrapper{server}
+	conn := wrap.ServerToClient(traits.LockUnlockInfo_ServiceDesc, server)
+	client := traits.NewLockUnlockInfoClient(conn)
+	return &infoWrapper{
+		LockUnlockInfoClient: client,
+		server:               server,
+	}
 }
 
 type infoWrapper struct {
+	traits.LockUnlockInfoClient
+
 	server traits.LockUnlockInfoServer
 }
 

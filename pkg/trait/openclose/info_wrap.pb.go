@@ -3,17 +3,23 @@
 package openclose
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
-	grpc "google.golang.org/grpc"
+	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
 )
 
 // WrapInfo	adapts a traits.OpenCloseInfoServer	and presents it as a traits.OpenCloseInfoClient
 func WrapInfo(server traits.OpenCloseInfoServer) traits.OpenCloseInfoClient {
-	return &infoWrapper{server}
+	conn := wrap.ServerToClient(traits.OpenCloseInfo_ServiceDesc, server)
+	client := traits.NewOpenCloseInfoClient(conn)
+	return &infoWrapper{
+		OpenCloseInfoClient: client,
+		server:              server,
+	}
 }
 
 type infoWrapper struct {
+	traits.OpenCloseInfoClient
+
 	server traits.OpenCloseInfoServer
 }
 
@@ -28,8 +34,4 @@ func (w *infoWrapper) UnwrapServer() traits.OpenCloseInfoServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *infoWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *infoWrapper) DescribePositions(ctx context.Context, req *traits.DescribePositionsRequest, _ ...grpc.CallOption) (*traits.PositionsSupport, error) {
-	return w.server.DescribePositions(ctx, req)
 }

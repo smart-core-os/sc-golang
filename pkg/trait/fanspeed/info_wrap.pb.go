@@ -3,17 +3,23 @@
 package fanspeed
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
-	grpc "google.golang.org/grpc"
+	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
 )
 
 // WrapInfo	adapts a traits.FanSpeedInfoServer	and presents it as a traits.FanSpeedInfoClient
 func WrapInfo(server traits.FanSpeedInfoServer) traits.FanSpeedInfoClient {
-	return &infoWrapper{server}
+	conn := wrap.ServerToClient(traits.FanSpeedInfo_ServiceDesc, server)
+	client := traits.NewFanSpeedInfoClient(conn)
+	return &infoWrapper{
+		FanSpeedInfoClient: client,
+		server:             server,
+	}
 }
 
 type infoWrapper struct {
+	traits.FanSpeedInfoClient
+
 	server traits.FanSpeedInfoServer
 }
 
@@ -28,8 +34,4 @@ func (w *infoWrapper) UnwrapServer() traits.FanSpeedInfoServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *infoWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *infoWrapper) DescribeFanSpeed(ctx context.Context, req *traits.DescribeFanSpeedRequest, _ ...grpc.CallOption) (*traits.FanSpeedSupport, error) {
-	return w.server.DescribeFanSpeed(ctx, req)
 }

@@ -3,17 +3,23 @@
 package brightnesssensor
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
-	grpc "google.golang.org/grpc"
+	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
 )
 
 // WrapInfo	adapts a traits.BrightnessSensorInfoServer	and presents it as a traits.BrightnessSensorInfoClient
 func WrapInfo(server traits.BrightnessSensorInfoServer) traits.BrightnessSensorInfoClient {
-	return &infoWrapper{server}
+	conn := wrap.ServerToClient(traits.BrightnessSensorInfo_ServiceDesc, server)
+	client := traits.NewBrightnessSensorInfoClient(conn)
+	return &infoWrapper{
+		BrightnessSensorInfoClient: client,
+		server:                     server,
+	}
 }
 
 type infoWrapper struct {
+	traits.BrightnessSensorInfoClient
+
 	server traits.BrightnessSensorInfoServer
 }
 
@@ -28,8 +34,4 @@ func (w *infoWrapper) UnwrapServer() traits.BrightnessSensorInfoServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *infoWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *infoWrapper) DescribeAmbientBrightness(ctx context.Context, req *traits.DescribeAmbientBrightnessRequest, _ ...grpc.CallOption) (*traits.AmbientBrightnessSupport, error) {
-	return w.server.DescribeAmbientBrightness(ctx, req)
 }

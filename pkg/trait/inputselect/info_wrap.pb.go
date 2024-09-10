@@ -3,17 +3,23 @@
 package inputselect
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
-	grpc "google.golang.org/grpc"
+	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
 )
 
 // WrapInfo	adapts a traits.InputSelectInfoServer	and presents it as a traits.InputSelectInfoClient
 func WrapInfo(server traits.InputSelectInfoServer) traits.InputSelectInfoClient {
-	return &infoWrapper{server}
+	conn := wrap.ServerToClient(traits.InputSelectInfo_ServiceDesc, server)
+	client := traits.NewInputSelectInfoClient(conn)
+	return &infoWrapper{
+		InputSelectInfoClient: client,
+		server:                server,
+	}
 }
 
 type infoWrapper struct {
+	traits.InputSelectInfoClient
+
 	server traits.InputSelectInfoServer
 }
 
@@ -28,8 +34,4 @@ func (w *infoWrapper) UnwrapServer() traits.InputSelectInfoServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *infoWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *infoWrapper) DescribeInput(ctx context.Context, req *traits.DescribeInputRequest, _ ...grpc.CallOption) (*traits.InputSupport, error) {
-	return w.server.DescribeInput(ctx, req)
 }

@@ -3,17 +3,23 @@
 package motionsensor
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
-	grpc "google.golang.org/grpc"
+	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
 )
 
 // WrapSensorInfo	adapts a traits.MotionSensorSensorInfoServer	and presents it as a traits.MotionSensorSensorInfoClient
 func WrapSensorInfo(server traits.MotionSensorSensorInfoServer) traits.MotionSensorSensorInfoClient {
-	return &sensorInfoWrapper{server}
+	conn := wrap.ServerToClient(traits.MotionSensorSensorInfo_ServiceDesc, server)
+	client := traits.NewMotionSensorSensorInfoClient(conn)
+	return &sensorInfoWrapper{
+		MotionSensorSensorInfoClient: client,
+		server:                       server,
+	}
 }
 
 type sensorInfoWrapper struct {
+	traits.MotionSensorSensorInfoClient
+
 	server traits.MotionSensorSensorInfoServer
 }
 
@@ -28,8 +34,4 @@ func (w *sensorInfoWrapper) UnwrapServer() traits.MotionSensorSensorInfoServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *sensorInfoWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *sensorInfoWrapper) DescribeMotionDetection(ctx context.Context, req *traits.DescribeMotionDetectionRequest, _ ...grpc.CallOption) (*traits.MotionDetectionSupport, error) {
-	return w.server.DescribeMotionDetection(ctx, req)
 }

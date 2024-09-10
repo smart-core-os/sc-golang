@@ -4,14 +4,22 @@ package metadata
 
 import (
 	traits "github.com/smart-core-os/sc-api/go/traits"
+	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
 )
 
 // WrapInfo	adapts a traits.MetadataInfoServer	and presents it as a traits.MetadataInfoClient
 func WrapInfo(server traits.MetadataInfoServer) traits.MetadataInfoClient {
-	return &infoWrapper{server}
+	conn := wrap.ServerToClient(traits.MetadataInfo_ServiceDesc, server)
+	client := traits.NewMetadataInfoClient(conn)
+	return &infoWrapper{
+		MetadataInfoClient: client,
+		server:             server,
+	}
 }
 
 type infoWrapper struct {
+	traits.MetadataInfoClient
+
 	server traits.MetadataInfoServer
 }
 

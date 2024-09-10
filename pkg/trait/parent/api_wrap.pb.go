@@ -3,18 +3,23 @@
 package parent
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
-	grpc "google.golang.org/grpc"
 )
 
 // WrapApi	adapts a traits.ParentApiServer	and presents it as a traits.ParentApiClient
 func WrapApi(server traits.ParentApiServer) traits.ParentApiClient {
-	return &apiWrapper{server}
+	conn := wrap.ServerToClient(traits.ParentApi_ServiceDesc, server)
+	client := traits.NewParentApiClient(conn)
+	return &apiWrapper{
+		ParentApiClient: client,
+		server:          server,
+	}
 }
 
 type apiWrapper struct {
+	traits.ParentApiClient
+
 	server traits.ParentApiServer
 }
 
@@ -29,39 +34,4 @@ func (w *apiWrapper) UnwrapServer() traits.ParentApiServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *apiWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *apiWrapper) ListChildren(ctx context.Context, req *traits.ListChildrenRequest, _ ...grpc.CallOption) (*traits.ListChildrenResponse, error) {
-	return w.server.ListChildren(ctx, req)
-}
-
-func (w *apiWrapper) PullChildren(ctx context.Context, in *traits.PullChildrenRequest, opts ...grpc.CallOption) (traits.ParentApi_PullChildrenClient, error) {
-	stream := wrap.NewClientServerStream(ctx)
-	server := &pullChildrenApiServerWrapper{stream.Server()}
-	client := &pullChildrenApiClientWrapper{stream.Client()}
-	go func() {
-		err := w.server.PullChildren(in, server)
-		stream.Close(err)
-	}()
-	return client, nil
-}
-
-type pullChildrenApiClientWrapper struct {
-	grpc.ClientStream
-}
-
-func (w *pullChildrenApiClientWrapper) Recv() (*traits.PullChildrenResponse, error) {
-	m := new(traits.PullChildrenResponse)
-	if err := w.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-type pullChildrenApiServerWrapper struct {
-	grpc.ServerStream
-}
-
-func (s *pullChildrenApiServerWrapper) Send(response *traits.PullChildrenResponse) error {
-	return s.ServerStream.SendMsg(response)
 }

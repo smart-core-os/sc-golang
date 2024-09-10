@@ -3,18 +3,23 @@
 package openclose
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
-	grpc "google.golang.org/grpc"
 )
 
 // WrapApi	adapts a traits.OpenCloseApiServer	and presents it as a traits.OpenCloseApiClient
 func WrapApi(server traits.OpenCloseApiServer) traits.OpenCloseApiClient {
-	return &apiWrapper{server}
+	conn := wrap.ServerToClient(traits.OpenCloseApi_ServiceDesc, server)
+	client := traits.NewOpenCloseApiClient(conn)
+	return &apiWrapper{
+		OpenCloseApiClient: client,
+		server:             server,
+	}
 }
 
 type apiWrapper struct {
+	traits.OpenCloseApiClient
+
 	server traits.OpenCloseApiServer
 }
 
@@ -29,47 +34,4 @@ func (w *apiWrapper) UnwrapServer() traits.OpenCloseApiServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *apiWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *apiWrapper) GetPositions(ctx context.Context, req *traits.GetOpenClosePositionsRequest, _ ...grpc.CallOption) (*traits.OpenClosePositions, error) {
-	return w.server.GetPositions(ctx, req)
-}
-
-func (w *apiWrapper) UpdatePositions(ctx context.Context, req *traits.UpdateOpenClosePositionsRequest, _ ...grpc.CallOption) (*traits.OpenClosePositions, error) {
-	return w.server.UpdatePositions(ctx, req)
-}
-
-func (w *apiWrapper) Stop(ctx context.Context, req *traits.StopOpenCloseRequest, _ ...grpc.CallOption) (*traits.OpenClosePositions, error) {
-	return w.server.Stop(ctx, req)
-}
-
-func (w *apiWrapper) PullPositions(ctx context.Context, in *traits.PullOpenClosePositionsRequest, opts ...grpc.CallOption) (traits.OpenCloseApi_PullPositionsClient, error) {
-	stream := wrap.NewClientServerStream(ctx)
-	server := &pullPositionsApiServerWrapper{stream.Server()}
-	client := &pullPositionsApiClientWrapper{stream.Client()}
-	go func() {
-		err := w.server.PullPositions(in, server)
-		stream.Close(err)
-	}()
-	return client, nil
-}
-
-type pullPositionsApiClientWrapper struct {
-	grpc.ClientStream
-}
-
-func (w *pullPositionsApiClientWrapper) Recv() (*traits.PullOpenClosePositionsResponse, error) {
-	m := new(traits.PullOpenClosePositionsResponse)
-	if err := w.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-type pullPositionsApiServerWrapper struct {
-	grpc.ServerStream
-}
-
-func (s *pullPositionsApiServerWrapper) Send(response *traits.PullOpenClosePositionsResponse) error {
-	return s.ServerStream.SendMsg(response)
 }

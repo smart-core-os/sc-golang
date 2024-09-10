@@ -4,14 +4,22 @@ package parent
 
 import (
 	traits "github.com/smart-core-os/sc-api/go/traits"
+	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
 )
 
 // WrapInfo	adapts a traits.ParentInfoServer	and presents it as a traits.ParentInfoClient
 func WrapInfo(server traits.ParentInfoServer) traits.ParentInfoClient {
-	return &infoWrapper{server}
+	conn := wrap.ServerToClient(traits.ParentInfo_ServiceDesc, server)
+	client := traits.NewParentInfoClient(conn)
+	return &infoWrapper{
+		ParentInfoClient: client,
+		server:           server,
+	}
 }
 
 type infoWrapper struct {
+	traits.ParentInfoClient
+
 	server traits.ParentInfoServer
 }
 

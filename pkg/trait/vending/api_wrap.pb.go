@@ -3,18 +3,23 @@
 package vending
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
-	grpc "google.golang.org/grpc"
 )
 
 // WrapApi	adapts a traits.VendingApiServer	and presents it as a traits.VendingApiClient
 func WrapApi(server traits.VendingApiServer) traits.VendingApiClient {
-	return &apiWrapper{server}
+	conn := wrap.ServerToClient(traits.VendingApi_ServiceDesc, server)
+	client := traits.NewVendingApiClient(conn)
+	return &apiWrapper{
+		VendingApiClient: client,
+		server:           server,
+	}
 }
 
 type apiWrapper struct {
+	traits.VendingApiClient
+
 	server traits.VendingApiServer
 }
 
@@ -29,121 +34,4 @@ func (w *apiWrapper) UnwrapServer() traits.VendingApiServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *apiWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *apiWrapper) ListConsumables(ctx context.Context, req *traits.ListConsumablesRequest, _ ...grpc.CallOption) (*traits.ListConsumablesResponse, error) {
-	return w.server.ListConsumables(ctx, req)
-}
-
-func (w *apiWrapper) PullConsumables(ctx context.Context, in *traits.PullConsumablesRequest, opts ...grpc.CallOption) (traits.VendingApi_PullConsumablesClient, error) {
-	stream := wrap.NewClientServerStream(ctx)
-	server := &pullConsumablesApiServerWrapper{stream.Server()}
-	client := &pullConsumablesApiClientWrapper{stream.Client()}
-	go func() {
-		err := w.server.PullConsumables(in, server)
-		stream.Close(err)
-	}()
-	return client, nil
-}
-
-type pullConsumablesApiClientWrapper struct {
-	grpc.ClientStream
-}
-
-func (w *pullConsumablesApiClientWrapper) Recv() (*traits.PullConsumablesResponse, error) {
-	m := new(traits.PullConsumablesResponse)
-	if err := w.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-type pullConsumablesApiServerWrapper struct {
-	grpc.ServerStream
-}
-
-func (s *pullConsumablesApiServerWrapper) Send(response *traits.PullConsumablesResponse) error {
-	return s.ServerStream.SendMsg(response)
-}
-
-func (w *apiWrapper) GetStock(ctx context.Context, req *traits.GetStockRequest, _ ...grpc.CallOption) (*traits.Consumable_Stock, error) {
-	return w.server.GetStock(ctx, req)
-}
-
-func (w *apiWrapper) UpdateStock(ctx context.Context, req *traits.UpdateStockRequest, _ ...grpc.CallOption) (*traits.Consumable_Stock, error) {
-	return w.server.UpdateStock(ctx, req)
-}
-
-func (w *apiWrapper) PullStock(ctx context.Context, in *traits.PullStockRequest, opts ...grpc.CallOption) (traits.VendingApi_PullStockClient, error) {
-	stream := wrap.NewClientServerStream(ctx)
-	server := &pullStockApiServerWrapper{stream.Server()}
-	client := &pullStockApiClientWrapper{stream.Client()}
-	go func() {
-		err := w.server.PullStock(in, server)
-		stream.Close(err)
-	}()
-	return client, nil
-}
-
-type pullStockApiClientWrapper struct {
-	grpc.ClientStream
-}
-
-func (w *pullStockApiClientWrapper) Recv() (*traits.PullStockResponse, error) {
-	m := new(traits.PullStockResponse)
-	if err := w.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-type pullStockApiServerWrapper struct {
-	grpc.ServerStream
-}
-
-func (s *pullStockApiServerWrapper) Send(response *traits.PullStockResponse) error {
-	return s.ServerStream.SendMsg(response)
-}
-
-func (w *apiWrapper) ListInventory(ctx context.Context, req *traits.ListInventoryRequest, _ ...grpc.CallOption) (*traits.ListInventoryResponse, error) {
-	return w.server.ListInventory(ctx, req)
-}
-
-func (w *apiWrapper) PullInventory(ctx context.Context, in *traits.PullInventoryRequest, opts ...grpc.CallOption) (traits.VendingApi_PullInventoryClient, error) {
-	stream := wrap.NewClientServerStream(ctx)
-	server := &pullInventoryApiServerWrapper{stream.Server()}
-	client := &pullInventoryApiClientWrapper{stream.Client()}
-	go func() {
-		err := w.server.PullInventory(in, server)
-		stream.Close(err)
-	}()
-	return client, nil
-}
-
-type pullInventoryApiClientWrapper struct {
-	grpc.ClientStream
-}
-
-func (w *pullInventoryApiClientWrapper) Recv() (*traits.PullInventoryResponse, error) {
-	m := new(traits.PullInventoryResponse)
-	if err := w.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-type pullInventoryApiServerWrapper struct {
-	grpc.ServerStream
-}
-
-func (s *pullInventoryApiServerWrapper) Send(response *traits.PullInventoryResponse) error {
-	return s.ServerStream.SendMsg(response)
-}
-
-func (w *apiWrapper) Dispense(ctx context.Context, req *traits.DispenseRequest, _ ...grpc.CallOption) (*traits.Consumable_Stock, error) {
-	return w.server.Dispense(ctx, req)
-}
-
-func (w *apiWrapper) StopDispense(ctx context.Context, req *traits.StopDispenseRequest, _ ...grpc.CallOption) (*traits.Consumable_Stock, error) {
-	return w.server.StopDispense(ctx, req)
 }

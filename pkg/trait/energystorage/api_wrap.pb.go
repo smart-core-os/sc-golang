@@ -3,18 +3,23 @@
 package energystorage
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
-	grpc "google.golang.org/grpc"
 )
 
 // WrapApi	adapts a traits.EnergyStorageApiServer	and presents it as a traits.EnergyStorageApiClient
 func WrapApi(server traits.EnergyStorageApiServer) traits.EnergyStorageApiClient {
-	return &apiWrapper{server}
+	conn := wrap.ServerToClient(traits.EnergyStorageApi_ServiceDesc, server)
+	client := traits.NewEnergyStorageApiClient(conn)
+	return &apiWrapper{
+		EnergyStorageApiClient: client,
+		server:                 server,
+	}
 }
 
 type apiWrapper struct {
+	traits.EnergyStorageApiClient
+
 	server traits.EnergyStorageApiServer
 }
 
@@ -29,43 +34,4 @@ func (w *apiWrapper) UnwrapServer() traits.EnergyStorageApiServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *apiWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *apiWrapper) GetEnergyLevel(ctx context.Context, req *traits.GetEnergyLevelRequest, _ ...grpc.CallOption) (*traits.EnergyLevel, error) {
-	return w.server.GetEnergyLevel(ctx, req)
-}
-
-func (w *apiWrapper) PullEnergyLevel(ctx context.Context, in *traits.PullEnergyLevelRequest, opts ...grpc.CallOption) (traits.EnergyStorageApi_PullEnergyLevelClient, error) {
-	stream := wrap.NewClientServerStream(ctx)
-	server := &pullEnergyLevelApiServerWrapper{stream.Server()}
-	client := &pullEnergyLevelApiClientWrapper{stream.Client()}
-	go func() {
-		err := w.server.PullEnergyLevel(in, server)
-		stream.Close(err)
-	}()
-	return client, nil
-}
-
-type pullEnergyLevelApiClientWrapper struct {
-	grpc.ClientStream
-}
-
-func (w *pullEnergyLevelApiClientWrapper) Recv() (*traits.PullEnergyLevelResponse, error) {
-	m := new(traits.PullEnergyLevelResponse)
-	if err := w.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-type pullEnergyLevelApiServerWrapper struct {
-	grpc.ServerStream
-}
-
-func (s *pullEnergyLevelApiServerWrapper) Send(response *traits.PullEnergyLevelResponse) error {
-	return s.ServerStream.SendMsg(response)
-}
-
-func (w *apiWrapper) Charge(ctx context.Context, req *traits.ChargeRequest, _ ...grpc.CallOption) (*traits.ChargeResponse, error) {
-	return w.server.Charge(ctx, req)
 }

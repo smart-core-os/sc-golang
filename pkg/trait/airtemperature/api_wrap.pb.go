@@ -3,18 +3,23 @@
 package airtemperature
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
-	grpc "google.golang.org/grpc"
 )
 
 // WrapApi	adapts a traits.AirTemperatureApiServer	and presents it as a traits.AirTemperatureApiClient
 func WrapApi(server traits.AirTemperatureApiServer) traits.AirTemperatureApiClient {
-	return &apiWrapper{server}
+	conn := wrap.ServerToClient(traits.AirTemperatureApi_ServiceDesc, server)
+	client := traits.NewAirTemperatureApiClient(conn)
+	return &apiWrapper{
+		AirTemperatureApiClient: client,
+		server:                  server,
+	}
 }
 
 type apiWrapper struct {
+	traits.AirTemperatureApiClient
+
 	server traits.AirTemperatureApiServer
 }
 
@@ -29,43 +34,4 @@ func (w *apiWrapper) UnwrapServer() traits.AirTemperatureApiServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *apiWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *apiWrapper) GetAirTemperature(ctx context.Context, req *traits.GetAirTemperatureRequest, _ ...grpc.CallOption) (*traits.AirTemperature, error) {
-	return w.server.GetAirTemperature(ctx, req)
-}
-
-func (w *apiWrapper) UpdateAirTemperature(ctx context.Context, req *traits.UpdateAirTemperatureRequest, _ ...grpc.CallOption) (*traits.AirTemperature, error) {
-	return w.server.UpdateAirTemperature(ctx, req)
-}
-
-func (w *apiWrapper) PullAirTemperature(ctx context.Context, in *traits.PullAirTemperatureRequest, opts ...grpc.CallOption) (traits.AirTemperatureApi_PullAirTemperatureClient, error) {
-	stream := wrap.NewClientServerStream(ctx)
-	server := &pullAirTemperatureApiServerWrapper{stream.Server()}
-	client := &pullAirTemperatureApiClientWrapper{stream.Client()}
-	go func() {
-		err := w.server.PullAirTemperature(in, server)
-		stream.Close(err)
-	}()
-	return client, nil
-}
-
-type pullAirTemperatureApiClientWrapper struct {
-	grpc.ClientStream
-}
-
-func (w *pullAirTemperatureApiClientWrapper) Recv() (*traits.PullAirTemperatureResponse, error) {
-	m := new(traits.PullAirTemperatureResponse)
-	if err := w.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-type pullAirTemperatureApiServerWrapper struct {
-	grpc.ServerStream
-}
-
-func (s *pullAirTemperatureApiServerWrapper) Send(response *traits.PullAirTemperatureResponse) error {
-	return s.ServerStream.SendMsg(response)
 }

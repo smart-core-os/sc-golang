@@ -3,17 +3,23 @@
 package occupancysensor
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
-	grpc "google.golang.org/grpc"
+	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
 )
 
 // WrapInfo	adapts a traits.OccupancySensorInfoServer	and presents it as a traits.OccupancySensorInfoClient
 func WrapInfo(server traits.OccupancySensorInfoServer) traits.OccupancySensorInfoClient {
-	return &infoWrapper{server}
+	conn := wrap.ServerToClient(traits.OccupancySensorInfo_ServiceDesc, server)
+	client := traits.NewOccupancySensorInfoClient(conn)
+	return &infoWrapper{
+		OccupancySensorInfoClient: client,
+		server:                    server,
+	}
 }
 
 type infoWrapper struct {
+	traits.OccupancySensorInfoClient
+
 	server traits.OccupancySensorInfoServer
 }
 
@@ -28,8 +34,4 @@ func (w *infoWrapper) UnwrapServer() traits.OccupancySensorInfoServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *infoWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *infoWrapper) DescribeOccupancy(ctx context.Context, req *traits.DescribeOccupancyRequest, _ ...grpc.CallOption) (*traits.OccupancySupport, error) {
-	return w.server.DescribeOccupancy(ctx, req)
 }

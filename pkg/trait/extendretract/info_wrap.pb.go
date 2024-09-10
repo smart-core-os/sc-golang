@@ -3,17 +3,23 @@
 package extendretract
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
-	grpc "google.golang.org/grpc"
+	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
 )
 
 // WrapInfo	adapts a traits.ExtendRetractInfoServer	and presents it as a traits.ExtendRetractInfoClient
 func WrapInfo(server traits.ExtendRetractInfoServer) traits.ExtendRetractInfoClient {
-	return &infoWrapper{server}
+	conn := wrap.ServerToClient(traits.ExtendRetractInfo_ServiceDesc, server)
+	client := traits.NewExtendRetractInfoClient(conn)
+	return &infoWrapper{
+		ExtendRetractInfoClient: client,
+		server:                  server,
+	}
 }
 
 type infoWrapper struct {
+	traits.ExtendRetractInfoClient
+
 	server traits.ExtendRetractInfoServer
 }
 
@@ -28,8 +34,4 @@ func (w *infoWrapper) UnwrapServer() traits.ExtendRetractInfoServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *infoWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *infoWrapper) DescribeExtension(ctx context.Context, req *traits.DescribeExtensionRequest, _ ...grpc.CallOption) (*traits.ExtensionSupport, error) {
-	return w.server.DescribeExtension(ctx, req)
 }

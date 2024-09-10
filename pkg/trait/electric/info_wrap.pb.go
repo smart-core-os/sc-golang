@@ -4,14 +4,22 @@ package electric
 
 import (
 	traits "github.com/smart-core-os/sc-api/go/traits"
+	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
 )
 
 // WrapInfo	adapts a traits.ElectricInfoServer	and presents it as a traits.ElectricInfoClient
 func WrapInfo(server traits.ElectricInfoServer) traits.ElectricInfoClient {
-	return &infoWrapper{server}
+	conn := wrap.ServerToClient(traits.ElectricInfo_ServiceDesc, server)
+	client := traits.NewElectricInfoClient(conn)
+	return &infoWrapper{
+		ElectricInfoClient: client,
+		server:             server,
+	}
 }
 
 type infoWrapper struct {
+	traits.ElectricInfoClient
+
 	server traits.ElectricInfoServer
 }
 

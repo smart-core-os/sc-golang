@@ -3,18 +3,23 @@
 package mode
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
-	grpc "google.golang.org/grpc"
 )
 
 // WrapApi	adapts a traits.ModeApiServer	and presents it as a traits.ModeApiClient
 func WrapApi(server traits.ModeApiServer) traits.ModeApiClient {
-	return &apiWrapper{server}
+	conn := wrap.ServerToClient(traits.ModeApi_ServiceDesc, server)
+	client := traits.NewModeApiClient(conn)
+	return &apiWrapper{
+		ModeApiClient: client,
+		server:        server,
+	}
 }
 
 type apiWrapper struct {
+	traits.ModeApiClient
+
 	server traits.ModeApiServer
 }
 
@@ -29,43 +34,4 @@ func (w *apiWrapper) UnwrapServer() traits.ModeApiServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *apiWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *apiWrapper) GetModeValues(ctx context.Context, req *traits.GetModeValuesRequest, _ ...grpc.CallOption) (*traits.ModeValues, error) {
-	return w.server.GetModeValues(ctx, req)
-}
-
-func (w *apiWrapper) UpdateModeValues(ctx context.Context, req *traits.UpdateModeValuesRequest, _ ...grpc.CallOption) (*traits.ModeValues, error) {
-	return w.server.UpdateModeValues(ctx, req)
-}
-
-func (w *apiWrapper) PullModeValues(ctx context.Context, in *traits.PullModeValuesRequest, opts ...grpc.CallOption) (traits.ModeApi_PullModeValuesClient, error) {
-	stream := wrap.NewClientServerStream(ctx)
-	server := &pullModeValuesApiServerWrapper{stream.Server()}
-	client := &pullModeValuesApiClientWrapper{stream.Client()}
-	go func() {
-		err := w.server.PullModeValues(in, server)
-		stream.Close(err)
-	}()
-	return client, nil
-}
-
-type pullModeValuesApiClientWrapper struct {
-	grpc.ClientStream
-}
-
-func (w *pullModeValuesApiClientWrapper) Recv() (*traits.PullModeValuesResponse, error) {
-	m := new(traits.PullModeValuesResponse)
-	if err := w.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-type pullModeValuesApiServerWrapper struct {
-	grpc.ServerStream
-}
-
-func (s *pullModeValuesApiServerWrapper) Send(response *traits.PullModeValuesResponse) error {
-	return s.ServerStream.SendMsg(response)
 }

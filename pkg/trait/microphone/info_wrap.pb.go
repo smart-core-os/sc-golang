@@ -3,17 +3,23 @@
 package microphone
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
-	grpc "google.golang.org/grpc"
+	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
 )
 
 // WrapInfo	adapts a traits.MicrophoneInfoServer	and presents it as a traits.MicrophoneInfoClient
 func WrapInfo(server traits.MicrophoneInfoServer) traits.MicrophoneInfoClient {
-	return &infoWrapper{server}
+	conn := wrap.ServerToClient(traits.MicrophoneInfo_ServiceDesc, server)
+	client := traits.NewMicrophoneInfoClient(conn)
+	return &infoWrapper{
+		MicrophoneInfoClient: client,
+		server:               server,
+	}
 }
 
 type infoWrapper struct {
+	traits.MicrophoneInfoClient
+
 	server traits.MicrophoneInfoServer
 }
 
@@ -28,8 +34,4 @@ func (w *infoWrapper) UnwrapServer() traits.MicrophoneInfoServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *infoWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *infoWrapper) DescribeGain(ctx context.Context, req *traits.DescribeGainRequest, _ ...grpc.CallOption) (*traits.GainSupport, error) {
-	return w.server.DescribeGain(ctx, req)
 }

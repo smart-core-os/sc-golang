@@ -3,17 +3,23 @@
 package ptz
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
-	grpc "google.golang.org/grpc"
+	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
 )
 
 // WrapInfo	adapts a traits.PtzInfoServer	and presents it as a traits.PtzInfoClient
 func WrapInfo(server traits.PtzInfoServer) traits.PtzInfoClient {
-	return &infoWrapper{server}
+	conn := wrap.ServerToClient(traits.PtzInfo_ServiceDesc, server)
+	client := traits.NewPtzInfoClient(conn)
+	return &infoWrapper{
+		PtzInfoClient: client,
+		server:        server,
+	}
 }
 
 type infoWrapper struct {
+	traits.PtzInfoClient
+
 	server traits.PtzInfoServer
 }
 
@@ -28,8 +34,4 @@ func (w *infoWrapper) UnwrapServer() traits.PtzInfoServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *infoWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *infoWrapper) DescribePtz(ctx context.Context, req *traits.DescribePtzRequest, _ ...grpc.CallOption) (*traits.PtzSupport, error) {
-	return w.server.DescribePtz(ctx, req)
 }

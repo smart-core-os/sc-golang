@@ -3,17 +3,23 @@
 package mode
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
-	grpc "google.golang.org/grpc"
+	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
 )
 
 // WrapInfo	adapts a traits.ModeInfoServer	and presents it as a traits.ModeInfoClient
 func WrapInfo(server traits.ModeInfoServer) traits.ModeInfoClient {
-	return &infoWrapper{server}
+	conn := wrap.ServerToClient(traits.ModeInfo_ServiceDesc, server)
+	client := traits.NewModeInfoClient(conn)
+	return &infoWrapper{
+		ModeInfoClient: client,
+		server:         server,
+	}
 }
 
 type infoWrapper struct {
+	traits.ModeInfoClient
+
 	server traits.ModeInfoServer
 }
 
@@ -28,8 +34,4 @@ func (w *infoWrapper) UnwrapServer() traits.ModeInfoServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *infoWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *infoWrapper) DescribeModes(ctx context.Context, req *traits.DescribeModesRequest, _ ...grpc.CallOption) (*traits.ModesSupport, error) {
-	return w.server.DescribeModes(ctx, req)
 }

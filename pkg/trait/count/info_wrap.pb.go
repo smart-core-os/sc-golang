@@ -3,17 +3,23 @@
 package count
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
-	grpc "google.golang.org/grpc"
+	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
 )
 
 // WrapInfo	adapts a traits.CountInfoServer	and presents it as a traits.CountInfoClient
 func WrapInfo(server traits.CountInfoServer) traits.CountInfoClient {
-	return &infoWrapper{server}
+	conn := wrap.ServerToClient(traits.CountInfo_ServiceDesc, server)
+	client := traits.NewCountInfoClient(conn)
+	return &infoWrapper{
+		CountInfoClient: client,
+		server:          server,
+	}
 }
 
 type infoWrapper struct {
+	traits.CountInfoClient
+
 	server traits.CountInfoServer
 }
 
@@ -28,8 +34,4 @@ func (w *infoWrapper) UnwrapServer() traits.CountInfoServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *infoWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *infoWrapper) DescribeCount(ctx context.Context, req *traits.DescribeCountRequest, _ ...grpc.CallOption) (*traits.CountSupport, error) {
-	return w.server.DescribeCount(ctx, req)
 }

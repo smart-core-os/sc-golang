@@ -7,10 +7,17 @@ package {{.PackageName}}
 
 // Wrap{{.Underlying.Exported}}	adapts a {{.QualifiedServerName}}	and presents it as a {{.QualifiedClientName}}
 func Wrap{{.Underlying.Exported}}(server {{.QualifiedServerName}}) {{.QualifiedClientName}} {
-	return &{{.Wrapper.Private}}{server}
+  conn := {{.WrapServerToClient}}({{.QualifiedServiceDesc}}, server)
+  client := {{.QualifiedClientConstructor}}(conn)
+	return &{{.Wrapper.Private}}{
+    {{.ClientName}}: client,
+    server: server,
+	}
 }
 
 type {{.Wrapper.Private}} struct {
+  {{.QualifiedClientName}}
+
 	server {{.QualifiedServerName}}
 }
 
@@ -26,42 +33,3 @@ func (w *{{$.Wrapper.Private}}) UnwrapServer() {{.QualifiedServerName}} {
 func (w *{{$.Wrapper.Private}}) Unwrap() any {
   return w.UnwrapServer()
 }
-
-{{range .Methods}}
-{{- /*gotype: github.com/smart-core-os/sc-golang/cmd/protoc-gen-wrapper.ServiceMethod*/ -}}
-{{if .Streaming}}
-func (w *{{$.Wrapper.Private}}){{.GoName}}(ctx context.Context, in *{{.QualifiedGoInput}}, opts ...grpc.CallOption) ({{.QualifiedClientStream}}, error) {
-	stream := wrap.NewClientServerStream(ctx)
-	server := &{{.GoNamePrivate}}{{$.Underlying.Exported}}ServerWrapper{stream.Server()}
-	client := &{{.GoNamePrivate}}{{$.Underlying.Exported}}ClientWrapper{stream.Client()}
-	go func () {
-		err := w.server.{{.GoName}}(in, server)
-		stream.Close(err)
-	}()
-	return client, nil
-}
-type {{.GoNamePrivate}}{{$.Underlying.Exported}}ClientWrapper struct {
-	grpc.ClientStream
-}
-
-func (w *{{.GoNamePrivate}}{{$.Underlying.Exported}}ClientWrapper) Recv() (*{{.QualifiedGoOutput}}, error) {
-	m := new({{.QualifiedGoOutput}})
-	if err := w.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-type {{.GoNamePrivate}}{{$.Underlying.Exported}}ServerWrapper struct {
-	grpc.ServerStream
-}
-
-func (s *{{.GoNamePrivate}}{{$.Underlying.Exported}}ServerWrapper) Send(response *{{.QualifiedGoOutput}}) error {
-	return s.ServerStream.SendMsg(response)
-}
-{{else}}
-func (w *{{$.Wrapper.Private}}){{.GoName}}(ctx context.Context, req *{{.QualifiedGoInput}}, _ ...grpc.CallOption) (*{{.QualifiedGoOutput}}, error) {
-	return w.server.{{.GoName}}(ctx, req)
-}
-{{end}}
-{{end}}

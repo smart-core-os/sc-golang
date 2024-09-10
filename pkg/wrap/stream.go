@@ -160,7 +160,6 @@ func (s *serverStream) SendMsg(m any) error {
 }
 
 func (s *serverStream) RecvMsg(m any) error {
-	s.sendHeaderIfNeeded()
 	select {
 	case <-s.Context().Done():
 		return s.closeErrLocked()

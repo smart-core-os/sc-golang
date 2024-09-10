@@ -5,9 +5,13 @@ import (
 	"errors"
 	"io"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/smart-core-os/sc-api/go/traits"
@@ -61,16 +65,71 @@ func TestClientServerStream_headerReturnsOnClose(t *testing.T) {
 	})
 }
 
-func TestClientStream_Header(t *testing.T) {
-	// check that closing the stream causes Header to nil,nil as documented on the interface
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	s := NewClientServerStream(ctx)
-	s.Close(errors.New("some error"))
-	h, err := s.Client().Header()
-	if h != nil || err != nil {
-		t.Errorf("Header = %v, %v; want nil, nil", h, err)
-	}
+// tests that the server can send headers after receiving a message from the client
+// This is a regression test to detect a bug in ClientServerStream where calling ServerStream.RecvMsg (including the
+// implicit RecvMsg for the request in a server-streaming RPC) would send the headers to the client immediately,
+// which is not the expected behavior.
+func TestClientServerStream_HeadersAfterRecv(t *testing.T) {
+	s := NewClientServerStream(context.Background())
+	client := s.Client()
+	server := s.Server()
+
+	var grp sync.WaitGroup
+	grp.Add(2)
+
+	// client code
+	// simulate a client performing a server-streaming call:
+	// send the request message immediately, then close the stream
+	go func() {
+		defer grp.Done()
+		err := client.SendMsg(&emptypb.Empty{})
+		if err != nil {
+			t.Errorf("client SendMsg: %v", err)
+		}
+		err = client.CloseSend()
+		if err != nil {
+			t.Errorf("client CloseSend: %v", err)
+		}
+
+		// receive first message, so that headers are available
+		err = client.RecvMsg(&emptypb.Empty{})
+		if err != nil {
+			t.Errorf("client RecvMsg: %v", err)
+		}
+		md, err := client.Header()
+		if err != nil {
+			t.Errorf("client Header error: %v", err)
+		}
+		expectMD := metadata.Pairs("a", "avalue", "b", "bvalue")
+		if !maps.EqualFunc(md, expectMD, slices.Equal[[]string]) {
+			t.Errorf("client Header = %v; want %v", md, expectMD)
+		}
+	}()
+
+	// server code
+	// simulate a server performing a server-streaming RPC:
+	// first receive the request message, then set some headers, then send a response
+	go func() {
+		defer grp.Done()
+
+		req := &emptypb.Empty{}
+		err := server.RecvMsg(req)
+		if err != nil {
+			t.Errorf("server RecvMsg: %v", err)
+		}
+
+		err = server.SendHeader(metadata.Pairs("a", "avalue", "b", "bvalue"))
+		if err != nil {
+			t.Errorf("server SetHeader: %v", err)
+		}
+
+		err = server.SendMsg(&emptypb.Empty{})
+		if err != nil {
+			t.Errorf("server SendMsg: %v", err)
+		}
+	}()
+
+	grp.Wait()
 }
 
 func assertHeaderErrOnClose(t *testing.T, closeErr, wantErr error) {

@@ -4,14 +4,22 @@ package hail
 
 import (
 	traits "github.com/smart-core-os/sc-api/go/traits"
+	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
 )
 
 // WrapInfo	adapts a traits.HailInfoServer	and presents it as a traits.HailInfoClient
 func WrapInfo(server traits.HailInfoServer) traits.HailInfoClient {
-	return &infoWrapper{server}
+	conn := wrap.ServerToClient(traits.HailInfo_ServiceDesc, server)
+	client := traits.NewHailInfoClient(conn)
+	return &infoWrapper{
+		HailInfoClient: client,
+		server:         server,
+	}
 }
 
 type infoWrapper struct {
+	traits.HailInfoClient
+
 	server traits.HailInfoServer
 }
 

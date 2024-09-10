@@ -3,18 +3,22 @@
 package electric
 
 import (
-	context "context"
-	traits "github.com/smart-core-os/sc-api/go/traits"
-	grpc "google.golang.org/grpc"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
+	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
 )
 
 // WrapMemorySettingsApi	adapts a MemorySettingsApiServer	and presents it as a MemorySettingsApiClient
 func WrapMemorySettingsApi(server MemorySettingsApiServer) MemorySettingsApiClient {
-	return &memorySettingsApiWrapper{server}
+	conn := wrap.ServerToClient(MemorySettingsApi_ServiceDesc, server)
+	client := NewMemorySettingsApiClient(conn)
+	return &memorySettingsApiWrapper{
+		MemorySettingsApiClient: client,
+		server:                  server,
+	}
 }
 
 type memorySettingsApiWrapper struct {
+	MemorySettingsApiClient
+
 	server MemorySettingsApiServer
 }
 
@@ -29,20 +33,4 @@ func (w *memorySettingsApiWrapper) UnwrapServer() MemorySettingsApiServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *memorySettingsApiWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *memorySettingsApiWrapper) UpdateDemand(ctx context.Context, req *UpdateDemandRequest, _ ...grpc.CallOption) (*traits.ElectricDemand, error) {
-	return w.server.UpdateDemand(ctx, req)
-}
-
-func (w *memorySettingsApiWrapper) CreateMode(ctx context.Context, req *CreateModeRequest, _ ...grpc.CallOption) (*traits.ElectricMode, error) {
-	return w.server.CreateMode(ctx, req)
-}
-
-func (w *memorySettingsApiWrapper) UpdateMode(ctx context.Context, req *UpdateModeRequest, _ ...grpc.CallOption) (*traits.ElectricMode, error) {
-	return w.server.UpdateMode(ctx, req)
-}
-
-func (w *memorySettingsApiWrapper) DeleteMode(ctx context.Context, req *DeleteModeRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
-	return w.server.DeleteMode(ctx, req)
 }

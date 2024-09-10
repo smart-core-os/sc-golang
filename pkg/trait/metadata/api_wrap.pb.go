@@ -3,18 +3,23 @@
 package metadata
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
-	grpc "google.golang.org/grpc"
 )
 
 // WrapApi	adapts a traits.MetadataApiServer	and presents it as a traits.MetadataApiClient
 func WrapApi(server traits.MetadataApiServer) traits.MetadataApiClient {
-	return &apiWrapper{server}
+	conn := wrap.ServerToClient(traits.MetadataApi_ServiceDesc, server)
+	client := traits.NewMetadataApiClient(conn)
+	return &apiWrapper{
+		MetadataApiClient: client,
+		server:            server,
+	}
 }
 
 type apiWrapper struct {
+	traits.MetadataApiClient
+
 	server traits.MetadataApiServer
 }
 
@@ -29,39 +34,4 @@ func (w *apiWrapper) UnwrapServer() traits.MetadataApiServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *apiWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *apiWrapper) GetMetadata(ctx context.Context, req *traits.GetMetadataRequest, _ ...grpc.CallOption) (*traits.Metadata, error) {
-	return w.server.GetMetadata(ctx, req)
-}
-
-func (w *apiWrapper) PullMetadata(ctx context.Context, in *traits.PullMetadataRequest, opts ...grpc.CallOption) (traits.MetadataApi_PullMetadataClient, error) {
-	stream := wrap.NewClientServerStream(ctx)
-	server := &pullMetadataApiServerWrapper{stream.Server()}
-	client := &pullMetadataApiClientWrapper{stream.Client()}
-	go func() {
-		err := w.server.PullMetadata(in, server)
-		stream.Close(err)
-	}()
-	return client, nil
-}
-
-type pullMetadataApiClientWrapper struct {
-	grpc.ClientStream
-}
-
-func (w *pullMetadataApiClientWrapper) Recv() (*traits.PullMetadataResponse, error) {
-	m := new(traits.PullMetadataResponse)
-	if err := w.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-type pullMetadataApiServerWrapper struct {
-	grpc.ServerStream
-}
-
-func (s *pullMetadataApiServerWrapper) Send(response *traits.PullMetadataResponse) error {
-	return s.ServerStream.SendMsg(response)
 }

@@ -3,18 +3,23 @@
 package fanspeed
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
-	grpc "google.golang.org/grpc"
 )
 
 // WrapApi	adapts a traits.FanSpeedApiServer	and presents it as a traits.FanSpeedApiClient
 func WrapApi(server traits.FanSpeedApiServer) traits.FanSpeedApiClient {
-	return &apiWrapper{server}
+	conn := wrap.ServerToClient(traits.FanSpeedApi_ServiceDesc, server)
+	client := traits.NewFanSpeedApiClient(conn)
+	return &apiWrapper{
+		FanSpeedApiClient: client,
+		server:            server,
+	}
 }
 
 type apiWrapper struct {
+	traits.FanSpeedApiClient
+
 	server traits.FanSpeedApiServer
 }
 
@@ -29,47 +34,4 @@ func (w *apiWrapper) UnwrapServer() traits.FanSpeedApiServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *apiWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *apiWrapper) GetFanSpeed(ctx context.Context, req *traits.GetFanSpeedRequest, _ ...grpc.CallOption) (*traits.FanSpeed, error) {
-	return w.server.GetFanSpeed(ctx, req)
-}
-
-func (w *apiWrapper) UpdateFanSpeed(ctx context.Context, req *traits.UpdateFanSpeedRequest, _ ...grpc.CallOption) (*traits.FanSpeed, error) {
-	return w.server.UpdateFanSpeed(ctx, req)
-}
-
-func (w *apiWrapper) PullFanSpeed(ctx context.Context, in *traits.PullFanSpeedRequest, opts ...grpc.CallOption) (traits.FanSpeedApi_PullFanSpeedClient, error) {
-	stream := wrap.NewClientServerStream(ctx)
-	server := &pullFanSpeedApiServerWrapper{stream.Server()}
-	client := &pullFanSpeedApiClientWrapper{stream.Client()}
-	go func() {
-		err := w.server.PullFanSpeed(in, server)
-		stream.Close(err)
-	}()
-	return client, nil
-}
-
-type pullFanSpeedApiClientWrapper struct {
-	grpc.ClientStream
-}
-
-func (w *pullFanSpeedApiClientWrapper) Recv() (*traits.PullFanSpeedResponse, error) {
-	m := new(traits.PullFanSpeedResponse)
-	if err := w.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-type pullFanSpeedApiServerWrapper struct {
-	grpc.ServerStream
-}
-
-func (s *pullFanSpeedApiServerWrapper) Send(response *traits.PullFanSpeedResponse) error {
-	return s.ServerStream.SendMsg(response)
-}
-
-func (w *apiWrapper) ReverseFanSpeedDirection(ctx context.Context, req *traits.ReverseFanSpeedDirectionRequest, _ ...grpc.CallOption) (*traits.FanSpeed, error) {
-	return w.server.ReverseFanSpeedDirection(ctx, req)
 }

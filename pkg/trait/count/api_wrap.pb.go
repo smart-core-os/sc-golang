@@ -3,18 +3,23 @@
 package count
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
-	grpc "google.golang.org/grpc"
 )
 
 // WrapApi	adapts a traits.CountApiServer	and presents it as a traits.CountApiClient
 func WrapApi(server traits.CountApiServer) traits.CountApiClient {
-	return &apiWrapper{server}
+	conn := wrap.ServerToClient(traits.CountApi_ServiceDesc, server)
+	client := traits.NewCountApiClient(conn)
+	return &apiWrapper{
+		CountApiClient: client,
+		server:         server,
+	}
 }
 
 type apiWrapper struct {
+	traits.CountApiClient
+
 	server traits.CountApiServer
 }
 
@@ -29,47 +34,4 @@ func (w *apiWrapper) UnwrapServer() traits.CountApiServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *apiWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *apiWrapper) GetCount(ctx context.Context, req *traits.GetCountRequest, _ ...grpc.CallOption) (*traits.Count, error) {
-	return w.server.GetCount(ctx, req)
-}
-
-func (w *apiWrapper) ResetCount(ctx context.Context, req *traits.ResetCountRequest, _ ...grpc.CallOption) (*traits.Count, error) {
-	return w.server.ResetCount(ctx, req)
-}
-
-func (w *apiWrapper) UpdateCount(ctx context.Context, req *traits.UpdateCountRequest, _ ...grpc.CallOption) (*traits.Count, error) {
-	return w.server.UpdateCount(ctx, req)
-}
-
-func (w *apiWrapper) PullCounts(ctx context.Context, in *traits.PullCountsRequest, opts ...grpc.CallOption) (traits.CountApi_PullCountsClient, error) {
-	stream := wrap.NewClientServerStream(ctx)
-	server := &pullCountsApiServerWrapper{stream.Server()}
-	client := &pullCountsApiClientWrapper{stream.Client()}
-	go func() {
-		err := w.server.PullCounts(in, server)
-		stream.Close(err)
-	}()
-	return client, nil
-}
-
-type pullCountsApiClientWrapper struct {
-	grpc.ClientStream
-}
-
-func (w *pullCountsApiClientWrapper) Recv() (*traits.PullCountsResponse, error) {
-	m := new(traits.PullCountsResponse)
-	if err := w.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-type pullCountsApiServerWrapper struct {
-	grpc.ServerStream
-}
-
-func (s *pullCountsApiServerWrapper) Send(response *traits.PullCountsResponse) error {
-	return s.ServerStream.SendMsg(response)
 }

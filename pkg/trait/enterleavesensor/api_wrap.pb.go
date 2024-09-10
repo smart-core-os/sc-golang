@@ -3,18 +3,23 @@
 package enterleavesensor
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
-	grpc "google.golang.org/grpc"
 )
 
 // WrapApi	adapts a traits.EnterLeaveSensorApiServer	and presents it as a traits.EnterLeaveSensorApiClient
 func WrapApi(server traits.EnterLeaveSensorApiServer) traits.EnterLeaveSensorApiClient {
-	return &apiWrapper{server}
+	conn := wrap.ServerToClient(traits.EnterLeaveSensorApi_ServiceDesc, server)
+	client := traits.NewEnterLeaveSensorApiClient(conn)
+	return &apiWrapper{
+		EnterLeaveSensorApiClient: client,
+		server:                    server,
+	}
 }
 
 type apiWrapper struct {
+	traits.EnterLeaveSensorApiClient
+
 	server traits.EnterLeaveSensorApiServer
 }
 
@@ -29,43 +34,4 @@ func (w *apiWrapper) UnwrapServer() traits.EnterLeaveSensorApiServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *apiWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *apiWrapper) PullEnterLeaveEvents(ctx context.Context, in *traits.PullEnterLeaveEventsRequest, opts ...grpc.CallOption) (traits.EnterLeaveSensorApi_PullEnterLeaveEventsClient, error) {
-	stream := wrap.NewClientServerStream(ctx)
-	server := &pullEnterLeaveEventsApiServerWrapper{stream.Server()}
-	client := &pullEnterLeaveEventsApiClientWrapper{stream.Client()}
-	go func() {
-		err := w.server.PullEnterLeaveEvents(in, server)
-		stream.Close(err)
-	}()
-	return client, nil
-}
-
-type pullEnterLeaveEventsApiClientWrapper struct {
-	grpc.ClientStream
-}
-
-func (w *pullEnterLeaveEventsApiClientWrapper) Recv() (*traits.PullEnterLeaveEventsResponse, error) {
-	m := new(traits.PullEnterLeaveEventsResponse)
-	if err := w.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-type pullEnterLeaveEventsApiServerWrapper struct {
-	grpc.ServerStream
-}
-
-func (s *pullEnterLeaveEventsApiServerWrapper) Send(response *traits.PullEnterLeaveEventsResponse) error {
-	return s.ServerStream.SendMsg(response)
-}
-
-func (w *apiWrapper) GetEnterLeaveEvent(ctx context.Context, req *traits.GetEnterLeaveEventRequest, _ ...grpc.CallOption) (*traits.EnterLeaveEvent, error) {
-	return w.server.GetEnterLeaveEvent(ctx, req)
-}
-
-func (w *apiWrapper) ResetEnterLeaveTotals(ctx context.Context, req *traits.ResetEnterLeaveTotalsRequest, _ ...grpc.CallOption) (*traits.ResetEnterLeaveTotalsResponse, error) {
-	return w.server.ResetEnterLeaveTotals(ctx, req)
 }

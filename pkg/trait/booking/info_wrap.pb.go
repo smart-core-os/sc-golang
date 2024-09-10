@@ -3,17 +3,23 @@
 package booking
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
-	grpc "google.golang.org/grpc"
+	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
 )
 
 // WrapInfo	adapts a traits.BookingInfoServer	and presents it as a traits.BookingInfoClient
 func WrapInfo(server traits.BookingInfoServer) traits.BookingInfoClient {
-	return &infoWrapper{server}
+	conn := wrap.ServerToClient(traits.BookingInfo_ServiceDesc, server)
+	client := traits.NewBookingInfoClient(conn)
+	return &infoWrapper{
+		BookingInfoClient: client,
+		server:            server,
+	}
 }
 
 type infoWrapper struct {
+	traits.BookingInfoClient
+
 	server traits.BookingInfoServer
 }
 
@@ -28,8 +34,4 @@ func (w *infoWrapper) UnwrapServer() traits.BookingInfoServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *infoWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *infoWrapper) DescribeBooking(ctx context.Context, req *traits.DescribeBookingRequest, _ ...grpc.CallOption) (*traits.BookingSupport, error) {
-	return w.server.DescribeBooking(ctx, req)
 }

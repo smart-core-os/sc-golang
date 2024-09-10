@@ -4,14 +4,22 @@ package enterleavesensor
 
 import (
 	traits "github.com/smart-core-os/sc-api/go/traits"
+	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
 )
 
 // WrapInfo	adapts a traits.EnterLeaveSensorInfoServer	and presents it as a traits.EnterLeaveSensorInfoClient
 func WrapInfo(server traits.EnterLeaveSensorInfoServer) traits.EnterLeaveSensorInfoClient {
-	return &infoWrapper{server}
+	conn := wrap.ServerToClient(traits.EnterLeaveSensorInfo_ServiceDesc, server)
+	client := traits.NewEnterLeaveSensorInfoClient(conn)
+	return &infoWrapper{
+		EnterLeaveSensorInfoClient: client,
+		server:                     server,
+	}
 }
 
 type infoWrapper struct {
+	traits.EnterLeaveSensorInfoClient
+
 	server traits.EnterLeaveSensorInfoServer
 }
 

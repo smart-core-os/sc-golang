@@ -3,18 +3,23 @@
 package light
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
-	grpc "google.golang.org/grpc"
 )
 
 // WrapApi	adapts a traits.LightApiServer	and presents it as a traits.LightApiClient
 func WrapApi(server traits.LightApiServer) traits.LightApiClient {
-	return &apiWrapper{server}
+	conn := wrap.ServerToClient(traits.LightApi_ServiceDesc, server)
+	client := traits.NewLightApiClient(conn)
+	return &apiWrapper{
+		LightApiClient: client,
+		server:         server,
+	}
 }
 
 type apiWrapper struct {
+	traits.LightApiClient
+
 	server traits.LightApiServer
 }
 
@@ -29,43 +34,4 @@ func (w *apiWrapper) UnwrapServer() traits.LightApiServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *apiWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *apiWrapper) UpdateBrightness(ctx context.Context, req *traits.UpdateBrightnessRequest, _ ...grpc.CallOption) (*traits.Brightness, error) {
-	return w.server.UpdateBrightness(ctx, req)
-}
-
-func (w *apiWrapper) GetBrightness(ctx context.Context, req *traits.GetBrightnessRequest, _ ...grpc.CallOption) (*traits.Brightness, error) {
-	return w.server.GetBrightness(ctx, req)
-}
-
-func (w *apiWrapper) PullBrightness(ctx context.Context, in *traits.PullBrightnessRequest, opts ...grpc.CallOption) (traits.LightApi_PullBrightnessClient, error) {
-	stream := wrap.NewClientServerStream(ctx)
-	server := &pullBrightnessApiServerWrapper{stream.Server()}
-	client := &pullBrightnessApiClientWrapper{stream.Client()}
-	go func() {
-		err := w.server.PullBrightness(in, server)
-		stream.Close(err)
-	}()
-	return client, nil
-}
-
-type pullBrightnessApiClientWrapper struct {
-	grpc.ClientStream
-}
-
-func (w *pullBrightnessApiClientWrapper) Recv() (*traits.PullBrightnessResponse, error) {
-	m := new(traits.PullBrightnessResponse)
-	if err := w.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-type pullBrightnessApiServerWrapper struct {
-	grpc.ServerStream
-}
-
-func (s *pullBrightnessApiServerWrapper) Send(response *traits.PullBrightnessResponse) error {
-	return s.ServerStream.SendMsg(response)
 }

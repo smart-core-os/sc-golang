@@ -3,18 +3,23 @@
 package motionsensor
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
-	grpc "google.golang.org/grpc"
 )
 
 // WrapApi	adapts a traits.MotionSensorApiServer	and presents it as a traits.MotionSensorApiClient
 func WrapApi(server traits.MotionSensorApiServer) traits.MotionSensorApiClient {
-	return &apiWrapper{server}
+	conn := wrap.ServerToClient(traits.MotionSensorApi_ServiceDesc, server)
+	client := traits.NewMotionSensorApiClient(conn)
+	return &apiWrapper{
+		MotionSensorApiClient: client,
+		server:                server,
+	}
 }
 
 type apiWrapper struct {
+	traits.MotionSensorApiClient
+
 	server traits.MotionSensorApiServer
 }
 
@@ -29,39 +34,4 @@ func (w *apiWrapper) UnwrapServer() traits.MotionSensorApiServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *apiWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *apiWrapper) GetMotionDetection(ctx context.Context, req *traits.GetMotionDetectionRequest, _ ...grpc.CallOption) (*traits.MotionDetection, error) {
-	return w.server.GetMotionDetection(ctx, req)
-}
-
-func (w *apiWrapper) PullMotionDetections(ctx context.Context, in *traits.PullMotionDetectionRequest, opts ...grpc.CallOption) (traits.MotionSensorApi_PullMotionDetectionsClient, error) {
-	stream := wrap.NewClientServerStream(ctx)
-	server := &pullMotionDetectionsApiServerWrapper{stream.Server()}
-	client := &pullMotionDetectionsApiClientWrapper{stream.Client()}
-	go func() {
-		err := w.server.PullMotionDetections(in, server)
-		stream.Close(err)
-	}()
-	return client, nil
-}
-
-type pullMotionDetectionsApiClientWrapper struct {
-	grpc.ClientStream
-}
-
-func (w *pullMotionDetectionsApiClientWrapper) Recv() (*traits.PullMotionDetectionResponse, error) {
-	m := new(traits.PullMotionDetectionResponse)
-	if err := w.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-type pullMotionDetectionsApiServerWrapper struct {
-	grpc.ServerStream
-}
-
-func (s *pullMotionDetectionsApiServerWrapper) Send(response *traits.PullMotionDetectionResponse) error {
-	return s.ServerStream.SendMsg(response)
 }

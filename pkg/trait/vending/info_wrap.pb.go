@@ -4,14 +4,22 @@ package vending
 
 import (
 	traits "github.com/smart-core-os/sc-api/go/traits"
+	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
 )
 
 // WrapInfo	adapts a traits.VendingInfoServer	and presents it as a traits.VendingInfoClient
 func WrapInfo(server traits.VendingInfoServer) traits.VendingInfoClient {
-	return &infoWrapper{server}
+	conn := wrap.ServerToClient(traits.VendingInfo_ServiceDesc, server)
+	client := traits.NewVendingInfoClient(conn)
+	return &infoWrapper{
+		VendingInfoClient: client,
+		server:            server,
+	}
 }
 
 type infoWrapper struct {
+	traits.VendingInfoClient
+
 	server traits.VendingInfoServer
 }
 

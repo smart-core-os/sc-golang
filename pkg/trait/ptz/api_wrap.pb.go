@@ -3,18 +3,23 @@
 package ptz
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
-	grpc "google.golang.org/grpc"
 )
 
 // WrapApi	adapts a traits.PtzApiServer	and presents it as a traits.PtzApiClient
 func WrapApi(server traits.PtzApiServer) traits.PtzApiClient {
-	return &apiWrapper{server}
+	conn := wrap.ServerToClient(traits.PtzApi_ServiceDesc, server)
+	client := traits.NewPtzApiClient(conn)
+	return &apiWrapper{
+		PtzApiClient: client,
+		server:       server,
+	}
 }
 
 type apiWrapper struct {
+	traits.PtzApiClient
+
 	server traits.PtzApiServer
 }
 
@@ -29,51 +34,4 @@ func (w *apiWrapper) UnwrapServer() traits.PtzApiServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *apiWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *apiWrapper) GetPtz(ctx context.Context, req *traits.GetPtzRequest, _ ...grpc.CallOption) (*traits.Ptz, error) {
-	return w.server.GetPtz(ctx, req)
-}
-
-func (w *apiWrapper) UpdatePtz(ctx context.Context, req *traits.UpdatePtzRequest, _ ...grpc.CallOption) (*traits.Ptz, error) {
-	return w.server.UpdatePtz(ctx, req)
-}
-
-func (w *apiWrapper) Stop(ctx context.Context, req *traits.StopPtzRequest, _ ...grpc.CallOption) (*traits.Ptz, error) {
-	return w.server.Stop(ctx, req)
-}
-
-func (w *apiWrapper) CreatePreset(ctx context.Context, req *traits.CreatePtzPresetRequest, _ ...grpc.CallOption) (*traits.PtzPreset, error) {
-	return w.server.CreatePreset(ctx, req)
-}
-
-func (w *apiWrapper) PullPtz(ctx context.Context, in *traits.PullPtzRequest, opts ...grpc.CallOption) (traits.PtzApi_PullPtzClient, error) {
-	stream := wrap.NewClientServerStream(ctx)
-	server := &pullPtzApiServerWrapper{stream.Server()}
-	client := &pullPtzApiClientWrapper{stream.Client()}
-	go func() {
-		err := w.server.PullPtz(in, server)
-		stream.Close(err)
-	}()
-	return client, nil
-}
-
-type pullPtzApiClientWrapper struct {
-	grpc.ClientStream
-}
-
-func (w *pullPtzApiClientWrapper) Recv() (*traits.PullPtzResponse, error) {
-	m := new(traits.PullPtzResponse)
-	if err := w.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-type pullPtzApiServerWrapper struct {
-	grpc.ServerStream
-}
-
-func (s *pullPtzApiServerWrapper) Send(response *traits.PullPtzResponse) error {
-	return s.ServerStream.SendMsg(response)
 }

@@ -3,18 +3,23 @@
 package publication
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
-	grpc "google.golang.org/grpc"
 )
 
 // WrapApi	adapts a traits.PublicationApiServer	and presents it as a traits.PublicationApiClient
 func WrapApi(server traits.PublicationApiServer) traits.PublicationApiClient {
-	return &apiWrapper{server}
+	conn := wrap.ServerToClient(traits.PublicationApi_ServiceDesc, server)
+	client := traits.NewPublicationApiClient(conn)
+	return &apiWrapper{
+		PublicationApiClient: client,
+		server:               server,
+	}
 }
 
 type apiWrapper struct {
+	traits.PublicationApiClient
+
 	server traits.PublicationApiServer
 }
 
@@ -29,90 +34,4 @@ func (w *apiWrapper) UnwrapServer() traits.PublicationApiServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *apiWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *apiWrapper) CreatePublication(ctx context.Context, req *traits.CreatePublicationRequest, _ ...grpc.CallOption) (*traits.Publication, error) {
-	return w.server.CreatePublication(ctx, req)
-}
-
-func (w *apiWrapper) GetPublication(ctx context.Context, req *traits.GetPublicationRequest, _ ...grpc.CallOption) (*traits.Publication, error) {
-	return w.server.GetPublication(ctx, req)
-}
-
-func (w *apiWrapper) UpdatePublication(ctx context.Context, req *traits.UpdatePublicationRequest, _ ...grpc.CallOption) (*traits.Publication, error) {
-	return w.server.UpdatePublication(ctx, req)
-}
-
-func (w *apiWrapper) DeletePublication(ctx context.Context, req *traits.DeletePublicationRequest, _ ...grpc.CallOption) (*traits.Publication, error) {
-	return w.server.DeletePublication(ctx, req)
-}
-
-func (w *apiWrapper) PullPublication(ctx context.Context, in *traits.PullPublicationRequest, opts ...grpc.CallOption) (traits.PublicationApi_PullPublicationClient, error) {
-	stream := wrap.NewClientServerStream(ctx)
-	server := &pullPublicationApiServerWrapper{stream.Server()}
-	client := &pullPublicationApiClientWrapper{stream.Client()}
-	go func() {
-		err := w.server.PullPublication(in, server)
-		stream.Close(err)
-	}()
-	return client, nil
-}
-
-type pullPublicationApiClientWrapper struct {
-	grpc.ClientStream
-}
-
-func (w *pullPublicationApiClientWrapper) Recv() (*traits.PullPublicationResponse, error) {
-	m := new(traits.PullPublicationResponse)
-	if err := w.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-type pullPublicationApiServerWrapper struct {
-	grpc.ServerStream
-}
-
-func (s *pullPublicationApiServerWrapper) Send(response *traits.PullPublicationResponse) error {
-	return s.ServerStream.SendMsg(response)
-}
-
-func (w *apiWrapper) ListPublications(ctx context.Context, req *traits.ListPublicationsRequest, _ ...grpc.CallOption) (*traits.ListPublicationsResponse, error) {
-	return w.server.ListPublications(ctx, req)
-}
-
-func (w *apiWrapper) PullPublications(ctx context.Context, in *traits.PullPublicationsRequest, opts ...grpc.CallOption) (traits.PublicationApi_PullPublicationsClient, error) {
-	stream := wrap.NewClientServerStream(ctx)
-	server := &pullPublicationsApiServerWrapper{stream.Server()}
-	client := &pullPublicationsApiClientWrapper{stream.Client()}
-	go func() {
-		err := w.server.PullPublications(in, server)
-		stream.Close(err)
-	}()
-	return client, nil
-}
-
-type pullPublicationsApiClientWrapper struct {
-	grpc.ClientStream
-}
-
-func (w *pullPublicationsApiClientWrapper) Recv() (*traits.PullPublicationsResponse, error) {
-	m := new(traits.PullPublicationsResponse)
-	if err := w.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-type pullPublicationsApiServerWrapper struct {
-	grpc.ServerStream
-}
-
-func (s *pullPublicationsApiServerWrapper) Send(response *traits.PullPublicationsResponse) error {
-	return s.ServerStream.SendMsg(response)
-}
-
-func (w *apiWrapper) AcknowledgePublication(ctx context.Context, req *traits.AcknowledgePublicationRequest, _ ...grpc.CallOption) (*traits.Publication, error) {
-	return w.server.AcknowledgePublication(ctx, req)
 }

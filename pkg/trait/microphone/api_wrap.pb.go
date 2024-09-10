@@ -3,19 +3,23 @@
 package microphone
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
-	types "github.com/smart-core-os/sc-api/go/types"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
-	grpc "google.golang.org/grpc"
 )
 
 // WrapApi	adapts a traits.MicrophoneApiServer	and presents it as a traits.MicrophoneApiClient
 func WrapApi(server traits.MicrophoneApiServer) traits.MicrophoneApiClient {
-	return &apiWrapper{server}
+	conn := wrap.ServerToClient(traits.MicrophoneApi_ServiceDesc, server)
+	client := traits.NewMicrophoneApiClient(conn)
+	return &apiWrapper{
+		MicrophoneApiClient: client,
+		server:              server,
+	}
 }
 
 type apiWrapper struct {
+	traits.MicrophoneApiClient
+
 	server traits.MicrophoneApiServer
 }
 
@@ -30,43 +34,4 @@ func (w *apiWrapper) UnwrapServer() traits.MicrophoneApiServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *apiWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *apiWrapper) GetGain(ctx context.Context, req *traits.GetMicrophoneGainRequest, _ ...grpc.CallOption) (*types.AudioLevel, error) {
-	return w.server.GetGain(ctx, req)
-}
-
-func (w *apiWrapper) UpdateGain(ctx context.Context, req *traits.UpdateMicrophoneGainRequest, _ ...grpc.CallOption) (*types.AudioLevel, error) {
-	return w.server.UpdateGain(ctx, req)
-}
-
-func (w *apiWrapper) PullGain(ctx context.Context, in *traits.PullMicrophoneGainRequest, opts ...grpc.CallOption) (traits.MicrophoneApi_PullGainClient, error) {
-	stream := wrap.NewClientServerStream(ctx)
-	server := &pullGainApiServerWrapper{stream.Server()}
-	client := &pullGainApiClientWrapper{stream.Client()}
-	go func() {
-		err := w.server.PullGain(in, server)
-		stream.Close(err)
-	}()
-	return client, nil
-}
-
-type pullGainApiClientWrapper struct {
-	grpc.ClientStream
-}
-
-func (w *pullGainApiClientWrapper) Recv() (*traits.PullMicrophoneGainResponse, error) {
-	m := new(traits.PullMicrophoneGainResponse)
-	if err := w.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-type pullGainApiServerWrapper struct {
-	grpc.ServerStream
-}
-
-func (s *pullGainApiServerWrapper) Send(response *traits.PullMicrophoneGainResponse) error {
-	return s.ServerStream.SendMsg(response)
 }

@@ -3,17 +3,23 @@
 package airqualitysensor
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
-	grpc "google.golang.org/grpc"
+	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
 )
 
 // WrapInfo	adapts a traits.AirQualitySensorInfoServer	and presents it as a traits.AirQualitySensorInfoClient
 func WrapInfo(server traits.AirQualitySensorInfoServer) traits.AirQualitySensorInfoClient {
-	return &infoWrapper{server}
+	conn := wrap.ServerToClient(traits.AirQualitySensorInfo_ServiceDesc, server)
+	client := traits.NewAirQualitySensorInfoClient(conn)
+	return &infoWrapper{
+		AirQualitySensorInfoClient: client,
+		server:                     server,
+	}
 }
 
 type infoWrapper struct {
+	traits.AirQualitySensorInfoClient
+
 	server traits.AirQualitySensorInfoServer
 }
 
@@ -28,8 +34,4 @@ func (w *infoWrapper) UnwrapServer() traits.AirQualitySensorInfoServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *infoWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *infoWrapper) DescribeAirQuality(ctx context.Context, req *traits.DescribeAirQualityRequest, _ ...grpc.CallOption) (*traits.AirQualitySupport, error) {
-	return w.server.DescribeAirQuality(ctx, req)
 }

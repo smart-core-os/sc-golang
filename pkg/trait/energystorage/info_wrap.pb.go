@@ -3,17 +3,23 @@
 package energystorage
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
-	grpc "google.golang.org/grpc"
+	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
 )
 
 // WrapInfo	adapts a traits.EnergyStorageInfoServer	and presents it as a traits.EnergyStorageInfoClient
 func WrapInfo(server traits.EnergyStorageInfoServer) traits.EnergyStorageInfoClient {
-	return &infoWrapper{server}
+	conn := wrap.ServerToClient(traits.EnergyStorageInfo_ServiceDesc, server)
+	client := traits.NewEnergyStorageInfoClient(conn)
+	return &infoWrapper{
+		EnergyStorageInfoClient: client,
+		server:                  server,
+	}
 }
 
 type infoWrapper struct {
+	traits.EnergyStorageInfoClient
+
 	server traits.EnergyStorageInfoServer
 }
 
@@ -28,8 +34,4 @@ func (w *infoWrapper) UnwrapServer() traits.EnergyStorageInfoServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *infoWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *infoWrapper) DescribeEnergyLevel(ctx context.Context, req *traits.DescribeEnergyLevelRequest, _ ...grpc.CallOption) (*traits.EnergyLevelSupport, error) {
-	return w.server.DescribeEnergyLevel(ctx, req)
 }

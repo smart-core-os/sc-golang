@@ -3,19 +3,23 @@
 package speaker
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
-	types "github.com/smart-core-os/sc-api/go/types"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
-	grpc "google.golang.org/grpc"
 )
 
 // WrapApi	adapts a traits.SpeakerApiServer	and presents it as a traits.SpeakerApiClient
 func WrapApi(server traits.SpeakerApiServer) traits.SpeakerApiClient {
-	return &apiWrapper{server}
+	conn := wrap.ServerToClient(traits.SpeakerApi_ServiceDesc, server)
+	client := traits.NewSpeakerApiClient(conn)
+	return &apiWrapper{
+		SpeakerApiClient: client,
+		server:           server,
+	}
 }
 
 type apiWrapper struct {
+	traits.SpeakerApiClient
+
 	server traits.SpeakerApiServer
 }
 
@@ -30,43 +34,4 @@ func (w *apiWrapper) UnwrapServer() traits.SpeakerApiServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *apiWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *apiWrapper) GetVolume(ctx context.Context, req *traits.GetSpeakerVolumeRequest, _ ...grpc.CallOption) (*types.AudioLevel, error) {
-	return w.server.GetVolume(ctx, req)
-}
-
-func (w *apiWrapper) UpdateVolume(ctx context.Context, req *traits.UpdateSpeakerVolumeRequest, _ ...grpc.CallOption) (*types.AudioLevel, error) {
-	return w.server.UpdateVolume(ctx, req)
-}
-
-func (w *apiWrapper) PullVolume(ctx context.Context, in *traits.PullSpeakerVolumeRequest, opts ...grpc.CallOption) (traits.SpeakerApi_PullVolumeClient, error) {
-	stream := wrap.NewClientServerStream(ctx)
-	server := &pullVolumeApiServerWrapper{stream.Server()}
-	client := &pullVolumeApiClientWrapper{stream.Client()}
-	go func() {
-		err := w.server.PullVolume(in, server)
-		stream.Close(err)
-	}()
-	return client, nil
-}
-
-type pullVolumeApiClientWrapper struct {
-	grpc.ClientStream
-}
-
-func (w *pullVolumeApiClientWrapper) Recv() (*traits.PullSpeakerVolumeResponse, error) {
-	m := new(traits.PullSpeakerVolumeResponse)
-	if err := w.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-type pullVolumeApiServerWrapper struct {
-	grpc.ServerStream
-}
-
-func (s *pullVolumeApiServerWrapper) Send(response *traits.PullSpeakerVolumeResponse) error {
-	return s.ServerStream.SendMsg(response)
 }

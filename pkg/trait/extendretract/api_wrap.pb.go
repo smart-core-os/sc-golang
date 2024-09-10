@@ -3,18 +3,23 @@
 package extendretract
 
 import (
-	context "context"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
-	grpc "google.golang.org/grpc"
 )
 
 // WrapApi	adapts a traits.ExtendRetractApiServer	and presents it as a traits.ExtendRetractApiClient
 func WrapApi(server traits.ExtendRetractApiServer) traits.ExtendRetractApiClient {
-	return &apiWrapper{server}
+	conn := wrap.ServerToClient(traits.ExtendRetractApi_ServiceDesc, server)
+	client := traits.NewExtendRetractApiClient(conn)
+	return &apiWrapper{
+		ExtendRetractApiClient: client,
+		server:                 server,
+	}
 }
 
 type apiWrapper struct {
+	traits.ExtendRetractApiClient
+
 	server traits.ExtendRetractApiServer
 }
 
@@ -29,51 +34,4 @@ func (w *apiWrapper) UnwrapServer() traits.ExtendRetractApiServer {
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
 func (w *apiWrapper) Unwrap() any {
 	return w.UnwrapServer()
-}
-
-func (w *apiWrapper) GetExtension(ctx context.Context, req *traits.GetExtensionRequest, _ ...grpc.CallOption) (*traits.Extension, error) {
-	return w.server.GetExtension(ctx, req)
-}
-
-func (w *apiWrapper) UpdateExtension(ctx context.Context, req *traits.UpdateExtensionRequest, _ ...grpc.CallOption) (*traits.Extension, error) {
-	return w.server.UpdateExtension(ctx, req)
-}
-
-func (w *apiWrapper) Stop(ctx context.Context, req *traits.ExtendRetractStopRequest, _ ...grpc.CallOption) (*traits.Extension, error) {
-	return w.server.Stop(ctx, req)
-}
-
-func (w *apiWrapper) CreateExtensionPreset(ctx context.Context, req *traits.CreateExtensionPresetRequest, _ ...grpc.CallOption) (*traits.ExtensionPreset, error) {
-	return w.server.CreateExtensionPreset(ctx, req)
-}
-
-func (w *apiWrapper) PullExtensions(ctx context.Context, in *traits.PullExtensionsRequest, opts ...grpc.CallOption) (traits.ExtendRetractApi_PullExtensionsClient, error) {
-	stream := wrap.NewClientServerStream(ctx)
-	server := &pullExtensionsApiServerWrapper{stream.Server()}
-	client := &pullExtensionsApiClientWrapper{stream.Client()}
-	go func() {
-		err := w.server.PullExtensions(in, server)
-		stream.Close(err)
-	}()
-	return client, nil
-}
-
-type pullExtensionsApiClientWrapper struct {
-	grpc.ClientStream
-}
-
-func (w *pullExtensionsApiClientWrapper) Recv() (*traits.PullExtensionsResponse, error) {
-	m := new(traits.PullExtensionsResponse)
-	if err := w.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-type pullExtensionsApiServerWrapper struct {
-	grpc.ServerStream
-}
-
-func (s *pullExtensionsApiServerWrapper) Send(response *traits.PullExtensionsResponse) error {
-	return s.ServerStream.SendMsg(response)
 }

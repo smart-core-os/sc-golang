@@ -65,53 +65,35 @@ func generateFile(plugin *protogen.Plugin, file *protogen.File) error {
 func newServiceModel(g *protogen.GeneratedFile, service *protogen.Service, file *protogen.File, pkg, underlying string) ServiceModel {
 	model := ServiceModel{
 		Service: service,
+
+		PackageName: pkg,
+		Wrapper:     ident(underlying + "Wrapper"),
+		Underlying:  ident(underlying),
+
 		QualifiedServerName: g.QualifiedGoIdent(protogen.GoIdent{
 			GoName:       service.GoName + "Server",
 			GoImportPath: file.GoImportPath,
 		}),
+		ClientName: service.GoName + "Client",
 		QualifiedClientName: g.QualifiedGoIdent(protogen.GoIdent{
 			GoName:       service.GoName + "Client",
 			GoImportPath: file.GoImportPath,
 		}),
-		QualifiedUnimplementedServerName: g.QualifiedGoIdent(protogen.GoIdent{
-			GoName:       "Unimplemented" + service.GoName + "Server",
+		QualifiedClientConstructor: g.QualifiedGoIdent(protogen.GoIdent{
+			GoName:       "New" + service.GoName + "Client",
 			GoImportPath: file.GoImportPath,
 		}),
-		QualifiedRegisterService: g.QualifiedGoIdent(protogen.GoIdent{
-			GoName:       "Register" + service.GoName + "Server",
+		QualifiedServiceDesc: g.QualifiedGoIdent(protogen.GoIdent{
+			GoName:       service.GoName + "_ServiceDesc",
 			GoImportPath: file.GoImportPath,
 		}),
-		PackageName: pkg,
-		Wrapper:     ident(underlying + "Wrapper"),
-		Underlying:  ident(underlying),
+
+		WrapServerToClient: g.QualifiedGoIdent(protogen.GoIdent{
+			GoName:       "ServerToClient",
+			GoImportPath: "github.com/smart-core-os/sc-golang/pkg/wrap",
+		}),
 	}
 
-	for _, method := range service.Methods {
-		// make sure the correct imports are available
-		g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "context"})
-		g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "google.golang.org/grpc"})
-		if method.Desc.IsStreamingServer() {
-			g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "github.com/smart-core-os/sc-golang/pkg/wrap"})
-		}
-
-		model.Methods = append(model.Methods, ServiceMethod{
-			Method:        method,
-			GoNamePrivate: strings.ToLower(method.GoName[:1]) + method.GoName[1:],
-			Streaming:     method.Desc.IsStreamingServer(),
-			QualifiedServerStream: g.QualifiedGoIdent(protogen.GoIdent{
-				GoName:       fmt.Sprintf("%s_%sServer", service.GoName, method.GoName),
-				GoImportPath: file.GoImportPath,
-			}),
-			QualifiedClientStream: g.QualifiedGoIdent(protogen.GoIdent{
-				GoName:       fmt.Sprintf("%s_%sClient", service.GoName, method.GoName),
-				GoImportPath: file.GoImportPath,
-			}),
-			GoInput:           method.Input.GoIdent.GoName,
-			QualifiedGoInput:  g.QualifiedGoIdent(method.Input.GoIdent),
-			GoOutput:          method.Output.GoIdent.GoName,
-			QualifiedGoOutput: g.QualifiedGoIdent(method.Output.GoIdent),
-		})
-	}
 	return model
 }
 
@@ -128,27 +110,13 @@ type ServiceModel struct {
 	Wrapper     Ident
 	Underlying  Ident
 
-	QualifiedServerName              string
-	QualifiedClientName              string
-	QualifiedUnimplementedServerName string
-	QualifiedRegisterService         string
+	QualifiedServerName        string
+	ClientName                 string
+	QualifiedClientName        string
+	QualifiedClientConstructor string
+	QualifiedServiceDesc       string
 
-	Methods []ServiceMethod
-}
-
-type ServiceMethod struct {
-	*protogen.Method
-
-	GoNamePrivate string
-
-	Streaming             bool
-	QualifiedServerStream string
-	QualifiedClientStream string
-
-	GoInput           string
-	QualifiedGoInput  string
-	GoOutput          string
-	QualifiedGoOutput string
+	WrapServerToClient string
 }
 
 type Ident struct {

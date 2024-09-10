@@ -129,6 +129,7 @@ service TestApi {
 
 message UnaryRequest {
   string msg = 1;
+  string simulate_error = 2;
 }
 
 message UnaryResponse {
@@ -137,6 +138,7 @@ message UnaryResponse {
 
 message ServerStreamRequest {
   int32 num_res = 1;
+  string simulate_error = 2;
 }
 
 message ServerStreamResponse {
@@ -145,6 +147,7 @@ message ServerStreamResponse {
 
 message ClientStreamRequest {
   string msg = 1;
+  string simulate_error = 2;
 }
 
 message ClientStreamResponse {
@@ -153,6 +156,7 @@ message ClientStreamResponse {
 
 message BidiStreamRequest {
   string msg = 1;
+  string simulate_error = 2;
 }
 
 message BidiStreamResponse {

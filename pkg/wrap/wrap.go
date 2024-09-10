@@ -11,6 +11,12 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// ServerToClient returns a grpc.ClientConnInterface that can service all methods described by desc.
+// srv is the gRPC server implementation type (a type that could be passed to a grpc RegisterXxxServer function).
+//
+// Unary and streaming calls are supported.
+//
+// The call options grpc.Header and grpc.Trailer are supported for unary RPCs. All other call options are ignored.
 func ServerToClient(desc grpc.ServiceDesc, srv any) grpc.ClientConnInterface {
 	// check that srv is the right type to be a server for desc
 	expectType := reflect.TypeOf(desc.HandlerType).Elem()

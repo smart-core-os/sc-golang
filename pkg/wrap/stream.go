@@ -66,7 +66,8 @@ type clientStream struct {
 func (c *clientStream) Header() (metadata.MD, error) {
 	select {
 	case <-c.ctx.Done():
-		return nil, c.closeErrLocked()
+		// when the stream is terminated without headers, ClientStream should return a nil error
+		return nil, nil
 	case <-c.headerC:
 		return c.header, nil
 	}

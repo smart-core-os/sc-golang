@@ -66,8 +66,14 @@ type clientStream struct {
 func (c *clientStream) Header() (metadata.MD, error) {
 	select {
 	case <-c.ctx.Done():
-		// when the stream is terminated without headers, ClientStream should return a nil error
-		return nil, nil
+		select {
+		case <-c.headerC:
+			// we should still return the headers if we have them, even if the context is done
+			return c.header, nil
+		default:
+			// when the stream is terminated without headers, ClientStream should return a nil error
+			return nil, nil
+		}
 	case <-c.headerC:
 		return c.header, nil
 	}
@@ -165,8 +171,6 @@ func (s *serverStream) RecvMsg(m any) error {
 		return s.closeErrLocked()
 	case val, ok := <-s.clientSend:
 		if !ok {
-			// we shouldn't send any more
-			close(s.serverSend)
 			return io.EOF
 		}
 		proto.Merge(m.(proto.Message), val.(proto.Message))

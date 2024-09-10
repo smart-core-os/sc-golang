@@ -119,3 +119,42 @@ message WellKnown {
   google.protobuf.Timestamp default_timestamp = 1;
   google.protobuf.Duration default_duration = 2;
 }
+
+service TestApi {
+  rpc Unary(UnaryRequest) returns (UnaryResponse);
+  rpc ServerStream(ServerStreamRequest) returns (stream ServerStreamResponse);
+  rpc ClientStream(stream ClientStreamRequest) returns (ClientStreamResponse);
+  rpc BidiStream(stream BidiStreamRequest) returns (stream BidiStreamResponse);
+}
+
+message UnaryRequest {
+  string msg = 1;
+}
+
+message UnaryResponse {
+  string msg = 1;
+}
+
+message ServerStreamRequest {
+  int32 num_res = 1;
+}
+
+message ServerStreamResponse {
+  int32 counter = 1;
+}
+
+message ClientStreamRequest {
+  string msg = 1;
+}
+
+message ClientStreamResponse {
+  string msg = 1;
+}
+
+message BidiStreamRequest {
+  string msg = 1;
+}
+
+message BidiStreamResponse {
+  string msg = 1;
+}

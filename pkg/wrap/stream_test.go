@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/metadata"
@@ -130,6 +131,32 @@ func TestClientServerStream_HeadersAfterRecv(t *testing.T) {
 	}()
 
 	grp.Wait()
+}
+
+// regression test: because of nondeterministic select-cases when multiple cases are ready,
+// ClientStream.Header() sometimes returned nil after the stream was closed, even if headers had been received.
+func TestClientServerStream_HeadersAfterClose(t *testing.T) {
+	// doesn't occur every time, use brute force to improve our chances of catching it
+	for i := 0; i < 20 && !t.Failed(); i++ {
+		s := NewClientServerStream(context.Background())
+		cs := s.Client()
+		ss := s.Server()
+
+		err := ss.SendHeader(metadata.Pairs("hello", "world"))
+		if err != nil {
+			t.Fatalf("SendHeader: %v", err)
+		}
+		s.Close(errors.New("test close"))
+
+		md, err := cs.Header()
+		if err != nil {
+			t.Errorf("unexpected ClientStream.Header error %v", err)
+		}
+		expectMD := metadata.Pairs("hello", "world")
+		if diff := cmp.Diff(expectMD, md); diff != "" {
+			t.Errorf("ClientStream.Header mismatch (-want +got):\n%s", diff)
+		}
+	}
 }
 
 func assertHeaderErrOnClose(t *testing.T, closeErr, wantErr error) {

@@ -35,7 +35,7 @@ func WithBrightnessSensorApiClientFactory(f func(name string) (traits.Brightness
 	})
 }
 
-func (r *ApiRouter) Register(server *grpc.Server) {
+func (r *ApiRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterBrightnessSensorApiServer(server, r)
 }
 

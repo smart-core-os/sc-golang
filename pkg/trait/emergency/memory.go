@@ -3,12 +3,14 @@ package emergency
 import (
 	"context"
 
-	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/smart-core-os/sc-api/go/traits"
+	"github.com/smart-core-os/sc-golang/pkg/resource"
+
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/smart-core-os/sc-api/go/traits"
 )
 
 type MemoryDevice struct {
@@ -29,7 +31,7 @@ func InitialEmergency() *traits.Emergency {
 	}
 }
 
-func (t *MemoryDevice) Register(server *grpc.Server) {
+func (t *MemoryDevice) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterEmergencyApiServer(server, t)
 }
 

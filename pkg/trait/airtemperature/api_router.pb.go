@@ -35,7 +35,7 @@ func WithAirTemperatureApiClientFactory(f func(name string) (traits.AirTemperatu
 	})
 }
 
-func (r *ApiRouter) Register(server *grpc.Server) {
+func (r *ApiRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterAirTemperatureApiServer(server, r)
 }
 

@@ -27,7 +27,7 @@ func (s *ModelServer) Unwrap() any {
 	return s.model
 }
 
-func (s *ModelServer) Register(server *grpc.Server) {
+func (s *ModelServer) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterLightApiServer(server, s)
 	traits.RegisterLightInfoServer(server, s)
 }

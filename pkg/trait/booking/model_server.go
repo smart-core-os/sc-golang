@@ -3,14 +3,15 @@ package booking
 import (
 	"context"
 
-	"github.com/smart-core-os/sc-api/go/traits"
-	"github.com/smart-core-os/sc-api/go/types/time"
-	"github.com/smart-core-os/sc-golang/pkg/resource"
-	timepb "github.com/smart-core-os/sc-golang/pkg/time"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/smart-core-os/sc-api/go/traits"
+	"github.com/smart-core-os/sc-api/go/types/time"
+	"github.com/smart-core-os/sc-golang/pkg/resource"
+	timepb "github.com/smart-core-os/sc-golang/pkg/time"
 )
 
 type ModelServer struct {
@@ -27,7 +28,7 @@ func (m *ModelServer) Unwrap() any {
 	return m.model
 }
 
-func (m *ModelServer) Register(server *grpc.Server) {
+func (m *ModelServer) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterBookingApiServer(server, m)
 }
 

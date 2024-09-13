@@ -35,7 +35,7 @@ func WithHailApiClientFactory(f func(name string) (traits.HailApiClient, error))
 	})
 }
 
-func (r *ApiRouter) Register(server *grpc.Server) {
+func (r *ApiRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterHailApiServer(server, r)
 }
 

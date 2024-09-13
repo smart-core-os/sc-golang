@@ -35,7 +35,7 @@ func WithPublicationApiClientFactory(f func(name string) (traits.PublicationApiC
 	})
 }
 
-func (r *ApiRouter) Register(server *grpc.Server) {
+func (r *ApiRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterPublicationApiServer(server, r)
 }
 

@@ -35,7 +35,7 @@ func WithExtendRetractApiClientFactory(f func(name string) (traits.ExtendRetract
 	})
 }
 
-func (r *ApiRouter) Register(server *grpc.Server) {
+func (r *ApiRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterExtendRetractApiServer(server, r)
 }
 

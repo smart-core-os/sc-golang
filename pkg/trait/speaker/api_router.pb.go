@@ -36,7 +36,7 @@ func WithSpeakerApiClientFactory(f func(name string) (traits.SpeakerApiClient, e
 	})
 }
 
-func (r *ApiRouter) Register(server *grpc.Server) {
+func (r *ApiRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterSpeakerApiServer(server, r)
 }
 

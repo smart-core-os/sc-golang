@@ -34,7 +34,7 @@ func WithEmergencyInfoClientFactory(f func(name string) (traits.EmergencyInfoCli
 	})
 }
 
-func (r *InfoRouter) Register(server *grpc.Server) {
+func (r *InfoRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterEmergencyInfoServer(server, r)
 }
 

@@ -3,11 +3,12 @@ package mode
 import (
 	"context"
 
-	"github.com/smart-core-os/sc-api/go/traits"
-	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/smart-core-os/sc-api/go/traits"
+	"github.com/smart-core-os/sc-golang/pkg/resource"
 )
 
 // ModelServer adapts a Model as a traits.ModeApiServer.
@@ -21,7 +22,7 @@ func NewModelServer(model *Model) *ModelServer {
 	return &ModelServer{model: model}
 }
 
-func (m *ModelServer) Register(server *grpc.Server) {
+func (m *ModelServer) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterModeApiServer(server, m)
 }
 

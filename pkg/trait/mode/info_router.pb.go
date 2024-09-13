@@ -34,7 +34,7 @@ func WithModeInfoClientFactory(f func(name string) (traits.ModeInfoClient, error
 	})
 }
 
-func (r *InfoRouter) Register(server *grpc.Server) {
+func (r *InfoRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterModeInfoServer(server, r)
 }
 

@@ -34,7 +34,7 @@ func WithLightInfoClientFactory(f func(name string) (traits.LightInfoClient, err
 	})
 }
 
-func (r *InfoRouter) Register(server *grpc.Server) {
+func (r *InfoRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterLightInfoServer(server, r)
 }
 

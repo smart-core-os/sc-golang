@@ -34,7 +34,7 @@ func WithPtzInfoClientFactory(f func(name string) (traits.PtzInfoClient, error))
 	})
 }
 
-func (r *InfoRouter) Register(server *grpc.Server) {
+func (r *InfoRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterPtzInfoServer(server, r)
 }
 

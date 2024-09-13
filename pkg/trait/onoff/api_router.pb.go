@@ -35,7 +35,7 @@ func WithOnOffApiClientFactory(f func(name string) (traits.OnOffApiClient, error
 	})
 }
 
-func (r *ApiRouter) Register(server *grpc.Server) {
+func (r *ApiRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterOnOffApiServer(server, r)
 }
 

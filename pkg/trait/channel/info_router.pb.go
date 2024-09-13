@@ -34,7 +34,7 @@ func WithChannelInfoClientFactory(f func(name string) (traits.ChannelInfoClient,
 	})
 }
 
-func (r *InfoRouter) Register(server *grpc.Server) {
+func (r *InfoRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterChannelInfoServer(server, r)
 }
 

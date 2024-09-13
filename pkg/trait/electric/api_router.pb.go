@@ -35,7 +35,7 @@ func WithElectricApiClientFactory(f func(name string) (traits.ElectricApiClient,
 	})
 }
 
-func (r *ApiRouter) Register(server *grpc.Server) {
+func (r *ApiRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterElectricApiServer(server, r)
 }
 

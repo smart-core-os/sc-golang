@@ -3,13 +3,15 @@ package speaker
 import (
 	"context"
 
-	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/smart-core-os/sc-golang/pkg/resource"
+
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-api/go/types"
-	"google.golang.org/grpc"
-	"google.golang.org/protobuf/proto"
 )
 
 type MemoryDevice struct {
@@ -23,7 +25,7 @@ func NewMemoryDevice(initialState *types.AudioLevel) *MemoryDevice {
 	}
 }
 
-func (s *MemoryDevice) Register(server *grpc.Server) {
+func (s *MemoryDevice) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterSpeakerApiServer(server, s)
 }
 

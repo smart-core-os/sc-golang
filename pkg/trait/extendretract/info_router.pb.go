@@ -34,7 +34,7 @@ func WithExtendRetractInfoClientFactory(f func(name string) (traits.ExtendRetrac
 	})
 }
 
-func (r *InfoRouter) Register(server *grpc.Server) {
+func (r *InfoRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterExtendRetractInfoServer(server, r)
 }
 

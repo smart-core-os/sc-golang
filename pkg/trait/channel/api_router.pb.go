@@ -35,7 +35,7 @@ func WithChannelApiClientFactory(f func(name string) (traits.ChannelApiClient, e
 	})
 }
 
-func (r *ApiRouter) Register(server *grpc.Server) {
+func (r *ApiRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterChannelApiServer(server, r)
 }
 

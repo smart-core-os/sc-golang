@@ -34,7 +34,7 @@ func WithSpeakerInfoClientFactory(f func(name string) (traits.SpeakerInfoClient,
 	})
 }
 
-func (r *InfoRouter) Register(server *grpc.Server) {
+func (r *InfoRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterSpeakerInfoServer(server, r)
 }
 

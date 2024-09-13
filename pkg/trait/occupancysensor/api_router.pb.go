@@ -35,7 +35,7 @@ func WithOccupancySensorApiClientFactory(f func(name string) (traits.OccupancySe
 	})
 }
 
-func (r *ApiRouter) Register(server *grpc.Server) {
+func (r *ApiRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterOccupancySensorApiServer(server, r)
 }
 

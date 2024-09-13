@@ -34,7 +34,7 @@ func WithMotionSensorSensorInfoClientFactory(f func(name string) (traits.MotionS
 	})
 }
 
-func (r *SensorInfoRouter) Register(server *grpc.Server) {
+func (r *SensorInfoRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterMotionSensorSensorInfoServer(server, r)
 }
 

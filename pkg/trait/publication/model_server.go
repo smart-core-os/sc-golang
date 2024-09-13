@@ -4,14 +4,15 @@ import (
 	"context"
 	"sort"
 
-	"github.com/smart-core-os/sc-api/go/traits"
-	"github.com/smart-core-os/sc-api/go/types"
-	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/smart-core-os/sc-api/go/traits"
+	"github.com/smart-core-os/sc-api/go/types"
+	"github.com/smart-core-os/sc-golang/pkg/resource"
 )
 
 var VersionMismatchErr = status.Error(codes.FailedPrecondition, "version mismatch: update version != server version")
@@ -29,7 +30,7 @@ func (m *ModelServer) Unwrap() any {
 	return m.model
 }
 
-func (m *ModelServer) Register(server *grpc.Server) {
+func (m *ModelServer) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterPublicationApiServer(server, m)
 }
 

@@ -35,7 +35,7 @@ func WithMetadataApiClientFactory(f func(name string) (traits.MetadataApiClient,
 	})
 }
 
-func (r *ApiRouter) Register(server *grpc.Server) {
+func (r *ApiRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterMetadataApiServer(server, r)
 }
 

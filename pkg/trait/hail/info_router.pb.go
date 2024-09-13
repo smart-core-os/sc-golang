@@ -33,7 +33,7 @@ func WithHailInfoClientFactory(f func(name string) (traits.HailInfoClient, error
 	})
 }
 
-func (r *InfoRouter) Register(server *grpc.Server) {
+func (r *InfoRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterHailInfoServer(server, r)
 }
 

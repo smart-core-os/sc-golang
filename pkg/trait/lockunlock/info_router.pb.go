@@ -33,7 +33,7 @@ func WithLockUnlockInfoClientFactory(f func(name string) (traits.LockUnlockInfoC
 	})
 }
 
-func (r *InfoRouter) Register(server *grpc.Server) {
+func (r *InfoRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterLockUnlockInfoServer(server, r)
 }
 

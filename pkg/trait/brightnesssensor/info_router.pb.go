@@ -34,7 +34,7 @@ func WithBrightnessSensorInfoClientFactory(f func(name string) (traits.Brightnes
 	})
 }
 
-func (r *InfoRouter) Register(server *grpc.Server) {
+func (r *InfoRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterBrightnessSensorInfoServer(server, r)
 }
 

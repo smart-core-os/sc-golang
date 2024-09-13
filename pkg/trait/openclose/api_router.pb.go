@@ -35,7 +35,7 @@ func WithOpenCloseApiClientFactory(f func(name string) (traits.OpenCloseApiClien
 	})
 }
 
-func (r *ApiRouter) Register(server *grpc.Server) {
+func (r *ApiRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterOpenCloseApiServer(server, r)
 }
 

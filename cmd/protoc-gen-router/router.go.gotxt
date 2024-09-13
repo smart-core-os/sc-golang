@@ -29,7 +29,7 @@ func With{{.ClientName.Exported}}Factory(f func(name string) ({{.ClientName.Qual
   })
 }
 
-func (r *{{.RouterName}}) Register(server *grpc.Server) {
+func (r *{{.RouterName}}) Register(server grpc.ServiceRegistrar) {
 	{{.RegisterService.Qualified}}(server, r)
 }
 

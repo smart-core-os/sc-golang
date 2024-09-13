@@ -34,7 +34,7 @@ func WithInputSelectInfoClientFactory(f func(name string) (traits.InputSelectInf
 	})
 }
 
-func (r *InfoRouter) Register(server *grpc.Server) {
+func (r *InfoRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterInputSelectInfoServer(server, r)
 }
 

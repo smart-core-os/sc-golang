@@ -34,7 +34,7 @@ func WithOnOffInfoClientFactory(f func(name string) (traits.OnOffInfoClient, err
 	})
 }
 
-func (r *InfoRouter) Register(server *grpc.Server) {
+func (r *InfoRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterOnOffInfoServer(server, r)
 }
 

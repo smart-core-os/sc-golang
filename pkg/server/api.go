@@ -3,12 +3,12 @@ package server
 import "google.golang.org/grpc"
 
 type GrpcApi interface {
-	Register(server *grpc.Server)
+	Register(server grpc.ServiceRegistrar)
 }
 
 type collection []GrpcApi
 
-func (c collection) Register(server *grpc.Server) {
+func (c collection) Register(server grpc.ServiceRegistrar) {
 	for _, api := range c {
 		api.Register(server)
 	}

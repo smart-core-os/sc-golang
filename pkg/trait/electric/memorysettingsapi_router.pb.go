@@ -35,7 +35,7 @@ func WithMemorySettingsApiClientFactory(f func(name string) (MemorySettingsApiCl
 	})
 }
 
-func (r *MemorySettingsApiRouter) Register(server *grpc.Server) {
+func (r *MemorySettingsApiRouter) Register(server grpc.ServiceRegistrar) {
 	RegisterMemorySettingsApiServer(server, r)
 }
 

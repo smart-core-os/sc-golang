@@ -34,7 +34,7 @@ func WithCountInfoClientFactory(f func(name string) (traits.CountInfoClient, err
 	})
 }
 
-func (r *InfoRouter) Register(server *grpc.Server) {
+func (r *InfoRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterCountInfoServer(server, r)
 }
 

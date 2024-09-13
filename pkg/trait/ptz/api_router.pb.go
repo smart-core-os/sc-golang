@@ -35,7 +35,7 @@ func WithPtzApiClientFactory(f func(name string) (traits.PtzApiClient, error)) r
 	})
 }
 
-func (r *ApiRouter) Register(server *grpc.Server) {
+func (r *ApiRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterPtzApiServer(server, r)
 }
 

@@ -3,11 +3,12 @@ package fanspeed
 import (
 	"context"
 
-	"github.com/smart-core-os/sc-api/go/traits"
-	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/smart-core-os/sc-api/go/traits"
+	"github.com/smart-core-os/sc-golang/pkg/resource"
 )
 
 // ModelServer adapts a Model as a traits.FanSpeedApiServer.
@@ -24,7 +25,7 @@ func (s *ModelServer) Unwrap() any {
 	return s.model
 }
 
-func (s *ModelServer) Register(server *grpc.Server) {
+func (s *ModelServer) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterFanSpeedApiServer(server, s)
 }
 

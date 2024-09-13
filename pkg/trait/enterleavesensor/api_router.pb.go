@@ -35,7 +35,7 @@ func WithEnterLeaveSensorApiClientFactory(f func(name string) (traits.EnterLeave
 	})
 }
 
-func (r *ApiRouter) Register(server *grpc.Server) {
+func (r *ApiRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterEnterLeaveSensorApiServer(server, r)
 }
 

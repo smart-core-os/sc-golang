@@ -19,7 +19,7 @@ func NewModelServer(model *Model) *ModelServer {
 	return &ModelServer{model: model}
 }
 
-func (s *ModelServer) Register(server *grpc.Server) {
+func (s *ModelServer) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterOpenCloseApiServer(server, s)
 }
 

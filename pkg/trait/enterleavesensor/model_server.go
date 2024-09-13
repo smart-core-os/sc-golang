@@ -24,7 +24,7 @@ func (m *ModelServer) Unwrap() any {
 	return m.model
 }
 
-func (m *ModelServer) Register(server *grpc.Server) {
+func (m *ModelServer) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterEnterLeaveSensorApiServer(server, m)
 }
 

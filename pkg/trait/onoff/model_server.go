@@ -3,10 +3,11 @@ package onoff
 import (
 	"context"
 
-	"github.com/smart-core-os/sc-api/go/traits"
-	"github.com/smart-core-os/sc-golang/pkg/resource"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/smart-core-os/sc-api/go/traits"
+	"github.com/smart-core-os/sc-golang/pkg/resource"
 )
 
 type ModelServer struct {
@@ -22,7 +23,7 @@ func (s *ModelServer) Unwrap() any {
 	return s.model
 }
 
-func (s *ModelServer) Register(server *grpc.Server) {
+func (s *ModelServer) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterOnOffApiServer(server, s)
 }
 

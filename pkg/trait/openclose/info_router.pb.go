@@ -34,7 +34,7 @@ func WithOpenCloseInfoClientFactory(f func(name string) (traits.OpenCloseInfoCli
 	})
 }
 
-func (r *InfoRouter) Register(server *grpc.Server) {
+func (r *InfoRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterOpenCloseInfoServer(server, r)
 }
 

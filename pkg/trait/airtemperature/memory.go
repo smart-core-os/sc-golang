@@ -3,11 +3,12 @@ package airtemperature
 import (
 	"context"
 
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-api/go/types"
 	"github.com/smart-core-os/sc-golang/pkg/resource"
-	"google.golang.org/grpc"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type MemoryDevice struct {
@@ -39,7 +40,7 @@ func InitialAirTemperatureState() *traits.AirTemperature {
 	}
 }
 
-func (t *MemoryDevice) Register(server *grpc.Server) {
+func (t *MemoryDevice) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterAirTemperatureApiServer(server, t)
 }
 

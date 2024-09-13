@@ -33,7 +33,7 @@ func WithEnterLeaveSensorInfoClientFactory(f func(name string) (traits.EnterLeav
 	})
 }
 
-func (r *InfoRouter) Register(server *grpc.Server) {
+func (r *InfoRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterEnterLeaveSensorInfoServer(server, r)
 }
 

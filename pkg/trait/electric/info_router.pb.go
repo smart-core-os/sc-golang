@@ -33,7 +33,7 @@ func WithElectricInfoClientFactory(f func(name string) (traits.ElectricInfoClien
 	})
 }
 
-func (r *InfoRouter) Register(server *grpc.Server) {
+func (r *InfoRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterElectricInfoServer(server, r)
 }
 

@@ -35,7 +35,7 @@ func WithFanSpeedApiClientFactory(f func(name string) (traits.FanSpeedApiClient,
 	})
 }
 
-func (r *ApiRouter) Register(server *grpc.Server) {
+func (r *ApiRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterFanSpeedApiServer(server, r)
 }
 

@@ -36,7 +36,7 @@ func WithMicrophoneApiClientFactory(f func(name string) (traits.MicrophoneApiCli
 	})
 }
 
-func (r *ApiRouter) Register(server *grpc.Server) {
+func (r *ApiRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterMicrophoneApiServer(server, r)
 }
 

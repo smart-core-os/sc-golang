@@ -33,7 +33,7 @@ func WithMetadataInfoClientFactory(f func(name string) (traits.MetadataInfoClien
 	})
 }
 
-func (r *InfoRouter) Register(server *grpc.Server) {
+func (r *InfoRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterMetadataInfoServer(server, r)
 }
 

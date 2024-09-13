@@ -34,7 +34,7 @@ func WithMicrophoneInfoClientFactory(f func(name string) (traits.MicrophoneInfoC
 	})
 }
 
-func (r *InfoRouter) Register(server *grpc.Server) {
+func (r *InfoRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterMicrophoneInfoServer(server, r)
 }
 

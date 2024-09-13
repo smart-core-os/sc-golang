@@ -35,7 +35,7 @@ func WithModeApiClientFactory(f func(name string) (traits.ModeApiClient, error))
 	})
 }
 
-func (r *ApiRouter) Register(server *grpc.Server) {
+func (r *ApiRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterModeApiServer(server, r)
 }
 

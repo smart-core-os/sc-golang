@@ -35,7 +35,7 @@ func WithEmergencyApiClientFactory(f func(name string) (traits.EmergencyApiClien
 	})
 }
 
-func (r *ApiRouter) Register(server *grpc.Server) {
+func (r *ApiRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterEmergencyApiServer(server, r)
 }
 

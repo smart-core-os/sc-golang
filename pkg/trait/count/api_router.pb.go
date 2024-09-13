@@ -35,7 +35,7 @@ func WithCountApiClientFactory(f func(name string) (traits.CountApiClient, error
 	})
 }
 
-func (r *ApiRouter) Register(server *grpc.Server) {
+func (r *ApiRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterCountApiServer(server, r)
 }
 

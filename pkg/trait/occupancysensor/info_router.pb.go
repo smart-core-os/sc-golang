@@ -34,7 +34,7 @@ func WithOccupancySensorInfoClientFactory(f func(name string) (traits.OccupancyS
 	})
 }
 
-func (r *InfoRouter) Register(server *grpc.Server) {
+func (r *InfoRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterOccupancySensorInfoServer(server, r)
 }
 

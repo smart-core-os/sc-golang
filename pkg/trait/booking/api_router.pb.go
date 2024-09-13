@@ -35,7 +35,7 @@ func WithBookingApiClientFactory(f func(name string) (traits.BookingApiClient, e
 	})
 }
 
-func (r *ApiRouter) Register(server *grpc.Server) {
+func (r *ApiRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterBookingApiServer(server, r)
 }
 

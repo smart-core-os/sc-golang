@@ -35,7 +35,7 @@ func WithLightApiClientFactory(f func(name string) (traits.LightApiClient, error
 	})
 }
 
-func (r *ApiRouter) Register(server *grpc.Server) {
+func (r *ApiRouter) Register(server grpc.ServiceRegistrar) {
 	traits.RegisterLightApiServer(server, r)
 }
 

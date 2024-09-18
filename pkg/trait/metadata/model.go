@@ -78,7 +78,7 @@ func (m *Model) PullMetadata(ctx context.Context, opts ...resource.ReadOption) <
 			select {
 			case <-ctx.Done():
 				return
-			case send <- metadataChangeToProto(change):
+			case send <- metadataValueChangeToProto(change):
 			}
 		}
 	}()
@@ -86,7 +86,7 @@ func (m *Model) PullMetadata(ctx context.Context, opts ...resource.ReadOption) <
 	return send
 }
 
-func metadataChangeToProto(change *resource.ValueChange) *traits.PullMetadataResponse_Change {
+func metadataValueChangeToProto(change *resource.ValueChange) *traits.PullMetadataResponse_Change {
 	return &traits.PullMetadataResponse_Change{
 		ChangeTime: timestamppb.New(change.ChangeTime),
 		Metadata:   change.Value.(*traits.Metadata),

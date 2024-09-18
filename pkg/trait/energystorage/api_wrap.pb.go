@@ -5,33 +5,39 @@ package energystorage
 import (
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
+	grpc "google.golang.org/grpc"
 )
 
 // WrapApi	adapts a traits.EnergyStorageApiServer	and presents it as a traits.EnergyStorageApiClient
-func WrapApi(server traits.EnergyStorageApiServer) traits.EnergyStorageApiClient {
+func WrapApi(server traits.EnergyStorageApiServer) *ApiWrapper {
 	conn := wrap.ServerToClient(traits.EnergyStorageApi_ServiceDesc, server)
 	client := traits.NewEnergyStorageApiClient(conn)
-	return &apiWrapper{
+	return &ApiWrapper{
 		EnergyStorageApiClient: client,
 		server:                 server,
+		conn:                   conn,
+		desc:                   traits.EnergyStorageApi_ServiceDesc,
 	}
 }
 
-type apiWrapper struct {
+type ApiWrapper struct {
 	traits.EnergyStorageApiClient
 
 	server traits.EnergyStorageApiServer
+	conn   grpc.ClientConnInterface
+	desc   grpc.ServiceDesc
 }
 
-// compile time check that we implement the interface we need
-var _ traits.EnergyStorageApiClient = (*apiWrapper)(nil)
-
 // UnwrapServer returns the underlying server instance.
-func (w *apiWrapper) UnwrapServer() traits.EnergyStorageApiServer {
+func (w *ApiWrapper) UnwrapServer() traits.EnergyStorageApiServer {
 	return w.server
 }
 
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
-func (w *apiWrapper) Unwrap() any {
+func (w *ApiWrapper) Unwrap() any {
 	return w.UnwrapServer()
+}
+
+func (w *ApiWrapper) UnwrapService() (grpc.ClientConnInterface, grpc.ServiceDesc) {
+	return w.conn, w.desc
 }

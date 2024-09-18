@@ -39,30 +39,7 @@ func (m *Model) UpdateMetadata(metadata *traits.Metadata, opts ...resource.Write
 // Traits that exist in the given metadata are merged with existing traits using
 func (m *Model) MergeMetadata(metadata *traits.Metadata, opts ...resource.WriteOption) (*traits.Metadata, error) {
 	newOpts := make([]resource.WriteOption, 1, len(opts)+1)
-	newOpts[0] = resource.InterceptBefore(func(old, new proto.Message) {
-		clean := proto.Clone(metadata).(*traits.Metadata)
-		// handle trait updates specially
-		cleanTraits := clean.Traits
-		clean.Traits = nil
-
-		proto.Merge(new, old)   // copy all the original values into new
-		proto.Merge(new, clean) // then copy our updates - excluding Traits - on top
-
-		// finally merge traits
-		// The default proto.Merge logic is to append src slices to dst slices.
-		// Instead we want to treat the Traits slice as if it were a map keyed by TraitMetadata.Name,
-		// so we have to do it ourselves.
-		oldVal := old.(*traits.Metadata)
-		newVal := new.(*traits.Metadata)
-		newVal.Traits = oldVal.Traits
-		for _, trait := range cleanTraits {
-			newVal.Traits = mergeTraitMetadata(newVal.Traits, trait)
-		}
-		// make the output consistent
-		sort.Slice(newVal.Traits, func(i, j int) bool {
-			return newVal.Traits[i].Name < newVal.Traits[j].Name
-		})
-	})
+	newOpts[0] = resource.InterceptBefore(metadataMergeInterceptor)
 	newOpts = append(newOpts, opts...)
 	return m.UpdateMetadata(metadata, newOpts...)
 }
@@ -108,9 +85,37 @@ func (m *Model) PullMetadata(ctx context.Context, opts ...resource.ReadOption) <
 
 	return send
 }
+
 func metadataChangeToProto(change *resource.ValueChange) *traits.PullMetadataResponse_Change {
 	return &traits.PullMetadataResponse_Change{
 		ChangeTime: timestamppb.New(change.ChangeTime),
 		Metadata:   change.Value.(*traits.Metadata),
 	}
+}
+
+// special handling for updating a *traits.Metadata
+// because Traits is supposed to be a map-like slice
+func metadataMergeInterceptor(old, new proto.Message) {
+	clean := proto.Clone(new).(*traits.Metadata)
+	// handle trait updates specially
+	cleanTraits := clean.Traits
+	clean.Traits = nil
+
+	proto.Merge(new, old)   // copy all the original values into new
+	proto.Merge(new, clean) // then copy our updates - excluding Traits - on top
+
+	// finally merge traits
+	// The default proto.Merge logic is to append src slices to dst slices.
+	// Instead we want to treat the Traits slice as if it were a map keyed by TraitMetadata.Name,
+	// so we have to do it ourselves.
+	oldVal := old.(*traits.Metadata)
+	newVal := new.(*traits.Metadata)
+	newVal.Traits = oldVal.Traits
+	for _, trait := range cleanTraits {
+		newVal.Traits = mergeTraitMetadata(newVal.Traits, trait)
+	}
+	// make the output consistent
+	sort.Slice(newVal.Traits, func(i, j int) bool {
+		return newVal.Traits[i].Name < newVal.Traits[j].Name
+	})
 }

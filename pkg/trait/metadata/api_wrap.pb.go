@@ -5,33 +5,39 @@ package metadata
 import (
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
+	grpc "google.golang.org/grpc"
 )
 
 // WrapApi	adapts a traits.MetadataApiServer	and presents it as a traits.MetadataApiClient
-func WrapApi(server traits.MetadataApiServer) traits.MetadataApiClient {
+func WrapApi(server traits.MetadataApiServer) *ApiWrapper {
 	conn := wrap.ServerToClient(traits.MetadataApi_ServiceDesc, server)
 	client := traits.NewMetadataApiClient(conn)
-	return &apiWrapper{
+	return &ApiWrapper{
 		MetadataApiClient: client,
 		server:            server,
+		conn:              conn,
+		desc:              traits.MetadataApi_ServiceDesc,
 	}
 }
 
-type apiWrapper struct {
+type ApiWrapper struct {
 	traits.MetadataApiClient
 
 	server traits.MetadataApiServer
+	conn   grpc.ClientConnInterface
+	desc   grpc.ServiceDesc
 }
 
-// compile time check that we implement the interface we need
-var _ traits.MetadataApiClient = (*apiWrapper)(nil)
-
 // UnwrapServer returns the underlying server instance.
-func (w *apiWrapper) UnwrapServer() traits.MetadataApiServer {
+func (w *ApiWrapper) UnwrapServer() traits.MetadataApiServer {
 	return w.server
 }
 
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
-func (w *apiWrapper) Unwrap() any {
+func (w *ApiWrapper) Unwrap() any {
 	return w.UnwrapServer()
+}
+
+func (w *ApiWrapper) UnwrapService() (grpc.ClientConnInterface, grpc.ServiceDesc) {
+	return w.conn, w.desc
 }

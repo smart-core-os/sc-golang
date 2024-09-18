@@ -5,33 +5,39 @@ package emergency
 import (
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
+	grpc "google.golang.org/grpc"
 )
 
 // WrapInfo	adapts a traits.EmergencyInfoServer	and presents it as a traits.EmergencyInfoClient
-func WrapInfo(server traits.EmergencyInfoServer) traits.EmergencyInfoClient {
+func WrapInfo(server traits.EmergencyInfoServer) *InfoWrapper {
 	conn := wrap.ServerToClient(traits.EmergencyInfo_ServiceDesc, server)
 	client := traits.NewEmergencyInfoClient(conn)
-	return &infoWrapper{
+	return &InfoWrapper{
 		EmergencyInfoClient: client,
 		server:              server,
+		conn:                conn,
+		desc:                traits.EmergencyInfo_ServiceDesc,
 	}
 }
 
-type infoWrapper struct {
+type InfoWrapper struct {
 	traits.EmergencyInfoClient
 
 	server traits.EmergencyInfoServer
+	conn   grpc.ClientConnInterface
+	desc   grpc.ServiceDesc
 }
 
-// compile time check that we implement the interface we need
-var _ traits.EmergencyInfoClient = (*infoWrapper)(nil)
-
 // UnwrapServer returns the underlying server instance.
-func (w *infoWrapper) UnwrapServer() traits.EmergencyInfoServer {
+func (w *InfoWrapper) UnwrapServer() traits.EmergencyInfoServer {
 	return w.server
 }
 
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
-func (w *infoWrapper) Unwrap() any {
+func (w *InfoWrapper) Unwrap() any {
 	return w.UnwrapServer()
+}
+
+func (w *InfoWrapper) UnwrapService() (grpc.ClientConnInterface, grpc.ServiceDesc) {
+	return w.conn, w.desc
 }

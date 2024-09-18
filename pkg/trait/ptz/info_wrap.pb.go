@@ -5,33 +5,39 @@ package ptz
 import (
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
+	grpc "google.golang.org/grpc"
 )
 
 // WrapInfo	adapts a traits.PtzInfoServer	and presents it as a traits.PtzInfoClient
-func WrapInfo(server traits.PtzInfoServer) traits.PtzInfoClient {
+func WrapInfo(server traits.PtzInfoServer) *InfoWrapper {
 	conn := wrap.ServerToClient(traits.PtzInfo_ServiceDesc, server)
 	client := traits.NewPtzInfoClient(conn)
-	return &infoWrapper{
+	return &InfoWrapper{
 		PtzInfoClient: client,
 		server:        server,
+		conn:          conn,
+		desc:          traits.PtzInfo_ServiceDesc,
 	}
 }
 
-type infoWrapper struct {
+type InfoWrapper struct {
 	traits.PtzInfoClient
 
 	server traits.PtzInfoServer
+	conn   grpc.ClientConnInterface
+	desc   grpc.ServiceDesc
 }
 
-// compile time check that we implement the interface we need
-var _ traits.PtzInfoClient = (*infoWrapper)(nil)
-
 // UnwrapServer returns the underlying server instance.
-func (w *infoWrapper) UnwrapServer() traits.PtzInfoServer {
+func (w *InfoWrapper) UnwrapServer() traits.PtzInfoServer {
 	return w.server
 }
 
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
-func (w *infoWrapper) Unwrap() any {
+func (w *InfoWrapper) Unwrap() any {
 	return w.UnwrapServer()
+}
+
+func (w *InfoWrapper) UnwrapService() (grpc.ClientConnInterface, grpc.ServiceDesc) {
+	return w.conn, w.desc
 }

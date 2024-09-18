@@ -5,33 +5,39 @@ package lockunlock
 import (
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
+	grpc "google.golang.org/grpc"
 )
 
 // WrapApi	adapts a traits.LockUnlockApiServer	and presents it as a traits.LockUnlockApiClient
-func WrapApi(server traits.LockUnlockApiServer) traits.LockUnlockApiClient {
+func WrapApi(server traits.LockUnlockApiServer) *ApiWrapper {
 	conn := wrap.ServerToClient(traits.LockUnlockApi_ServiceDesc, server)
 	client := traits.NewLockUnlockApiClient(conn)
-	return &apiWrapper{
+	return &ApiWrapper{
 		LockUnlockApiClient: client,
 		server:              server,
+		conn:                conn,
+		desc:                traits.LockUnlockApi_ServiceDesc,
 	}
 }
 
-type apiWrapper struct {
+type ApiWrapper struct {
 	traits.LockUnlockApiClient
 
 	server traits.LockUnlockApiServer
+	conn   grpc.ClientConnInterface
+	desc   grpc.ServiceDesc
 }
 
-// compile time check that we implement the interface we need
-var _ traits.LockUnlockApiClient = (*apiWrapper)(nil)
-
 // UnwrapServer returns the underlying server instance.
-func (w *apiWrapper) UnwrapServer() traits.LockUnlockApiServer {
+func (w *ApiWrapper) UnwrapServer() traits.LockUnlockApiServer {
 	return w.server
 }
 
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
-func (w *apiWrapper) Unwrap() any {
+func (w *ApiWrapper) Unwrap() any {
 	return w.UnwrapServer()
+}
+
+func (w *ApiWrapper) UnwrapService() (grpc.ClientConnInterface, grpc.ServiceDesc) {
+	return w.conn, w.desc
 }

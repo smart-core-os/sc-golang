@@ -5,33 +5,39 @@ package motionsensor
 import (
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
+	grpc "google.golang.org/grpc"
 )
 
 // WrapApi	adapts a traits.MotionSensorApiServer	and presents it as a traits.MotionSensorApiClient
-func WrapApi(server traits.MotionSensorApiServer) traits.MotionSensorApiClient {
+func WrapApi(server traits.MotionSensorApiServer) *ApiWrapper {
 	conn := wrap.ServerToClient(traits.MotionSensorApi_ServiceDesc, server)
 	client := traits.NewMotionSensorApiClient(conn)
-	return &apiWrapper{
+	return &ApiWrapper{
 		MotionSensorApiClient: client,
 		server:                server,
+		conn:                  conn,
+		desc:                  traits.MotionSensorApi_ServiceDesc,
 	}
 }
 
-type apiWrapper struct {
+type ApiWrapper struct {
 	traits.MotionSensorApiClient
 
 	server traits.MotionSensorApiServer
+	conn   grpc.ClientConnInterface
+	desc   grpc.ServiceDesc
 }
 
-// compile time check that we implement the interface we need
-var _ traits.MotionSensorApiClient = (*apiWrapper)(nil)
-
 // UnwrapServer returns the underlying server instance.
-func (w *apiWrapper) UnwrapServer() traits.MotionSensorApiServer {
+func (w *ApiWrapper) UnwrapServer() traits.MotionSensorApiServer {
 	return w.server
 }
 
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
-func (w *apiWrapper) Unwrap() any {
+func (w *ApiWrapper) Unwrap() any {
 	return w.UnwrapServer()
+}
+
+func (w *ApiWrapper) UnwrapService() (grpc.ClientConnInterface, grpc.ServiceDesc) {
+	return w.conn, w.desc
 }

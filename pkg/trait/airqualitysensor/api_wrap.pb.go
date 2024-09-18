@@ -5,33 +5,39 @@ package airqualitysensor
 import (
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
+	grpc "google.golang.org/grpc"
 )
 
 // WrapApi	adapts a traits.AirQualitySensorApiServer	and presents it as a traits.AirQualitySensorApiClient
-func WrapApi(server traits.AirQualitySensorApiServer) traits.AirQualitySensorApiClient {
+func WrapApi(server traits.AirQualitySensorApiServer) *ApiWrapper {
 	conn := wrap.ServerToClient(traits.AirQualitySensorApi_ServiceDesc, server)
 	client := traits.NewAirQualitySensorApiClient(conn)
-	return &apiWrapper{
+	return &ApiWrapper{
 		AirQualitySensorApiClient: client,
 		server:                    server,
+		conn:                      conn,
+		desc:                      traits.AirQualitySensorApi_ServiceDesc,
 	}
 }
 
-type apiWrapper struct {
+type ApiWrapper struct {
 	traits.AirQualitySensorApiClient
 
 	server traits.AirQualitySensorApiServer
+	conn   grpc.ClientConnInterface
+	desc   grpc.ServiceDesc
 }
 
-// compile time check that we implement the interface we need
-var _ traits.AirQualitySensorApiClient = (*apiWrapper)(nil)
-
 // UnwrapServer returns the underlying server instance.
-func (w *apiWrapper) UnwrapServer() traits.AirQualitySensorApiServer {
+func (w *ApiWrapper) UnwrapServer() traits.AirQualitySensorApiServer {
 	return w.server
 }
 
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
-func (w *apiWrapper) Unwrap() any {
+func (w *ApiWrapper) Unwrap() any {
 	return w.UnwrapServer()
+}
+
+func (w *ApiWrapper) UnwrapService() (grpc.ClientConnInterface, grpc.ServiceDesc) {
+	return w.conn, w.desc
 }

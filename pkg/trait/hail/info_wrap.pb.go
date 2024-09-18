@@ -5,33 +5,39 @@ package hail
 import (
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
+	grpc "google.golang.org/grpc"
 )
 
 // WrapInfo	adapts a traits.HailInfoServer	and presents it as a traits.HailInfoClient
-func WrapInfo(server traits.HailInfoServer) traits.HailInfoClient {
+func WrapInfo(server traits.HailInfoServer) *InfoWrapper {
 	conn := wrap.ServerToClient(traits.HailInfo_ServiceDesc, server)
 	client := traits.NewHailInfoClient(conn)
-	return &infoWrapper{
+	return &InfoWrapper{
 		HailInfoClient: client,
 		server:         server,
+		conn:           conn,
+		desc:           traits.HailInfo_ServiceDesc,
 	}
 }
 
-type infoWrapper struct {
+type InfoWrapper struct {
 	traits.HailInfoClient
 
 	server traits.HailInfoServer
+	conn   grpc.ClientConnInterface
+	desc   grpc.ServiceDesc
 }
 
-// compile time check that we implement the interface we need
-var _ traits.HailInfoClient = (*infoWrapper)(nil)
-
 // UnwrapServer returns the underlying server instance.
-func (w *infoWrapper) UnwrapServer() traits.HailInfoServer {
+func (w *InfoWrapper) UnwrapServer() traits.HailInfoServer {
 	return w.server
 }
 
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
-func (w *infoWrapper) Unwrap() any {
+func (w *InfoWrapper) Unwrap() any {
 	return w.UnwrapServer()
+}
+
+func (w *InfoWrapper) UnwrapService() (grpc.ClientConnInterface, grpc.ServiceDesc) {
+	return w.conn, w.desc
 }

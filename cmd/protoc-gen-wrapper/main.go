@@ -92,6 +92,14 @@ func newServiceModel(g *protogen.GeneratedFile, service *protogen.Service, file 
 			GoName:       "ServerToClient",
 			GoImportPath: "github.com/smart-core-os/sc-golang/pkg/wrap",
 		}),
+		GRPCClientConnInterface: g.QualifiedGoIdent(protogen.GoIdent{
+			GoName:       "ClientConnInterface",
+			GoImportPath: "google.golang.org/grpc",
+		}),
+		GRPCServiceDesc: g.QualifiedGoIdent(protogen.GoIdent{
+			GoName:       "ServiceDesc",
+			GoImportPath: "google.golang.org/grpc",
+		}),
 	}
 
 	return model
@@ -116,7 +124,9 @@ type ServiceModel struct {
 	QualifiedClientConstructor string
 	QualifiedServiceDesc       string
 
-	WrapServerToClient string
+	WrapServerToClient      string
+	GRPCClientConnInterface string
+	GRPCServiceDesc         string
 }
 
 type Ident struct {

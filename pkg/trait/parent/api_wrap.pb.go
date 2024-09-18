@@ -5,33 +5,39 @@ package parent
 import (
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
+	grpc "google.golang.org/grpc"
 )
 
 // WrapApi	adapts a traits.ParentApiServer	and presents it as a traits.ParentApiClient
-func WrapApi(server traits.ParentApiServer) traits.ParentApiClient {
+func WrapApi(server traits.ParentApiServer) *ApiWrapper {
 	conn := wrap.ServerToClient(traits.ParentApi_ServiceDesc, server)
 	client := traits.NewParentApiClient(conn)
-	return &apiWrapper{
+	return &ApiWrapper{
 		ParentApiClient: client,
 		server:          server,
+		conn:            conn,
+		desc:            traits.ParentApi_ServiceDesc,
 	}
 }
 
-type apiWrapper struct {
+type ApiWrapper struct {
 	traits.ParentApiClient
 
 	server traits.ParentApiServer
+	conn   grpc.ClientConnInterface
+	desc   grpc.ServiceDesc
 }
 
-// compile time check that we implement the interface we need
-var _ traits.ParentApiClient = (*apiWrapper)(nil)
-
 // UnwrapServer returns the underlying server instance.
-func (w *apiWrapper) UnwrapServer() traits.ParentApiServer {
+func (w *ApiWrapper) UnwrapServer() traits.ParentApiServer {
 	return w.server
 }
 
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
-func (w *apiWrapper) Unwrap() any {
+func (w *ApiWrapper) Unwrap() any {
 	return w.UnwrapServer()
+}
+
+func (w *ApiWrapper) UnwrapService() (grpc.ClientConnInterface, grpc.ServiceDesc) {
+	return w.conn, w.desc
 }

@@ -9,6 +9,7 @@ require (
 	github.com/smart-core-os/sc-api/go v1.0.0-beta.45
 	github.com/tanema/gween v0.0.0-20200427131925-c89ae23cc63c
 	go.uber.org/zap v1.17.0
+	golang.org/x/exp v0.0.0-20240822175202-778ce7bba035
 	google.golang.org/grpc v1.60.1
 	google.golang.org/protobuf v1.33.0
 )
@@ -18,7 +19,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	go.uber.org/atomic v1.8.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
-	golang.org/x/exp v0.0.0-20240822175202-778ce7bba035 // indirect
 	golang.org/x/net v0.23.0 // indirect
 	golang.org/x/sys v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect

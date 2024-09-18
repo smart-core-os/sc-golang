@@ -5,33 +5,39 @@ package microphone
 import (
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
+	grpc "google.golang.org/grpc"
 )
 
 // WrapApi	adapts a traits.MicrophoneApiServer	and presents it as a traits.MicrophoneApiClient
-func WrapApi(server traits.MicrophoneApiServer) traits.MicrophoneApiClient {
+func WrapApi(server traits.MicrophoneApiServer) *ApiWrapper {
 	conn := wrap.ServerToClient(traits.MicrophoneApi_ServiceDesc, server)
 	client := traits.NewMicrophoneApiClient(conn)
-	return &apiWrapper{
+	return &ApiWrapper{
 		MicrophoneApiClient: client,
 		server:              server,
+		conn:                conn,
+		desc:                traits.MicrophoneApi_ServiceDesc,
 	}
 }
 
-type apiWrapper struct {
+type ApiWrapper struct {
 	traits.MicrophoneApiClient
 
 	server traits.MicrophoneApiServer
+	conn   grpc.ClientConnInterface
+	desc   grpc.ServiceDesc
 }
 
-// compile time check that we implement the interface we need
-var _ traits.MicrophoneApiClient = (*apiWrapper)(nil)
-
 // UnwrapServer returns the underlying server instance.
-func (w *apiWrapper) UnwrapServer() traits.MicrophoneApiServer {
+func (w *ApiWrapper) UnwrapServer() traits.MicrophoneApiServer {
 	return w.server
 }
 
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
-func (w *apiWrapper) Unwrap() any {
+func (w *ApiWrapper) Unwrap() any {
 	return w.UnwrapServer()
+}
+
+func (w *ApiWrapper) UnwrapService() (grpc.ClientConnInterface, grpc.ServiceDesc) {
+	return w.conn, w.desc
 }

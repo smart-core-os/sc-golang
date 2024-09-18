@@ -5,33 +5,39 @@ package openclose
 import (
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
+	grpc "google.golang.org/grpc"
 )
 
 // WrapInfo	adapts a traits.OpenCloseInfoServer	and presents it as a traits.OpenCloseInfoClient
-func WrapInfo(server traits.OpenCloseInfoServer) traits.OpenCloseInfoClient {
+func WrapInfo(server traits.OpenCloseInfoServer) *InfoWrapper {
 	conn := wrap.ServerToClient(traits.OpenCloseInfo_ServiceDesc, server)
 	client := traits.NewOpenCloseInfoClient(conn)
-	return &infoWrapper{
+	return &InfoWrapper{
 		OpenCloseInfoClient: client,
 		server:              server,
+		conn:                conn,
+		desc:                traits.OpenCloseInfo_ServiceDesc,
 	}
 }
 
-type infoWrapper struct {
+type InfoWrapper struct {
 	traits.OpenCloseInfoClient
 
 	server traits.OpenCloseInfoServer
+	conn   grpc.ClientConnInterface
+	desc   grpc.ServiceDesc
 }
 
-// compile time check that we implement the interface we need
-var _ traits.OpenCloseInfoClient = (*infoWrapper)(nil)
-
 // UnwrapServer returns the underlying server instance.
-func (w *infoWrapper) UnwrapServer() traits.OpenCloseInfoServer {
+func (w *InfoWrapper) UnwrapServer() traits.OpenCloseInfoServer {
 	return w.server
 }
 
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
-func (w *infoWrapper) Unwrap() any {
+func (w *InfoWrapper) Unwrap() any {
 	return w.UnwrapServer()
+}
+
+func (w *InfoWrapper) UnwrapService() (grpc.ClientConnInterface, grpc.ServiceDesc) {
+	return w.conn, w.desc
 }

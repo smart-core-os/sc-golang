@@ -5,33 +5,39 @@ package speaker
 import (
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
+	grpc "google.golang.org/grpc"
 )
 
 // WrapInfo	adapts a traits.SpeakerInfoServer	and presents it as a traits.SpeakerInfoClient
-func WrapInfo(server traits.SpeakerInfoServer) traits.SpeakerInfoClient {
+func WrapInfo(server traits.SpeakerInfoServer) *InfoWrapper {
 	conn := wrap.ServerToClient(traits.SpeakerInfo_ServiceDesc, server)
 	client := traits.NewSpeakerInfoClient(conn)
-	return &infoWrapper{
+	return &InfoWrapper{
 		SpeakerInfoClient: client,
 		server:            server,
+		conn:              conn,
+		desc:              traits.SpeakerInfo_ServiceDesc,
 	}
 }
 
-type infoWrapper struct {
+type InfoWrapper struct {
 	traits.SpeakerInfoClient
 
 	server traits.SpeakerInfoServer
+	conn   grpc.ClientConnInterface
+	desc   grpc.ServiceDesc
 }
 
-// compile time check that we implement the interface we need
-var _ traits.SpeakerInfoClient = (*infoWrapper)(nil)
-
 // UnwrapServer returns the underlying server instance.
-func (w *infoWrapper) UnwrapServer() traits.SpeakerInfoServer {
+func (w *InfoWrapper) UnwrapServer() traits.SpeakerInfoServer {
 	return w.server
 }
 
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
-func (w *infoWrapper) Unwrap() any {
+func (w *InfoWrapper) Unwrap() any {
 	return w.UnwrapServer()
+}
+
+func (w *InfoWrapper) UnwrapService() (grpc.ClientConnInterface, grpc.ServiceDesc) {
+	return w.conn, w.desc
 }

@@ -5,33 +5,39 @@ package enterleavesensor
 import (
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
+	grpc "google.golang.org/grpc"
 )
 
 // WrapApi	adapts a traits.EnterLeaveSensorApiServer	and presents it as a traits.EnterLeaveSensorApiClient
-func WrapApi(server traits.EnterLeaveSensorApiServer) traits.EnterLeaveSensorApiClient {
+func WrapApi(server traits.EnterLeaveSensorApiServer) *ApiWrapper {
 	conn := wrap.ServerToClient(traits.EnterLeaveSensorApi_ServiceDesc, server)
 	client := traits.NewEnterLeaveSensorApiClient(conn)
-	return &apiWrapper{
+	return &ApiWrapper{
 		EnterLeaveSensorApiClient: client,
 		server:                    server,
+		conn:                      conn,
+		desc:                      traits.EnterLeaveSensorApi_ServiceDesc,
 	}
 }
 
-type apiWrapper struct {
+type ApiWrapper struct {
 	traits.EnterLeaveSensorApiClient
 
 	server traits.EnterLeaveSensorApiServer
+	conn   grpc.ClientConnInterface
+	desc   grpc.ServiceDesc
 }
 
-// compile time check that we implement the interface we need
-var _ traits.EnterLeaveSensorApiClient = (*apiWrapper)(nil)
-
 // UnwrapServer returns the underlying server instance.
-func (w *apiWrapper) UnwrapServer() traits.EnterLeaveSensorApiServer {
+func (w *ApiWrapper) UnwrapServer() traits.EnterLeaveSensorApiServer {
 	return w.server
 }
 
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
-func (w *apiWrapper) Unwrap() any {
+func (w *ApiWrapper) Unwrap() any {
 	return w.UnwrapServer()
+}
+
+func (w *ApiWrapper) UnwrapService() (grpc.ClientConnInterface, grpc.ServiceDesc) {
+	return w.conn, w.desc
 }

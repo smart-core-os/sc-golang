@@ -5,33 +5,39 @@ package fanspeed
 import (
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	wrap "github.com/smart-core-os/sc-golang/pkg/wrap"
+	grpc "google.golang.org/grpc"
 )
 
 // WrapApi	adapts a traits.FanSpeedApiServer	and presents it as a traits.FanSpeedApiClient
-func WrapApi(server traits.FanSpeedApiServer) traits.FanSpeedApiClient {
+func WrapApi(server traits.FanSpeedApiServer) *ApiWrapper {
 	conn := wrap.ServerToClient(traits.FanSpeedApi_ServiceDesc, server)
 	client := traits.NewFanSpeedApiClient(conn)
-	return &apiWrapper{
+	return &ApiWrapper{
 		FanSpeedApiClient: client,
 		server:            server,
+		conn:              conn,
+		desc:              traits.FanSpeedApi_ServiceDesc,
 	}
 }
 
-type apiWrapper struct {
+type ApiWrapper struct {
 	traits.FanSpeedApiClient
 
 	server traits.FanSpeedApiServer
+	conn   grpc.ClientConnInterface
+	desc   grpc.ServiceDesc
 }
 
-// compile time check that we implement the interface we need
-var _ traits.FanSpeedApiClient = (*apiWrapper)(nil)
-
 // UnwrapServer returns the underlying server instance.
-func (w *apiWrapper) UnwrapServer() traits.FanSpeedApiServer {
+func (w *ApiWrapper) UnwrapServer() traits.FanSpeedApiServer {
 	return w.server
 }
 
 // Unwrap implements wrap.Unwrapper and returns the underlying server instance as an unknown type.
-func (w *apiWrapper) Unwrap() any {
+func (w *ApiWrapper) Unwrap() any {
 	return w.UnwrapServer()
+}
+
+func (w *ApiWrapper) UnwrapService() (grpc.ClientConnInterface, grpc.ServiceDesc) {
+	return w.conn, w.desc
 }

@@ -3,6 +3,7 @@ package wrap
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -55,6 +57,52 @@ func TestWrapper_Unary(t *testing.T) {
 			t.Errorf("statusErr.Message() = %q; want %q", statusErr.Message(), want)
 		}
 	})
+}
+
+// tests invoking a unary handler as a stream - this is needed to support proxies which handle all
+// calls as streams
+func TestWrapper_UnaryAsStream(t *testing.T) {
+	src := &testServer{}
+	conn := ServerToClient(testproto.TestApi_ServiceDesc, src)
+	ctx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs("a", "avalue", "b", "bvalue"))
+
+	method := fmt.Sprintf("/%s/Unary", testproto.TestApi_ServiceDesc.ServiceName)
+	stream, err := conn.NewStream(ctx, &grpc.StreamDesc{
+		StreamName:    "Unary",
+		ClientStreams: false,
+		ServerStreams: false,
+	}, method)
+	if err != nil {
+		t.Fatalf("conn.NewStream(_, _, _) = _, %v; want _, nil", err)
+	}
+
+	// send request
+	err = stream.SendMsg(&testproto.UnaryRequest{Msg: "hello"})
+	if err != nil {
+		t.Fatalf("stream.SendMsg(_) = %v; want nil", err)
+	}
+	err = stream.CloseSend()
+	if err != nil {
+		t.Fatalf("stream.CloseSend() = %v; want nil", err)
+	}
+	// receive response
+	res := &testproto.UnaryResponse{}
+	err = stream.RecvMsg(res)
+	if err != nil {
+		t.Fatalf("stream.RecvMsg(_) = %v; want nil", err)
+	}
+	expect := &testproto.UnaryResponse{Msg: "hello"}
+	if diff := cmp.Diff(expect, res, protocmp.Transform()); diff != "" {
+		t.Errorf("stream.RecvMsg(_) mismatch (-want +got):\n%s", diff)
+	}
+	expectMD := metadata.Pairs("a", "avalue", "b", "bvalue")
+	md, err := stream.Header()
+	if err != nil {
+		t.Errorf("stream.Header() = _, %v; want _, nil", err)
+	}
+	if diff := cmp.Diff(expectMD, md); diff != "" {
+		t.Errorf("stream.Header() mismatch (-want +got):\n%s", diff)
+	}
 }
 
 // tests that the wrapper passes server-streaming calls through correctly, including metadata

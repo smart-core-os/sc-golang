@@ -119,8 +119,7 @@ func (c *clientStream) RecvMsg(m any) error {
 		if !ok {
 			return c.closeErrLocked()
 		}
-		proto.Merge(m.(proto.Message), val.(proto.Message))
-		return nil
+		return permissiveProtoMerge(m.(proto.Message), val.(proto.Message))
 	}
 }
 
@@ -173,12 +172,28 @@ func (s *serverStream) RecvMsg(m any) error {
 		if !ok {
 			return io.EOF
 		}
-		proto.Merge(m.(proto.Message), val.(proto.Message))
-		return nil
+		return permissiveProtoMerge(m.(proto.Message), val.(proto.Message))
 	}
 }
 
 func (s *serverStream) sendHeaderIfNeeded() {
 	// ignore error, SendHeader has no side effects if the headers have already been sent
 	_ = s.SendHeader(nil)
+}
+
+// works like proto.Merge but allows messages with different descriptors by performing a marshal/unmarshal
+//
+// This is the recommended way to do it: https://github.com/golang/protobuf/issues/1163#issuecomment-654334690
+func permissiveProtoMerge(dst, src proto.Message) error {
+	if dst.ProtoReflect().Descriptor() == src.ProtoReflect().Descriptor() {
+		// easy case, where proto.Merge can be used
+		proto.Merge(dst, src)
+		return nil
+	}
+	// mismatched descriptors, so we need to marshal/unmarshal
+	encoded, err := proto.Marshal(src)
+	if err != nil {
+		return err
+	}
+	return proto.UnmarshalOptions{Merge: true}.Unmarshal(encoded, dst)
 }

@@ -11,6 +11,9 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+var ErrMethodNotFound = status.Error(codes.Unimplemented, "method not found")
+var ErrMethodShape = status.Error(codes.Internal, "method stream shape mismatch")
+
 // ServerToClient returns a grpc.ClientConnInterface that can service all methods described by desc.
 // srv is the gRPC server implementation type (a type that could be passed to a grpc RegisterXxxServer function).
 //
@@ -51,7 +54,7 @@ type wrapper struct {
 func (w *wrapper) Invoke(ctx context.Context, method string, args any, reply any, opts ...grpc.CallOption) error {
 	matched, ok := w.methods[method]
 	if !ok {
-		return status.Error(codes.Unimplemented, "method not found")
+		return ErrMethodNotFound
 	}
 
 	ctx, clientServerStream, ss, cs := w.startStream(ctx, method)
@@ -75,33 +78,27 @@ func (w *wrapper) Invoke(ctx context.Context, method string, args any, reply any
 	}
 	err := cs.RecvMsg(reply)
 
-	// gather headers and trailers
-	for _, opt := range opts {
-		switch opt := opt.(type) {
-		case grpc.HeaderCallOption:
-			hdr, hdrErr := cs.Header()
-			if hdrErr != nil && err == nil {
-				err = hdrErr
-			}
-			*opt.HeaderAddr = cloneMD(hdr)
-
-		case grpc.TrailerCallOption:
-			trailer := cs.Trailer()
-			*opt.TrailerAddr = cloneMD(trailer)
-		}
+	mdErr := collectMetadata(cs, opts)
+	if mdErr != nil && err == nil {
+		err = mdErr
 	}
 
 	return err
 }
 
-func (w *wrapper) NewStream(ctx context.Context, desc *grpc.StreamDesc, method string, _ ...grpc.CallOption) (grpc.ClientStream, error) {
+func (w *wrapper) NewStream(ctx context.Context, desc *grpc.StreamDesc, method string, opts ...grpc.CallOption) (grpc.ClientStream, error) {
 	matched, ok := w.streams[method]
 	if !ok {
-		return nil, status.Error(codes.Unimplemented, "method not found")
+		if matchedMethod, ok := w.methods[method]; ok {
+			// caller is trying to use a unary method as a stream, this requires special handling
+			matched = adaptUnaryToStream(matchedMethod)
+		} else {
+			return nil, ErrMethodNotFound
+		}
 	}
 
 	if matched.ServerStreams != desc.ServerStreams || matched.ClientStreams != desc.ClientStreams {
-		return nil, status.Error(codes.Internal, "method stream shape mismatch")
+		return nil, ErrMethodShape
 	}
 
 	ctx, clientServerStream, ss, cs := w.startStream(ctx, method)
@@ -164,4 +161,42 @@ func cloneMD(md metadata.MD) metadata.MD {
 		newMD[k] = append([]string(nil), v...)
 	}
 	return newMD
+}
+
+// gather headers and trailers into grpc.Header and grpc.Trailer call options
+func collectMetadata(cs grpc.ClientStream, opts []grpc.CallOption) error {
+	var err error
+	for _, opt := range opts {
+		switch opt := opt.(type) {
+		case grpc.HeaderCallOption:
+			hdr, hdrErr := cs.Header()
+			if hdrErr != nil && err == nil {
+				err = hdrErr
+			}
+			*opt.HeaderAddr = cloneMD(hdr)
+
+		case grpc.TrailerCallOption:
+			trailer := cs.Trailer()
+			*opt.TrailerAddr = cloneMD(trailer)
+		}
+	}
+	return err
+}
+
+func adaptUnaryToStream(desc grpc.MethodDesc) grpc.StreamDesc {
+	return grpc.StreamDesc{
+		StreamName:    desc.MethodName,
+		ServerStreams: false,
+		ClientStreams: false,
+		Handler: func(srv any, stream grpc.ServerStream) error {
+			dec := func(dst any) error {
+				return stream.RecvMsg(dst)
+			}
+			res, err := desc.Handler(srv, stream.Context(), dec, nil)
+			if err != nil {
+				return err
+			}
+			return stream.SendMsg(res)
+		},
+	}
 }

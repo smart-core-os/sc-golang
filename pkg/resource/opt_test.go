@@ -2,14 +2,16 @@ package resource
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/smart-core-os/sc-api/go/traits"
-	"github.com/smart-core-os/sc-api/go/types"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
+
+	"github.com/smart-core-os/sc-api/go/traits"
+	"github.com/smart-core-os/sc-api/go/types"
 )
 
 func TestWithUpdatesOnly(t *testing.T) {
@@ -297,6 +299,19 @@ func TestWithBackpressure_False(t *testing.T) {
 		case <-time.After(100 * time.Millisecond):
 		}
 	})
+}
+
+func TestWithIDInterceptor(t *testing.T) {
+	c := NewCollection(WithIDInterceptor(strings.ToLower))
+	add(t, c, "A", &traits.OnOff{State: traits.OnOff_ON})
+	expect := &traits.OnOff{State: traits.OnOff_ON}
+	actual, ok := c.Get("a")
+	if !ok {
+		t.Error("expected to find item with id 'a'")
+	}
+	if diff := cmp.Diff(expect, actual, protocmp.Transform()); diff != "" {
+		t.Errorf("Get('a') returned wrong value (-want,+got)\n%v", diff)
+	}
 }
 
 // List CollectionChange but without the timestamp

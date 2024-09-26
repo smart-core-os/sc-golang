@@ -101,6 +101,18 @@ func WithWritablePaths(m proto.Message, paths ...string) Option {
 	return WithWritableFields(mask)
 }
 
+type IDInterceptor = func(oldID string) (newID string)
+
+// WithIDInterceptor will map IDs provided to Collection methods to another ID before reading or writing from the
+// collection.
+// Applicable only to Collection.
+// For example, this can be used to make a case-insensitive collection by mapping all IDs to lowercase.
+func WithIDInterceptor(interceptor IDInterceptor) Option {
+	return optionFunc(func(s *config) {
+		s.idInterceptor = interceptor
+	})
+}
+
 type config struct {
 	clock          Clock
 	equivalence    Comparer
@@ -108,6 +120,7 @@ type config struct {
 	initialValue   proto.Message
 	initialRecords map[string]proto.Message
 	writableFields *fieldmaskpb.FieldMask
+	idInterceptor  IDInterceptor
 }
 
 func computeConfig(opts ...Option) *config {

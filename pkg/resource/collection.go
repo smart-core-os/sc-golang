@@ -44,6 +44,10 @@ func NewCollection(options ...Option) *Collection {
 
 // Get will find the entry with the given ID. If no such entry exists, returns false.
 func (c *Collection) Get(id string, opts ...ReadOption) (proto.Message, bool) {
+	if c.idInterceptor != nil {
+		id = c.idInterceptor(id)
+	}
+
 	readConfig := ComputeReadConfig(opts...)
 
 	c.mu.RLock()
@@ -90,6 +94,10 @@ func (c *Collection) Add(id string, body proto.Message, opts ...WriteOption) (pr
 }
 
 func (c *Collection) Update(id string, msg proto.Message, opts ...WriteOption) (proto.Message, error) {
+	if c.idInterceptor != nil {
+		id = c.idInterceptor(id)
+	}
+
 	writeRequest := ComputeWriteConfig(opts...)
 	writer := writeRequest.fieldUpdater(c.writableFields)
 	if err := writer.Validate(msg); err != nil {
@@ -162,6 +170,10 @@ func (c *Collection) Update(id string, msg proto.Message, opts ...WriteOption) (
 // If the id is unknown an error will be returned, unless WithAllowMissing is specified.
 // Read-update-write operations can be checked via WithExpectedValue or WithExpectedCheck options.
 func (c *Collection) Delete(id string, opts ...WriteOption) (proto.Message, error) {
+	if c.idInterceptor != nil {
+		id = c.idInterceptor(id)
+	}
+
 	args := ComputeWriteConfig(opts...)
 	// Read lock first, we don't want to hold the lock when we pass control to callback functions
 	c.mu.RLock()
@@ -265,6 +277,10 @@ func (c *Collection) Pull(ctx context.Context, opts ...ReadOption) <-chan *Colle
 // PullID subscribes to changes for a single item in the collection.
 // The returned channel will close if ctx is Done or the item identified by id is deleted.
 func (c *Collection) PullID(ctx context.Context, id string, opts ...ReadOption) <-chan *ValueChange {
+	if c.idInterceptor != nil {
+		id = c.idInterceptor(id)
+	}
+
 	send := make(chan *ValueChange)
 	go func() {
 		defer close(send)
@@ -328,6 +344,9 @@ func (c *Collection) itemSlice(readConfig *ReadRequest) []idItem {
 
 func (c *Collection) genID() (string, error) {
 	return GenerateUniqueId(c.rng, func(candidate string) bool {
+		if c.idInterceptor != nil {
+			candidate = c.idInterceptor(candidate)
+		}
 		_, exists := c.byId[candidate]
 		return exists
 	})

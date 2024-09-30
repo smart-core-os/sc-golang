@@ -86,7 +86,7 @@ func (w *wrapper) Invoke(ctx context.Context, method string, args any, reply any
 	return err
 }
 
-func (w *wrapper) NewStream(ctx context.Context, desc *grpc.StreamDesc, method string, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+func (w *wrapper) NewStream(ctx context.Context, desc *grpc.StreamDesc, method string, _ ...grpc.CallOption) (grpc.ClientStream, error) {
 	matched, ok := w.streams[method]
 	if !ok {
 		if matchedMethod, ok := w.methods[method]; ok {

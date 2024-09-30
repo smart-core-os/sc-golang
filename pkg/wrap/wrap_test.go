@@ -103,6 +103,12 @@ func TestWrapper_UnaryAsStream(t *testing.T) {
 	if diff := cmp.Diff(expectMD, md); diff != "" {
 		t.Errorf("stream.Header() mismatch (-want +got):\n%s", diff)
 	}
+
+	// stream should be closed now, because unary calls send only one response
+	err = stream.RecvMsg(res)
+	if !errors.Is(err, io.EOF) {
+		t.Errorf("stream not closed - expected EOF, got %v", err)
+	}
 }
 
 // tests that the wrapper passes server-streaming calls through correctly, including metadata

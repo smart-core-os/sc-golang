@@ -36,7 +36,8 @@ func (m *Model) UpdateMetadata(metadata *traits.Metadata, opts ...resource.Write
 }
 
 // MergeMetadata writes any present fields in metadata to the existing data.
-// Traits that exist in the given metadata are merged with existing traits using
+// Traits that exist in the given metadata are merged with existing traits, so that each trait appears only once and
+// the 'more' maps are merged.
 func (m *Model) MergeMetadata(metadata *traits.Metadata, opts ...resource.WriteOption) (*traits.Metadata, error) {
 	newOpts := make([]resource.WriteOption, 1, len(opts)+1)
 	newOpts[0] = resource.InterceptBefore(metadataMergeInterceptor)

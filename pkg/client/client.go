@@ -5,10 +5,11 @@ import (
 	"net/url"
 	"time"
 
-	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
-	"github.com/smart-core-os/sc-api/go/info"
+	grpcretry "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/retry"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+
+	"github.com/smart-core-os/sc-api/go/info"
 )
 
 type Client struct {
@@ -22,7 +23,7 @@ func NewClient(processorAddr *url.URL, auth AuthCredentials, logger *zap.Logger)
 	conn, err := grpc.Dial(
 		processorAddr.Host,
 		grpc.WithTransportCredentials(auth.Creds),
-		grpc.WithUnaryInterceptor(grpc_retry.UnaryClientInterceptor()),
+		grpc.WithUnaryInterceptor(grpcretry.UnaryClientInterceptor()),
 	)
 	if err != nil {
 		logger.Fatal("Could not create connection to server", zap.Error(err))
@@ -31,9 +32,9 @@ func NewClient(processorAddr *url.URL, auth AuthCredentials, logger *zap.Logger)
 	return Client{
 		conn,
 		[]grpc.CallOption{
-			grpc_retry.WithMax(5),
-			grpc_retry.WithPerRetryTimeout(2 * time.Second),
-			grpc_retry.WithBackoff(grpc_retry.BackoffExponentialWithJitter(100*time.Millisecond, 0.01)),
+			grpcretry.WithMax(5),
+			grpcretry.WithPerRetryTimeout(2 * time.Second),
+			grpcretry.WithBackoff(grpcretry.BackoffExponentialWithJitter(100*time.Millisecond, 0.01)),
 		},
 		logger,
 	}

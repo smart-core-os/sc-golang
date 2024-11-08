@@ -12,12 +12,6 @@ var DefaultModelOptions = []resource.Option{
 	WithInitialOpenClosePositions(), // no positions
 }
 
-// ModelOption defined the base type for all options that apply to this traits model.
-type ModelOption interface {
-	resource.Option
-	applyModel(args *modelArgs)
-}
-
 // WithOpenClosePositionsOption configures the positions resource of the model.
 func WithOpenClosePositionsOption(opts ...resource.Option) resource.Option {
 	return modelOptionFunc(func(args *modelArgs) {
@@ -57,7 +51,7 @@ type modelArgs struct {
 
 func (a *modelArgs) apply(opts ...resource.Option) {
 	for _, opt := range opts {
-		if v, ok := opt.(ModelOption); ok {
+		if v, ok := opt.(modelOption); ok {
 			v.applyModel(a)
 			continue
 		}
@@ -65,7 +59,7 @@ func (a *modelArgs) apply(opts ...resource.Option) {
 	}
 }
 
-func modelOptionFunc(fn func(args *modelArgs)) ModelOption {
+func modelOptionFunc(fn func(args *modelArgs)) modelOption {
 	return modelOption{resource.EmptyOption{}, fn}
 }
 

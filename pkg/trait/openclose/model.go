@@ -53,10 +53,10 @@ func (m *Model) GetPositions(opts ...resource.ReadOption) (*traits.OpenClosePosi
 	return dst, nil
 }
 
-func (m *Model) GetPosition(id traits.OpenClosePosition_Direction, opts ...resource.ReadOption) (*traits.OpenClosePosition, error) {
-	position, ok := m.positions.Get(directionToID(id), opts...)
+func (m *Model) GetPosition(dir traits.OpenClosePosition_Direction, opts ...resource.ReadOption) (*traits.OpenClosePosition, error) {
+	position, ok := m.positions.Get(directionToID(dir), opts...)
 	if !ok {
-		return nil, status.Errorf(codes.NotFound, "position %v not found", id)
+		return nil, status.Errorf(codes.NotFound, "position %v not found", dir)
 	}
 	return position.(*traits.OpenClosePosition), nil
 }
@@ -92,8 +92,8 @@ func (m *Model) UpdatePosition(position *traits.OpenClosePosition, opts ...resou
 	return m.UpdatePositionN(position.Direction, position, opts...)
 }
 
-func (m *Model) UpdatePositionN(id traits.OpenClosePosition_Direction, position *traits.OpenClosePosition, opts ...resource.WriteOption) (*traits.OpenClosePosition, error) {
-	msg, err := m.positions.Update(directionToID(id), position, opts...)
+func (m *Model) UpdatePositionN(dir traits.OpenClosePosition_Direction, position *traits.OpenClosePosition, opts ...resource.WriteOption) (*traits.OpenClosePosition, error) {
+	msg, err := m.positions.Update(directionToID(dir), position, opts...)
 	if err != nil {
 		return nil, err
 	}

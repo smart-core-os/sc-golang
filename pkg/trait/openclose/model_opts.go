@@ -26,7 +26,7 @@ func WithInitialOpenClosePositions(positions ...*traits.OpenClosePosition) resou
 	for i, state := range positions {
 		opts = append(opts, resource.WithInitialRecord(strconv.Itoa(i), state))
 	}
-	return WithOpenClosePositionsOption(resource.Options(opts))
+	return WithOpenClosePositionsOption(opts...)
 }
 
 // WithPreset returns an option that configures the model with the given preset.

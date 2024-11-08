@@ -7,11 +7,13 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/smart-core-os/sc-api/go/traits"
+	"github.com/smart-core-os/sc-api/go/types"
 	"github.com/smart-core-os/sc-golang/pkg/resource"
 )
 
 type ModelServer struct {
 	traits.UnimplementedOpenCloseApiServer
+	traits.UnimplementedOpenCloseInfoServer
 	model *Model
 }
 
@@ -47,4 +49,16 @@ func (s *ModelServer) PullPositions(request *traits.PullOpenClosePositionsReques
 		}
 	}
 	return nil
+}
+
+func (s *ModelServer) DescribePositions(_ context.Context, _ *traits.DescribePositionsRequest) (*traits.PositionsSupport, error) {
+	support := &traits.PositionsSupport{
+		ResourceSupport: &types.ResourceSupport{
+			Readable: true, Writable: true, Observable: true,
+			PullSupport: types.PullSupport_PULL_SUPPORT_NATIVE,
+		},
+		SupportsStop: true,
+		Presets:      s.model.ListPresets(),
+	}
+	return support, nil
 }

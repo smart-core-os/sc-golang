@@ -28,6 +28,15 @@ type EmptyOption struct {
 func (e EmptyOption) apply(_ *config) {
 }
 
+// Options converts a []Option to an Option.
+type Options []Option
+
+func (o Options) apply(c *config) {
+	for _, option := range o {
+		option.apply(c)
+	}
+}
+
 // WithClock configures the clock used when time is needed.
 // Defaults to a Clock backed by the time package.
 func WithClock(c Clock) Option {

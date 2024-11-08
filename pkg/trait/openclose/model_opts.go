@@ -1,8 +1,6 @@
 package openclose
 
 import (
-	"strconv"
-
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-golang/pkg/resource"
 )
@@ -23,8 +21,8 @@ func WithOpenClosePositionsOption(opts ...resource.Option) resource.Option {
 // This option should only be used once per model.
 func WithInitialOpenClosePositions(positions ...*traits.OpenClosePosition) resource.Option {
 	var opts []resource.Option
-	for i, state := range positions {
-		opts = append(opts, resource.WithInitialRecord(strconv.Itoa(i), state))
+	for _, state := range positions {
+		opts = append(opts, resource.WithInitialRecord(directionToID(state.Direction), state))
 	}
 	return WithOpenClosePositionsOption(opts...)
 }

@@ -7,24 +7,24 @@ import (
 
 // DefaultModelOptions holds the default options for the model.
 var DefaultModelOptions = []resource.Option{
-	WithInitialOpenClosePositions(), // no positions
+	WithInitialPositions(), // no positions
 }
 
-// WithOpenClosePositionsOption configures the positions resource of the model.
-func WithOpenClosePositionsOption(opts ...resource.Option) resource.Option {
+// WithPositionsOption configures the positions resource of the model.
+func WithPositionsOption(opts ...resource.Option) resource.Option {
 	return modelOptionFunc(func(args *modelArgs) {
 		args.positionsOpts = append(args.positionsOpts, opts...)
 	})
 }
 
-// WithInitialOpenClosePositions returns an option that configures the model to initialise with the given positions.
+// WithInitialPositions returns an option that configures the model to initialise with the given positions.
 // This option should only be used once per model.
-func WithInitialOpenClosePositions(positions ...*traits.OpenClosePosition) resource.Option {
+func WithInitialPositions(positions ...*traits.OpenClosePosition) resource.Option {
 	var opts []resource.Option
 	for _, state := range positions {
 		opts = append(opts, resource.WithInitialRecord(directionToID(state.Direction), state))
 	}
-	return WithOpenClosePositionsOption(opts...)
+	return WithPositionsOption(opts...)
 }
 
 // WithPreset returns an option that configures the model with the given preset.

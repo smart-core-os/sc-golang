@@ -22,6 +22,8 @@ type Model struct {
 	presets   []preset
 }
 
+// NewModel creates a new *Model with the given options.
+// Options are applied to all resource types in the model unless specified otherwise in the option.
 func NewModel(opts ...resource.Option) *Model {
 	args := calcModelArgs(opts...)
 	return &Model{

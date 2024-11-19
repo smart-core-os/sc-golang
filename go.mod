@@ -7,6 +7,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
 	github.com/mennanov/fmutils v0.1.1
 	github.com/smart-core-os/sc-api/go v1.0.0-beta.48
+	github.com/stretchr/testify v1.8.4
 	github.com/tanema/gween v0.0.0-20200427131925-c89ae23cc63c
 	go.uber.org/zap v1.17.0
 	golang.org/x/exp v0.0.0-20240822175202-778ce7bba035
@@ -15,11 +16,14 @@ require (
 )
 
 require (
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	go.uber.org/atomic v1.8.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
 	golang.org/x/net v0.29.0 // indirect
 	golang.org/x/sys v0.25.0 // indirect
 	golang.org/x/text v0.18.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240930140551-af27646dc61f // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

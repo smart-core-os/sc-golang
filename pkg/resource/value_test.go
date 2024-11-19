@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 
 	"github.com/smart-core-os/sc-api/go/traits"
@@ -77,5 +79,17 @@ func TestValue_Pull(t *testing.T) {
 		if diff := cmp.Diff(want, change, protocmp.Transform()); diff != "" {
 			t.Fatalf("Value (-want,+got)\n%s", diff)
 		}
+	})
+
+	t.Run("doesnt panic with no initial value", func(t *testing.T) {
+		val := NewValue()
+
+		res, err := val.Set(&traits.OnOff{State: traits.OnOff_OFF})
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		assert.True(t, proto.Equal(&traits.OnOff{State: traits.OnOff_OFF}, res))
 	})
 }

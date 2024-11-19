@@ -24,11 +24,6 @@ type Value struct {
 	bus minibus.Bus
 }
 
-// NewValue use by initialising with resource/Option.WithInitialValue(...).
-//
-// The reason for this is the go-protobuf package ( usage is proto.Clone() -> proto.Reset() -> proto.Merge() in this package )
-// doesn't support generics https://github.com/golang/protobuf/issues/1594#issuecomment-1978771310.
-// So without knowing in advance what the type of initialValue is, resource.Value can't change src from nil to some other type in order to proto.Merge into the dst value, when calling Value.Set.
 func NewValue(opts ...Option) *Value {
 	c := computeConfig(opts...)
 	res := &Value{

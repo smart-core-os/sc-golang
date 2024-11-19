@@ -321,10 +321,6 @@ func (wr WriteRequest) changeFn(writer *masks.FieldUpdater, value proto.Message)
 			wr.interceptBefore(old, value)
 		}
 
-		if old == nil {
-			old = value.ProtoReflect().New().Interface()
-		}
-
 		if new == nil {
 			new = value.ProtoReflect().New().Interface()
 		}

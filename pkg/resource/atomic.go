@@ -15,7 +15,7 @@ type CreateFn func(id string) proto.Message
 type GetFn func() (item proto.Message, err error)
 
 // ChangeFn is called to apply changes to the new proto.Message.
-// due to handling old = nil or new = nil, it returns any modifications made to new
+// due to handling new = nil, it returns any modifications made to new
 type ChangeFn func(old, new proto.Message) (proto.Message, error)
 
 // SaveFn is called to save the message in the external store.

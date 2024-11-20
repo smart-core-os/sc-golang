@@ -6,8 +6,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/stretchr/testify/assert"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 
 	"github.com/smart-core-os/sc-api/go/traits"
@@ -90,6 +88,12 @@ func TestValue_Pull(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		assert.True(t, proto.Equal(&traits.OnOff{State: traits.OnOff_OFF}, res))
+		if diff := cmp.Diff(&traits.OnOff{State: traits.OnOff_OFF}, res, protocmp.Transform()); diff != "" {
+			t.Fatalf("Set response (-want,+got)\n%s", diff)
+		}
+
+		if diff := cmp.Diff(&traits.OnOff{State: traits.OnOff_OFF}, val.Get(), protocmp.Transform()); diff != "" {
+			t.Fatalf("Get response (-want,+got)\n%s", diff)
+		}
 	})
 }

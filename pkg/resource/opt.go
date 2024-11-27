@@ -304,7 +304,7 @@ func (wr WriteRequest) fieldUpdater(writableFields *fieldmaskpb.FieldMask) *mask
 }
 
 func (wr WriteRequest) changeFn(writer *masks.FieldUpdater, value proto.Message) ChangeFn {
-	return func(old, new proto.Message) (proto.Message, error) {
+	return func(old, dst proto.Message) (proto.Message, error) {
 		if wr.expectedValue != nil {
 			if !proto.Equal(old, wr.expectedValue) {
 				return nil, ExpectedValuePreconditionFailed
@@ -321,17 +321,17 @@ func (wr WriteRequest) changeFn(writer *masks.FieldUpdater, value proto.Message)
 			wr.interceptBefore(old, value)
 		}
 
-		if new == nil {
-			new = value.ProtoReflect().New().Interface()
+		if dst == nil {
+			dst = value.ProtoReflect().New().Interface()
 		}
 
-		writer.Merge(new, value)
+		writer.Merge(dst, value)
 
 		if wr.interceptAfter != nil {
 			// apply any after change changes, like setting update times
-			wr.interceptAfter(old, new)
+			wr.interceptAfter(old, dst)
 		}
-		return new, nil
+		return dst, nil
 	}
 }
 

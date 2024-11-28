@@ -78,4 +78,22 @@ func TestValue_Pull(t *testing.T) {
 			t.Fatalf("Value (-want,+got)\n%s", diff)
 		}
 	})
+
+	t.Run("doesnt panic with no initial value", func(t *testing.T) {
+		val := NewValue()
+
+		res, err := val.Set(&traits.OnOff{State: traits.OnOff_OFF})
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if diff := cmp.Diff(&traits.OnOff{State: traits.OnOff_OFF}, res, protocmp.Transform()); diff != "" {
+			t.Fatalf("Set response (-want,+got)\n%s", diff)
+		}
+
+		if diff := cmp.Diff(&traits.OnOff{State: traits.OnOff_OFF}, val.Get(), protocmp.Transform()); diff != "" {
+			t.Fatalf("Get response (-want,+got)\n%s", diff)
+		}
+	})
 }

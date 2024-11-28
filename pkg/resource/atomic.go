@@ -14,8 +14,12 @@ type CreateFn func(id string) proto.Message
 // GetFn is called to retrieve the message from the external store.
 type GetFn func() (item proto.Message, err error)
 
-// ChangeFn is called to apply changes to the new proto.Message.
-type ChangeFn func(old, new proto.Message) error
+// ChangeFn is called to apply changes to a proto.Message.
+// old and dst are the current message and a message to change.
+// If old is nil, there is no current message.
+// If dst is nil, then the resource was unable to allocate a message of the correct type to apply changes to.
+// The implementation is free to ignore both arguments but must return a message containing the desired changes.
+type ChangeFn func(old, dst proto.Message) (proto.Message, error)
 
 // SaveFn is called to save the message in the external store.
 type SaveFn func(msg proto.Message)
@@ -35,7 +39,7 @@ func GetAndUpdate(mu *sync.RWMutex, get GetFn, change ChangeFn, save SaveFn) (ol
 	}
 
 	newValue = proto.Clone(oldValue)
-	if err := change(oldValue, newValue); err != nil {
+	if newValue, err = change(oldValue, newValue); err != nil {
 		return oldValue, newValue, err
 	}
 

@@ -49,4 +49,5 @@ const (
 	Ptz              Name = "smartcore.traits.Ptz"
 	Speaker          Name = "smartcore.traits.Speaker"
 	Vending          Name = "smartcore.traits.Vending"
+	Waste            Name = "smartcore.traits.Waste"
 )

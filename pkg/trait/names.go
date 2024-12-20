@@ -26,6 +26,7 @@ const (
 	Booking          Name = "smartcore.traits.Booking"
 	BrightnessSensor Name = "smartcore.traits.BrightnessSensor"
 	Channel          Name = "smartcore.traits.Channel"
+	Color            Name = "smartcore.traits.Color"
 	Count            Name = "smartcore.traits.Count"
 	Electric         Name = "smartcore.traits.Electric"
 	Emergency        Name = "smartcore.traits.Emergency"

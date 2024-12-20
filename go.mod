@@ -6,7 +6,7 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
 	github.com/mennanov/fmutils v0.1.1
-	github.com/smart-core-os/sc-api/go v1.0.0-beta.49
+	github.com/smart-core-os/sc-api/go v1.0.0-beta.50
 	github.com/tanema/gween v0.0.0-20200427131925-c89ae23cc63c
 	go.uber.org/zap v1.17.0
 	golang.org/x/exp v0.0.0-20240822175202-778ce7bba035

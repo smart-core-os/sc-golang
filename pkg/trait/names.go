@@ -21,6 +21,7 @@ func (n Name) String() string {
 }
 
 const (
+	Access           Name = "smartcore.traits.Access"
 	AirQualitySensor Name = "smartcore.traits.AirQualitySensor"
 	AirTemperature   Name = "smartcore.traits.AirTemperature"
 	Booking          Name = "smartcore.traits.Booking"
@@ -39,6 +40,7 @@ const (
 	Light            Name = "smartcore.traits.Light"
 	LockUnlock       Name = "smartcore.traits.LockUnlock"
 	Metadata         Name = "smartcore.traits.Metadata"
+	Meter            Name = "smartcore.traits.Meter"
 	Microphone       Name = "smartcore.traits.Microphone"
 	Mode             Name = "smartcore.traits.Mode"
 	MotionSensor     Name = "smartcore.traits.MotionSensor"
@@ -46,9 +48,12 @@ const (
 	OnOff            Name = "smartcore.traits.OnOff"
 	OpenClose        Name = "smartcore.traits.OpenClose"
 	Parent           Name = "smartcore.traits.Parent"
+	Press            Name = "smartcore.traits.Press"
 	Publication      Name = "smartcore.traits.Publication"
 	Ptz              Name = "smartcore.traits.Ptz"
 	Speaker          Name = "smartcore.traits.Speaker"
+	Status           Name = "smartcore.traits.Status"
+	Temperature      Name = "smartcore.traits.Temperature"
 	Vending          Name = "smartcore.traits.Vending"
 	Waste            Name = "smartcore.traits.Waste"
 )

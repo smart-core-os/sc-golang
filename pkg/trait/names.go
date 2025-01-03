@@ -52,7 +52,6 @@ const (
 	Publication      Name = "smartcore.traits.Publication"
 	Ptz              Name = "smartcore.traits.Ptz"
 	Speaker          Name = "smartcore.traits.Speaker"
-	Status           Name = "smartcore.traits.Status"
 	Temperature      Name = "smartcore.traits.Temperature"
 	Vending          Name = "smartcore.traits.Vending"
 	Waste            Name = "smartcore.traits.Waste"

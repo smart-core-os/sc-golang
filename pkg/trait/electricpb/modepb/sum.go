@@ -6,7 +6,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/smart-core-os/sc-api/go/traits"
-	segmentpb2 "github.com/smart-core-os/sc-golang/pkg/trait/electricpb/segmentpb"
+	"github.com/smart-core-os/sc-golang/pkg/trait/electricpb/segmentpb"
 )
 
 // Sum combines all the given modes together into a single mode.
@@ -50,7 +50,7 @@ func Sum(modes ...*traits.ElectricMode) *traits.ElectricMode {
 				st = mode.StartTime.AsTime()
 			}
 			diff := st.Sub(earliest)
-			segmentSlices[i] = segmentpb2.Shift(diff, segmentSlices[i]...)
+			segmentSlices[i] = segmentpb.Shift(diff, segmentSlices[i]...)
 		}
 	}
 
@@ -58,7 +58,7 @@ func Sum(modes ...*traits.ElectricMode) *traits.ElectricMode {
 	if anyHaveST {
 		result.StartTime = timestamppb.New(earliest)
 	}
-	result.Segments = segmentpb2.Sum(segmentSlices...)
+	result.Segments = segmentpb.Sum(segmentSlices...)
 
 	return result
 }

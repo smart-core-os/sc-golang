@@ -1,4 +1,4 @@
-package waste
+package wastepb
 
 import (
 	"context"

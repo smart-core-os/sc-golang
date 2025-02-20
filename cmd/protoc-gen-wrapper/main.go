@@ -47,9 +47,12 @@ func generateFile(plugin *protogen.Plugin, file *protogen.File) error {
 		pkg = filepath.Base(file.GeneratedFilenamePrefix)
 	}
 	pkg = strings.ReplaceAll(pkg, "_", "")
+	if !strings.HasSuffix(pkg, "pb") {
+		pkg += "pb"
+	}
 
 	for _, service := range file.Services {
-		name := trimPrefixIgnoreCase(service.GoName, pkg)
+		name := trimPrefixIgnoreCase(service.GoName, strings.TrimSuffix(pkg, "pb"))
 		filename := fmt.Sprintf("pkg/trait/%s/%s_wrap.pb.go", pkg, strings.ToLower(name))
 
 		g := plugin.NewGeneratedFile(filename, protogen.GoImportPath(fmt.Sprintf("github.com/smart-core-os/sc-golang/pkg/trait/%s", pkg)))

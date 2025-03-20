@@ -3,6 +3,7 @@
 package hailpb
 
 import (
+	context "context"
 	fmt "fmt"
 	traits "github.com/smart-core-os/sc-api/go/traits"
 	router "github.com/smart-core-os/sc-golang/pkg/router"
@@ -75,4 +76,13 @@ func (r *InfoRouter) GetHailInfoClient(name string) (traits.HailInfoClient, erro
 		return nil, nil
 	}
 	return res.(traits.HailInfoClient), nil
+}
+
+func (r *InfoRouter) DescribeHail(ctx context.Context, request *traits.DescribeHailRequest) (*traits.HailSupport, error) {
+	child, err := r.GetHailInfoClient(request.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	return child.DescribeHail(ctx, request)
 }

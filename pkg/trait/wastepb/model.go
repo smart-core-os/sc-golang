@@ -73,6 +73,9 @@ func (m *Model) GenerateWasteRecord(ts *timestamppb.Timestamp) (*traits.WasteRec
 		Area:             areas[m.genId%len(areas)],
 		System:           systems[m.genId%len(systems)],
 		Stream:           streams[m.genId%len(streams)],
+		Co2Saved:         rand.Float32() * 100,
+		LandSaved:        rand.Float32() * 100,
+		TreesSaved:       rand.Float32() * 5,
 	}
 	m.genId++
 	m.mu.Unlock()

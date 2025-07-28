@@ -94,29 +94,43 @@ func metadataValueChangeToProto(change *resource.ValueChange) *traits.PullMetada
 	}
 }
 
-// special handling for updating a *traits.Metadata
-// because Traits is supposed to be a map-like slice
-func metadataMergeInterceptor(old, new proto.Message) {
-	clean := proto.Clone(new).(*traits.Metadata)
+// Merge updates target so that it appears as if target was written on top of existing.
+// Traits are merged equivalently to a map, keyed by TraitMetadata.Name, so that each trait appears only once.
+//
+// As an example:
+//
+//	existing = {A: "a1", B: "b1"} // remains unchanged after Merge
+//	target   = {B: "b2", C: "c2"}
+//	Merge(existing, target)
+//	// Output: target == {A: "a1", B: "b2", C: "c2"}
+func Merge(existing, target *traits.Metadata) {
+	clean := proto.Clone(target).(*traits.Metadata)
 	// handle trait updates specially
 	cleanTraits := clean.Traits
 	clean.Traits = nil
 
-	proto.Merge(new, old)   // copy all the original values into new
-	proto.Merge(new, clean) // then copy our updates - excluding Traits - on top
+	proto.Merge(target, existing) // copy all the original values into new
+	proto.Merge(target, clean)    // then copy our updates - excluding Traits - on top
 
 	// finally merge traits
 	// The default proto.Merge logic is to append src slices to dst slices.
-	// Instead we want to treat the Traits slice as if it were a map keyed by TraitMetadata.Name,
+	// Instead, we want to treat the Traits slice as if it were a map keyed by TraitMetadata.Name,
 	// so we have to do it ourselves.
-	oldVal := old.(*traits.Metadata)
-	newVal := new.(*traits.Metadata)
-	newVal.Traits = oldVal.Traits
+	target.Traits = existing.Traits
 	for _, trait := range cleanTraits {
-		newVal.Traits = mergeTraitMetadata(newVal.Traits, trait)
+		target.Traits = mergeTraitMetadata(target.Traits, trait)
 	}
 	// make the output consistent
-	sort.Slice(newVal.Traits, func(i, j int) bool {
-		return newVal.Traits[i].Name < newVal.Traits[j].Name
+	sort.Slice(target.Traits, func(i, j int) bool {
+		return target.Traits[i].Name < target.Traits[j].Name
 	})
+}
+
+// special handling for updating a *traits.Metadata
+// because Traits is supposed to be a map-like slice
+func metadataMergeInterceptor(old, new proto.Message) {
+	oldVal := old.(*traits.Metadata)
+	newVal := new.(*traits.Metadata)
+
+	Merge(oldVal, newVal)
 }

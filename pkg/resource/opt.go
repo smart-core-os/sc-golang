@@ -263,6 +263,10 @@ func ComputeWriteConfig(opts ...WriteOption) WriteRequest {
 // UpdateInterceptor describes a function that applies changes to an existing message
 type UpdateInterceptor func(old, new proto.Message)
 
+// Merger merges src into dst, honouring the update mask.
+// Defaults to calling mask.Merge(dst, src) if not set.
+type Merger func(mask *masks.FieldUpdater, dst, src proto.Message)
+
 type WriteRequest struct {
 	writeTime *time.Time
 
@@ -275,6 +279,8 @@ type WriteRequest struct {
 
 	interceptBefore UpdateInterceptor
 	interceptAfter  UpdateInterceptor
+
+	merge Merger
 
 	nilWritableFields  bool
 	moreWritableFields *fieldmaskpb.FieldMask
@@ -325,7 +331,11 @@ func (wr WriteRequest) changeFn(writer *masks.FieldUpdater, value proto.Message)
 			dst = value.ProtoReflect().New().Interface()
 		}
 
-		writer.Merge(dst, value)
+		merge := wr.merge
+		if merge == nil {
+			merge = (*masks.FieldUpdater).Merge
+		}
+		merge(writer, dst, value)
 
 		if wr.interceptAfter != nil {
 			// apply any after change changes, like setting update times
@@ -398,6 +408,15 @@ func WithResetMask(mask *fieldmaskpb.FieldMask) WriteOption {
 // WithResetPaths is like WithResetMask but the FieldMask is made from the given paths.
 func WithResetPaths(paths ...string) WriteOption {
 	return WithResetMask(&fieldmaskpb.FieldMask{Paths: paths})
+}
+
+// WithMerger configures the update to use the given Merger to merge the new into the existing value.
+// Merging is performed after all value checks and InterceptBefore calls, but before InterceptAfter.
+// The default merger is masks.FieldUpdater.Merge, which merges the fields specified in the UpdateMask.
+func WithMerger(merger Merger) WriteOption {
+	return writeOptionFunc(func(request *WriteRequest) {
+		request.merge = merger
+	})
 }
 
 // InterceptBefore registers a function that will be called before the update occurs.

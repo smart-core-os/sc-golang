@@ -12,6 +12,7 @@ import (
 
 	"github.com/smart-core-os/sc-api/go/traits"
 	"github.com/smart-core-os/sc-api/go/types"
+	"github.com/smart-core-os/sc-golang/pkg/masks"
 )
 
 func TestWithUpdatesOnly(t *testing.T) {
@@ -311,6 +312,63 @@ func TestWithIDInterceptor(t *testing.T) {
 	}
 	if diff := cmp.Diff(expect, actual, protocmp.Transform()); diff != "" {
 		t.Errorf("Get('a') returned wrong value (-want,+got)\n%v", diff)
+	}
+}
+
+func TestWithMerger(t *testing.T) {
+	md := func(m proto.Message) *traits.Metadata {
+		md, ok := m.(*traits.Metadata)
+		if !ok {
+			t.Fatalf("expected *traits.Metadata, got %T", m)
+		}
+		return md
+	}
+
+	v := NewValue(WithInitialValue(&traits.Metadata{Name: "initial"}))
+	ret, err := v.Set(&traits.Metadata{Name: "write"},
+		WithUpdatePaths("name"),
+		InterceptBefore(func(old, new proto.Message) {
+			if n := md(old).Name; n != "initial" {
+				t.Fatalf("expected old value to have Name 'initial', got %q", n)
+			}
+			if n := md(new).Name; n != "write" {
+				t.Fatalf("expected new value to have Name 'write', got %q", n)
+			}
+			md(new).Name = "before"
+		}),
+		WithMerger(func(mask *masks.FieldUpdater, dst, src proto.Message) {
+			if n := md(dst).Name; n != "initial" {
+				t.Fatalf("expected dst value to have Name 'initial', got %q", n)
+			}
+			if n := md(src).Name; n != "before" {
+				t.Fatalf("expected src value to have Name 'before', got %q", n)
+			}
+			md(dst).Name = "merge"
+
+			// test that the mask updates what we expect
+			m1 := &traits.Metadata{Name: "name1", Appearance: &traits.Metadata_Appearance{Title: "title1"}}
+			m2 := &traits.Metadata{Name: "name2", Appearance: &traits.Metadata_Appearance{Title: "title2"}}
+			want := &traits.Metadata{Name: "name2", Appearance: &traits.Metadata_Appearance{Title: "title1"}}
+			mask.Merge(m1, m2) // should only update m1.Name, not m1.Appearance.Title
+			if diff := cmp.Diff(want, m1, protocmp.Transform()); diff != "" {
+				t.Errorf("mask.Merge() mismatch (-want +got):\n%s", diff)
+			}
+		}),
+		InterceptAfter(func(old, new proto.Message) {
+			if n := md(old).Name; n != "initial" {
+				t.Fatalf("expected old value to have Name 'initial', got %q", n)
+			}
+			if n := md(new).Name; n != "merge" {
+				t.Fatalf("expected new value to have Name 'merge', got %q", n)
+			}
+			md(new).Name = "after"
+		}),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := md(ret).Name; n != "after" {
+		t.Fatalf("expected returned value to have Name 'after', got %q", n)
 	}
 }
 

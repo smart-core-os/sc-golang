@@ -83,12 +83,32 @@ func (c *CollectionChange) include(includeFunc FilterFunc) (newChange *Collectio
 	if includeFunc == nil {
 		return c, true
 	}
+	ret := func(c *CollectionChange, ok bool) (*CollectionChange, bool) {
+		if !ok {
+			return nil, false
+		}
+		return c, true
+	}
+
+	switch {
+	case c.OldValue == nil && c.NewValue == nil:
+		// this should never happen, but if it does just skip it
+		return nil, false
+	case c.OldValue == nil && c.NewValue != nil:
+		// ADD
+		return ret(c, includeFunc(c.Id, c.NewValue))
+	case c.OldValue != nil && c.NewValue == nil:
+		// REMOVE
+		return ret(c, includeFunc(c.Id, c.OldValue))
+	default:
+		// update
+	}
 
 	oldInclude := includeFunc(c.Id, c.OldValue)
 	newInclude := includeFunc(c.Id, c.NewValue)
 	if oldInclude == newInclude {
 		// the only time we want to skip sending the update is if both the old and new values are excluded
-		return c, !newInclude
+		return ret(c, newInclude)
 	}
 
 	if newInclude {

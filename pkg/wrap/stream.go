@@ -95,7 +95,7 @@ func (c *clientStream) Context() context.Context {
 func (c *clientStream) SendMsg(m any) error {
 	select {
 	case <-c.ctx.Done():
-		return c.closeErrLocked()
+		return c.errorOnDone()
 	case c.clientSend <- m:
 		return nil
 	}
@@ -104,23 +104,29 @@ func (c *clientStream) SendMsg(m any) error {
 func (c *clientStream) RecvMsg(m any) error {
 	select {
 	case <-c.Context().Done():
-		// closeErr may or may not be available depending on why the context has ended
-		//  1. if c.closed() was called by c.Close(...), then c.closeErr will be available
-		//  2. if the parent context was cancelled, then c.closeErr may not be available
-		select {
-		case _, ok := <-c.serverSend:
-			if !ok {
-				return c.closeErrLocked()
-			}
-		default:
-		}
-		return c.Context().Err()
+		return c.errorOnDone()
 	case val, ok := <-c.serverSend:
 		if !ok {
 			return c.closeErrLocked()
 		}
 		return permissiveProtoMerge(m.(proto.Message), val.(proto.Message))
 	}
+}
+
+// errorOnDone tries to return the most relevant close error
+// and is called when the clientStream's context is done to prevent loss of messages in the serverSend channel.
+// The clientStream's closeErr may or may not be available depending on why the context is done:
+//  1. if c.closed() was called by c.Close(...), then c.closeErr will be returned
+//  2. if the parent context was cancelled, then c.closeErr may not be available and the context.Error is returned
+func (c *clientStream) errorOnDone() error {
+	select {
+	case _, ok := <-c.serverSend:
+		if !ok {
+			return c.closeErrLocked()
+		}
+	default:
+	}
+	return c.Context().Err()
 }
 
 type serverStream struct {

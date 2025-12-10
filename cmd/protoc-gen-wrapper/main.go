@@ -1,10 +1,11 @@
 // protoc-gen-wrapper is a protoc plugin that generates a wrapper for each service that exists in the proto files.
 //
-// This outputs to the {out}/pkg/trait/{trait name} package, it is intended to target the root of this project.
+// This outputs to the {out}/pkg/trait/{trait name} package unless usePaths=true option is specified.
 package main
 
 import (
 	_ "embed"
+	"flag"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -18,6 +19,11 @@ import (
 var serviceTmplStr string
 var serviceTmpl *template.Template
 
+var (
+	flags    flag.FlagSet
+	usePaths = flags.Bool("usePaths", false, "use paths option instead of hard-coded pkg/trait/{trait} output")
+)
+
 func main() {
 	var err error
 	serviceTmpl, err = template.New("service").Parse(serviceTmplStr)
@@ -25,7 +31,9 @@ func main() {
 		panic(err)
 	}
 
-	opts := protogen.Options{}
+	opts := protogen.Options{
+		ParamFunc: flags.Set,
+	}
 	opts.Run(func(plugin *protogen.Plugin) error {
 		for _, file := range plugin.Files {
 			if !file.Generate {
@@ -54,8 +62,14 @@ func generateFile(plugin *protogen.Plugin, file *protogen.File) error {
 	for _, service := range file.Services {
 		name := trimPrefixIgnoreCase(service.GoName, strings.TrimSuffix(pkg, "pb"))
 		filename := fmt.Sprintf("pkg/trait/%s/%s_wrap.pb.go", pkg, strings.ToLower(name))
+		importPath := protogen.GoImportPath(fmt.Sprintf("github.com/smart-core-os/sc-golang/pkg/trait/%s", pkg))
+		if *usePaths {
+			filename = file.GeneratedFilenamePrefix + "_" + strings.ToLower(name) + "wrap.pb.go"
+			importPath = file.GoImportPath
+			pkg = string(file.GoPackageName)
+		}
 
-		g := plugin.NewGeneratedFile(filename, protogen.GoImportPath(fmt.Sprintf("github.com/smart-core-os/sc-golang/pkg/trait/%s", pkg)))
+		g := plugin.NewGeneratedFile(filename, importPath)
 		model := newServiceModel(g, service, file, pkg, name)
 		err := serviceTmpl.Execute(g, model)
 		if err != nil {

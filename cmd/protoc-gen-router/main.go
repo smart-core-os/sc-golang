@@ -64,7 +64,15 @@ func generateFile(plugin *protogen.Plugin, file *protogen.File) error {
 		filename := fmt.Sprintf("pkg/trait/%s/%s_router.pb.go", pkg, strings.ToLower(name))
 		importPath := protogen.GoImportPath(fmt.Sprintf("github.com/smart-core-os/sc-golang/pkg/trait/%s", pkg))
 		if *usePaths {
-			filename = file.GeneratedFilenamePrefix + "_" + strings.ToLower(name) + "router.pb.go"
+			qual := strings.ToLower(name)
+			// avoid filenames like some/path/metadata_metadataapi_router.pb.go,
+			// which would come from {prefix=some/path/metadata}{servicename=metadataapi}_router.pb.go.
+			// Instead we want metadata_api_router.pb.go
+			qual = strings.TrimPrefix(qual, strings.ReplaceAll(filepath.Base(file.GeneratedFilenamePrefix), "_", ""))
+			if len(qual) > 0 {
+				qual = "_" + qual
+			}
+			filename = file.GeneratedFilenamePrefix + qual + "_router.pb.go"
 			importPath = file.GoImportPath
 			pkg = string(file.GoPackageName)
 		}

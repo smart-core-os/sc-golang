@@ -19,8 +19,8 @@ func NewModel(opts ...resource.Option) *Model {
 	}
 }
 
-func (m *Model) UpdateAirQuality(airTemperature *traits.AirQuality, opts ...resource.WriteOption) (*traits.AirQuality, error) {
-	res, err := m.airQuality.Set(airTemperature, opts...)
+func (m *Model) UpdateAirQuality(airQuality *traits.AirQuality, opts ...resource.WriteOption) (*traits.AirQuality, error) {
+	res, err := m.airQuality.Set(airQuality, opts...)
 	if err != nil {
 		return nil, err
 	}

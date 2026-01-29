@@ -46,7 +46,7 @@ func TestShift(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if diff := cmp.Diff(tt.want, Shift(tt.d, tt.segments...), protocmp.Transform()); diff != "" {
-				t.Errorf("Shift() (-want, +got)\n" + diff)
+				t.Error("Shift() (-want, +got)\n" + diff)
 			}
 		})
 	}

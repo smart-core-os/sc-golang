@@ -27,7 +27,7 @@ func TestSum(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if diff := cmp.Diff(tt.want, Sum(tt.args...), protocmp.Transform()); diff != "" {
-				t.Errorf("Sum() (-want, +got) \n" + diff)
+				t.Error("Sum() (-want, +got) \n" + diff)
 			}
 		})
 	}
@@ -51,7 +51,7 @@ func Test_calcCuts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if diff := cmp.Diff(tt.want, calcCuts(tt.args...), cmp.Comparer(compareCuts)); diff != "" {
-				t.Errorf("calcCuts() (-want, +got) \n" + diff)
+				t.Error("calcCuts() (-want, +got) \n" + diff)
 			}
 		})
 	}

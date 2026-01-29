@@ -19,8 +19,8 @@ type ClientServerStream struct {
 	headerM sync.Mutex    // guards closing of headerC
 	headerC chan struct{} // closed once calls to clientStream.Header should return
 
-	serverSend chan any
-	clientSend chan any
+	serverSend chan proto.Message
+	clientSend chan proto.Message
 	trailer    metadata.MD
 	closed     context.CancelFunc
 	closeErr   error
@@ -32,8 +32,8 @@ func NewClientServerStream(ctx context.Context) *ClientServerStream {
 		ctx:        newCtx,
 		closed:     closed,
 		headerC:    make(chan struct{}),
-		serverSend: make(chan any),
-		clientSend: make(chan any),
+		serverSend: make(chan proto.Message),
+		clientSend: make(chan proto.Message),
 	}
 }
 
@@ -93,10 +93,11 @@ func (c *clientStream) Context() context.Context {
 }
 
 func (c *clientStream) SendMsg(m any) error {
+	dupMsg := proto.Clone(m.(proto.Message))
 	select {
 	case <-c.ctx.Done():
 		return c.errorOnDone()
-	case c.clientSend <- m:
+	case c.clientSend <- dupMsg:
 		return nil
 	}
 }
@@ -109,7 +110,7 @@ func (c *clientStream) RecvMsg(m any) error {
 		if !ok {
 			return c.closeErrLocked()
 		}
-		return permissiveProtoMerge(m.(proto.Message), val.(proto.Message))
+		return permissiveProtoMerge(m.(proto.Message), val)
 	}
 }
 
@@ -162,10 +163,11 @@ func (s *serverStream) Context() context.Context {
 
 func (s *serverStream) SendMsg(m any) error {
 	s.sendHeaderIfNeeded()
+	dupMsg := proto.Clone(m.(proto.Message))
 	select {
 	case <-s.ctx.Done():
 		return s.closeErrLocked()
-	case s.serverSend <- m:
+	case s.serverSend <- dupMsg:
 		return nil
 	}
 }
@@ -178,7 +180,7 @@ func (s *serverStream) RecvMsg(m any) error {
 		if !ok {
 			return io.EOF
 		}
-		return permissiveProtoMerge(m.(proto.Message), val.(proto.Message))
+		return permissiveProtoMerge(m.(proto.Message), val)
 	}
 }
 

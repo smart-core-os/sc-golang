@@ -16,6 +16,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/smart-core-os/sc-api/go/traits"
+	"github.com/smart-core-os/sc-golang/internal/testproto"
 )
 
 func Test_clientSend(t *testing.T) {
@@ -191,6 +192,69 @@ func TestClientServerStream_RecvMsg_errOnClose(t *testing.T) {
 		err := errors.New("early closed")
 		assertRecvMsgErrOnClose(t, err, err)
 	})
+}
+
+func TestClientServerStream_ModifyMessageOnClientSend(t *testing.T) {
+	cs := NewClientServerStream(t.Context())
+	defer cs.Close(nil)
+	client := cs.Client()
+	server := cs.Server()
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	originalMsg := &testproto.TestAllTypes{MapStringBytes: map[string][]byte{"key1": []byte("value1")}}
+
+	// client modifies the message after sending
+	go func() {
+		defer wg.Done()
+		err := server.RecvMsg(&testproto.TestAllTypes{})
+		if err != nil {
+			t.Errorf("Server RecvMsg: %v", err)
+		}
+	}()
+
+	err := client.SendMsg(originalMsg)
+	if err != nil {
+		t.Errorf("Client SendMsg: %v", err)
+	}
+
+	// Modify the original message after sending.
+	// ClientServerStream will cause race conditions attempting to read the map whilst this modification is happening
+	// unless the proto.Message is cloned on SendMsg.
+	originalMsg.MapStringBytes["key1"] = []byte("value2")
+
+	wg.Wait()
+}
+
+func TestClientServerStream_ModifyMessageOnServerSend(t *testing.T) {
+	cs := NewClientServerStream(t.Context())
+	defer cs.Close(nil)
+	client := cs.Client()
+	server := cs.Server()
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+
+	originalMsg := &testproto.TestAllTypes{MapStringBytes: map[string][]byte{"key1": []byte("value1")}}
+
+	// server modifies the message after sending
+	go func() {
+		defer wg.Done()
+		err := client.RecvMsg(&testproto.TestAllTypes{})
+		if err != nil {
+			t.Errorf("Client RecvMsg: %v", err)
+		}
+	}()
+
+	err := server.SendMsg(originalMsg)
+	if err != nil {
+		t.Errorf("Server SendMsg: %v", err)
+	}
+	// Modify the original message after sending.
+	// ClientServerStream will cause race conditions attempting to read the map whilst this modification is happening
+	// unless the proto.Message is cloned on SendMsg.
+	originalMsg.MapStringBytes["key1"] = []byte("value2")
+	wg.Wait()
 }
 
 func assertRecvMsgErrOnClose(t *testing.T, closeErr, wantErr error) {
